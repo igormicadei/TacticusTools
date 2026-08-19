@@ -25,7 +25,8 @@
     "ui:dev": "npm --prefix ui run dev",
     "ui:build": "npm --prefix ui run build",
     "validate:stats": "node test/validate-stats.mjs",
-    "ui:deploy": "scripts/deploy-pages.sh"
+    "ui:deploy": "scripts/deploy-pages.sh",
+    "validate:plan": "node test/validate-plan.mjs"
   },
   "engines": {
     "node": ">=18"

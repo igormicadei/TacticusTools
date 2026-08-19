@@ -378,6 +378,34 @@ Real values do exist for units that have fought in a guild raid: the `guildRaid`
 endpoint returns `PublicHeroDetail.power` per hero, given a key with the Guild
 Raid scope.
 
+## Evolution planning
+
+`resolvePlan(unit, target, db)` turns a target into an ordered sequence of steps,
+folding in whatever the target depends on. Set one field and the rest follow: an
+ability target pulls the character level up with it, and a level or rank target
+pulls rarity, because rarity caps both.
+
+The gating rules, and how each was established:
+
+| Rule | Basis |
+| --- | --- |
+| Level ≤ rarity's cap (8 / 17 / 26 / 35 / 50) | published, via `rarityCaps` |
+| Ability level ≤ character level | observed — no ability exceeds its unit's level across a 29-unit roster, and 12 sit exactly on it |
+| Rank ≤ `3 × (rarity + 1)` | **derived** — no unit exceeds it, two sit exactly on it, and it explains the "MAX. RANK: I" badge the game shows for Common and Uncommon, each being the first rank of a tier |
+
+The rank rule is the one to revisit if a plan looks wrong; `maxRankForRarity` in
+`src/gamedata/plan.ts` is the single place to change it.
+
+Steps are emitted greedily in the order that unblocks progress — push rank and
+level as far as the current rarity allows, raise abilities as far as the level
+allows, then promote and ascend and repeat. That yields the sequence a player
+actually follows rather than a flat total, so nothing is farmed for a rank that
+is still gated.
+
+`npm run validate:plan -- player.json` audits every step of 203 plans across the
+roster: no intermediate state may exceed a cap, no attribute may move backwards,
+and the plan must actually arrive at the resolved target.
+
 ## Known gaps
 
 - `eventCampaign6` appears in player progress but not in Codex battle data, so

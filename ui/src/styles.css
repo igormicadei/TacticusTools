@@ -164,3 +164,39 @@ pre.cmd {
   background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
   padding: 12px; overflow-x: auto; font-size: 13px;
 }
+
+/* ---- forms ---- */
+.form-grid {
+  display: grid; gap: 12px; margin-bottom: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+.form-grid label { display: flex; flex-direction: column; gap: 4px; }
+.form-grid label > span { font-size: 12px; color: var(--text-dim); text-transform: uppercase; letter-spacing: .05em; }
+.form-grid select, .form-grid input {
+  font: inherit; background: var(--bg); color: var(--text);
+  border: 1px solid var(--border); border-radius: 6px; padding: 7px 9px;
+}
+button.small { padding: 4px 10px; font-size: 12px; }
+
+/* ---- roadmap ---- */
+.roadmap { margin: 8px 0 16px; }
+.roadmap-legend { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 10px; }
+.legend-item { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-dim); }
+.legend-item .swatch { width: 10px; height: 10px; border-radius: 3px; }
+.roadmap-scroll { overflow-x: auto; padding-bottom: 6px; }
+.roadmap-lane-label { fill: var(--text-dim); font-size: 12px; }
+.roadmap-lane-label.idle { fill: #5b626b; }
+.roadmap-idle-note { font-size: 11px; }
+.roadmap-rule { stroke: var(--border); stroke-width: 1; }
+.roadmap-mark-label { fill: #0d1117; font-size: 12px; font-weight: 600; }
+.roadmap-order { fill: #0d1117; font-size: 11px; opacity: .65; }
+.roadmap-tip { min-height: 20px; margin-top: 6px; }
+
+/* ---- step table ---- */
+table.steps { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 14px; }
+table.steps th {
+  text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--text-dim); font-weight: 600; padding: 6px 10px; border-bottom: 1px solid var(--border);
+}
+table.steps td { padding: 7px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+table.steps tr:last-child td { border-bottom: none; }

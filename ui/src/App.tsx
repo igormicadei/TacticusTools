@@ -3,6 +3,8 @@ import { NavLink, Navigate, Route, Routes } from 'react-router-dom';
 
 import { loadGameData } from './data/gamedata.ts';
 import { fetchPlayer, storage } from './data/player.ts';
+import { PlanDetailPage } from './routes/PlanDetailPage.tsx';
+import { PlansPage } from './routes/PlansPage.tsx';
 import { PlayerDataPage } from './routes/PlayerDataPage.tsx';
 import { UnitDetailPage } from './routes/UnitDetailPage.tsx';
 import { UnitsPage } from './routes/UnitsPage.tsx';
@@ -56,6 +58,9 @@ export function App() {
           <NavLink to="/units" className={({ isActive }) => (isActive ? 'active' : '')}>
             Units
           </NavLink>
+          <NavLink to="/plans" className={({ isActive }) => (isActive ? 'active' : '')}>
+            Plans
+          </NavLink>
           <NavLink to="/player" className={({ isActive }) => (isActive ? 'active' : '')}>
             Player data
           </NavLink>
@@ -86,6 +91,22 @@ export function App() {
               element={
                 player ? (
                   <UnitDetailPage db={db} player={player} />
+                ) : (
+                  <Navigate to="/player" replace />
+                )
+              }
+            />
+            <Route
+              path="/plans"
+              element={
+                player ? <PlansPage db={db} player={player} /> : <Navigate to="/player" replace />
+              }
+            />
+            <Route
+              path="/plans/:planId"
+              element={
+                player ? (
+                  <PlanDetailPage db={db} player={player} />
                 ) : (
                   <Navigate to="/player" replace />
                 )
