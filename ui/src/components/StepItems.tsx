@@ -4,6 +4,7 @@ import { rarityName } from '@lib/gamedata/enums.js';
 import {
   aggregate,
   allocateHoldings,
+  canForge,
   isUnfarmable,
   isUnobtainable,
   itemSource,
@@ -13,6 +14,7 @@ import {
   type AllocatedComponent,
   type AllocatedItem,
   type AggregatedItem,
+  type RequirementKind,
 } from '@lib/gamedata/requirements.js';
 import type { EvolutionPlan } from '@lib/gamedata/plan.js';
 import type { GameDatabase } from '@lib/gamedata/types.js';
@@ -67,7 +69,10 @@ export function StepItems({
         Held stock is spread across the steps that need it, earliest first, so a shortfall
         shows up on the step where it actually bites. Recipe ingredients draw on the same
         stock. Items already fitted to the unit are marked applied — they are spent, and
-        cannot be moved elsewhere. Click an item for where to get it.
+        cannot be moved elsewhere. An item you hold but cannot farm is marked stock only:
+        spending it elsewhere cannot be undone. Forged items have no farmable form, so they
+        read as ready to forge or parts missing rather than as a count. Click an item for
+        where to get it.
         {gold > 0 && ` Gold across the plan: ${gold.toLocaleString()}.`}
       </p>
 
@@ -110,11 +115,7 @@ export function StepItems({
                   player={player}
                   open={open}
                   onToggle={toggle}
-                  extra={
-                    item.applied
-                      ? undefined
-                      : `${item.owned} held · ${item.steps} step${item.steps === 1 ? '' : 's'}`
-                  }
+                  totals={item}
                 />
               ))}
             </ul>
@@ -130,7 +131,7 @@ function ItemRow({
   player,
   open,
   onToggle,
-  extra,
+  totals,
 }: {
   id: string;
   item: AllocatedItem | AggregatedItem;
@@ -138,7 +139,8 @@ function ItemRow({
   player: PlayerResponse;
   open: string | undefined;
   onToggle: (id: string) => void;
-  extra?: string | undefined;
+  /** Set in the aggregate view, where a row stands for several steps. */
+  totals?: AggregatedItem;
 }) {
   const blocked = isUnfarmable(item, db, player);
   // Covered by stock, but with no source to replace it: worth spending
@@ -146,6 +148,7 @@ function ItemRow({
   const finite = !blocked && item.covered > 0 && isUnobtainable(item, db, player);
   const complete = item.missing === 0;
   const expanded = open === id;
+  const forge = forgeState(item, db);
 
   // Fitted materials have nowhere to go and nothing to find, so they do not
   // open into sources.
@@ -171,22 +174,27 @@ function ItemRow({
     <li className={`item-row${blocked ? ' blocked' : ''}${complete ? ' complete' : ''}`}>
       <button className="item-head" onClick={() => onToggle(id)} aria-expanded={expanded}>
         <span className="chevron">{expanded ? '▾' : '▸'}</span>
-        <span className="count">
-          {item.covered}/{item.amount}
-        </span>
+        <Count covered={item.covered} amount={item.amount} forged={forge !== undefined} />
         <span className="item-name">
           {item.name}
           {item.rarity !== undefined && (
             <span className="muted small"> · {rarityName(item.rarity)}</span>
           )}
         </span>
+        {forge !== undefined && <ForgeChip ready={forge} />}
         {blocked && <span className="chip warn">Nothing unlocked</span>}
         {finite && (
           <span className="chip caution" title="You hold enough, but no unlocked source can replace what you spend.">
             Stock only — cannot farm more
           </span>
         )}
-        {extra && <span className="muted small">{extra}</span>}
+        {totals && !totals.applied && (
+          <span className="muted small">
+            {/* "0 held" of a forged item is the same non-fact as "0/1". */}
+            {forge !== undefined && totals.owned === 0 ? '' : `${totals.owned} held · `}
+            {totals.steps} step{totals.steps === 1 ? '' : 's'}
+          </span>
+        )}
       </button>
       {expanded && (
         <ItemSources
@@ -283,27 +291,31 @@ function ComponentRow({
   const finite = !blocked && component.covered > 0 && isUnobtainable(item, db, player);
   const complete = component.missing === 0;
   const expanded = open === id;
+  const forge = forgeState(component, db);
 
   return (
     <li className={`item-row${blocked ? ' blocked' : ''}${complete ? ' complete' : ''}`}>
       <button className="item-head" onClick={() => onToggle(id)} aria-expanded={expanded}>
         <span className="chevron">{expanded ? '▾' : '▸'}</span>
-        <span className="count">
-          {component.covered}/{component.amount}
-        </span>
+        <Count
+          covered={component.covered}
+          amount={component.amount}
+          forged={forge !== undefined}
+        />
         <span className="item-name">
           {component.name}
           {component.rarity !== undefined && (
             <span className="muted small"> · {rarityName(component.rarity)}</span>
           )}
         </span>
+        {forge !== undefined && <ForgeChip ready={forge} />}
         {blocked && <span className="chip warn">Nothing unlocked</span>}
         {finite && (
           <span className="chip caution" title="You hold enough, but no unlocked source can replace what you spend.">
             Stock only — cannot farm more
           </span>
         )}
-        {source.kind === 'craft' && <span className="muted small">crafted</span>}
+
       </button>
       {expanded &&
         (source.kind === 'craft' ? (
@@ -336,6 +348,63 @@ function ComponentRow({
           <p className="source-note muted small">No published way to obtain this yet.</p>
         ))}
     </li>
+  );
+}
+
+/**
+ * Whether a shortfall has to be forged, and whether the parts are in hand.
+ *
+ * `undefined` means the question does not arise: the item is farmed, or nothing
+ * is missing, so a plain count says all there is to say.
+ */
+function forgeState(
+  item: {
+    kind?: RequirementKind;
+    key: string;
+    missing: number;
+    components?: readonly AllocatedComponent[] | undefined;
+  },
+  db: GameDatabase,
+): boolean | undefined {
+  if (item.missing <= 0) return undefined;
+  if (itemSource({ kind: item.kind ?? 'upgrade', key: item.key }, db).kind !== 'craft') {
+    return undefined;
+  }
+  return canForge(item.components ?? []);
+}
+
+/**
+ * A forged item has no farmable form, so "0 of 1" reads as a shortage that no
+ * amount of farming can fix. The count is dropped for those in favour of the
+ * only question that matters — are the parts there — while a partial holding
+ * still shows, since that is a real head start.
+ */
+function Count({
+  covered,
+  amount,
+  forged,
+}: {
+  covered: number;
+  amount: number;
+  forged: boolean;
+}) {
+  if (forged && covered === 0) return <span className="count" />;
+  return (
+    <span className="count">
+      {covered}/{amount}
+    </span>
+  );
+}
+
+function ForgeChip({ ready }: { ready: boolean }) {
+  return ready ? (
+    <span className="chip ok-chip" title="Every ingredient is in hand — forge it.">
+      Ready to forge
+    </span>
+  ) : (
+    <span className="chip" title="Some ingredients are still missing.">
+      Parts missing
+    </span>
   );
 }
 

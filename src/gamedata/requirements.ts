@@ -312,6 +312,22 @@ function allocateComponents(
   });
 }
 
+/**
+ * True when the shortfall of a crafted item can be forged from what is in hand.
+ *
+ * A crafted item has no farmable form, so "0 of 1" says nothing useful about
+ * it: what matters is whether the recipe can be filled. An ingredient counts as
+ * held either outright or because it is itself forgeable from what is held,
+ * which is why this recurses.
+ */
+export function canForge(components: readonly AllocatedComponent[]): boolean {
+  return components.every(
+    (component) =>
+      component.missing === 0 ||
+      (component.components !== undefined && canForge(component.components)),
+  );
+}
+
 export interface AggregatedItem extends ItemRequirement {
   /** Total held, not capped to the requirement. */
   owned: number;

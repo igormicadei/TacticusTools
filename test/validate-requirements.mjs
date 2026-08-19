@@ -21,6 +21,8 @@ import {
   nodeStatuses,
   isUnfarmable,
   isUnobtainable,
+  canForge,
+  itemSources,
 } from '../dist/gamedata/index.js';
 
 const args = process.argv.slice(2);
@@ -81,6 +83,26 @@ const note = (m) => problems.push(m);
   if (plenty.some((s) => s.items[0].covered !== 5)) note('distribution: covered more than the step needs');
 }
 
+/* ---- "ready to forge" ------------------------------------------------------
+ * A forged item shows readiness instead of a count, so that readiness has to
+ * mean exactly one thing: every ingredient is in hand, counting an ingredient
+ * that is itself forgeable from what is held.
+ */
+{
+  const held = (missing) => ({ key: 'x', id: 'x', name: 'x', amount: 1, covered: 1 - missing, missing });
+  const cases = [
+    [[held(0), held(0)], true, 'all ingredients held'],
+    [[held(0), held(1)], false, 'one ingredient short'],
+    [[{ ...held(1), components: [held(0)] }], true, 'short ingredient is itself forgeable'],
+    [[{ ...held(1), components: [held(1)] }], false, 'short ingredient cannot be forged either'],
+    [[], true, 'nothing to gather'],
+  ];
+  for (const [components, expected, why] of cases) {
+    if (canForge(components) !== expected) note(`canForge: ${why} should be ${expected}`);
+  }
+  console.log('forge readiness: 5 cases  ✓');
+}
+
 /* ---- against the real roster ---------------------------------------------- */
 const TARGETS = [{ rank: 12, activeAbilityLevel: 30 }, { rarity: 4 }, { xpLevel: 35 }];
 let checked = 0;
@@ -128,6 +150,18 @@ for (const unit of player.units) {
         note(`${unit.name}: total for ${item.name} disagrees with its steps`);
       }
       if (item.applied && item.missing !== 0) note(`${unit.name}: ${item.name} is fitted but reported missing`);
+    }
+
+    // Readiness replaces the count only for forged items, so anything showing
+    // it must have no farmable form at all.
+    for (const item of totals) {
+      if (itemSource(item, db).kind !== 'craft') continue;
+      if ((itemSources(item, db) ?? []).length > 0) {
+        note(`${unit.name}: ${item.name} is both forged and farmed`);
+      }
+      if (item.missing > 0 && canForge(item.components ?? []) && item.components === undefined) {
+        note(`${unit.name}: ${item.name} reads ready to forge with no recipe resolved`);
+      }
     }
 
     // "Stock only" warns that what is in hand cannot be replaced, so it must
