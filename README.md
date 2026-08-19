@@ -98,8 +98,8 @@ deliberate:
 - **`XP_BOOK_IDS`.** The spec enum reads
   `["xpUncommon", "xpUncommon", "xpRare", "xpEpic", "xpLegendary"]` — a duplicate
   and no common tier, which looks like a copy/paste slip for `xpCommon`. The
-  duplicate is dropped; the type stays open. A live response returned exactly
-  the four deduplicated ids.
+  game config confirms both the slip (`xpCommon` is real) and a sixth tier the
+  spec omits entirely (`xpMythic`). All six are listed; the type stays open.
 - **`CampaignType` is open.** The spec's enum was proven incomplete by a live
   response (`Extremis`), so this union carries a `(string & {})` arm too.
 - **Optionality follows the spec's `required` lists**, not the presence of a

@@ -115,14 +115,22 @@ export interface Shard {
 }
 
 /**
- * Documented XP book identifiers.
+ * XP book identifiers.
  *
  * The spec's enum lists `xpUncommon` twice and omits a common tier
- * (`["xpUncommon", "xpUncommon", "xpRare", "xpEpic", "xpLegendary"]`), which
- * reads as a copy/paste slip for `xpCommon`. The duplicate is dropped here and
- * the type stays open so an undocumented id still ingests cleanly.
+ * (`["xpUncommon", "xpUncommon", "xpRare", "xpEpic", "xpLegendary"]`). The game
+ * config confirms the duplicate is a slip for `xpCommon`, and that a sixth tier
+ * `xpMythic` exists which the spec omits entirely. All six are listed here; the
+ * type stays open so an undocumented id still ingests cleanly.
  */
-export const XP_BOOK_IDS = ['xpUncommon', 'xpRare', 'xpEpic', 'xpLegendary'] as const;
+export const XP_BOOK_IDS = [
+  'xpCommon',
+  'xpUncommon',
+  'xpRare',
+  'xpEpic',
+  'xpLegendary',
+  'xpMythic',
+] as const;
 
 export type XpBookId = (typeof XP_BOOK_IDS)[number] | (string & {});
 
