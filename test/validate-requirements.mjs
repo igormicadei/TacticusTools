@@ -60,6 +60,20 @@ const note = (m) => problems.push(m);
   if (got !== '5/5, 5/5, 2/5') note(`distribution: expected "5/5, 5/5, 2/5", got "${got}"`);
   else console.log(`distribution rule: ${got}  ✓`);
 
+  // Fitted materials are covered without touching stock, so the same 12 are
+  // still free for the steps that genuinely need them.
+  const applied = [
+    { ...costs[0], items: [{ ...costs[0].items[0], applied: true }] },
+    costs[1],
+    costs[2],
+  ];
+  const withApplied = allocateHoldings(applied, new Map([['upgrade:test', 12]]));
+  const appliedGot = withApplied.map((s) => `${s.items[0].covered}/${s.items[0].amount}`).join(', ');
+  if (appliedGot !== '5/5, 5/5, 5/5') {
+    note(`applied items: expected "5/5, 5/5, 5/5", got "${appliedGot}"`);
+  } else console.log(`applied items do not draw stock: ${appliedGot}  ✓`);
+  if (withApplied[0].items[0].missing !== 0) note('applied items: reported as missing');
+
   const none = allocateHoldings(costs, new Map());
   if (none.some((s) => s.items[0].covered !== 0)) note('distribution: covered something with nothing held');
   const plenty = allocateHoldings(costs, new Map([['upgrade:test', 99]]));
@@ -77,8 +91,8 @@ for (const unit of player.units) {
     if (plan.steps.length === 0) continue;
     const costs = planCosts(unit, plan, db);
     const owned = ownedByKey(playerResponse, db);
-    const spread = allocateHoldings(costs, owned);
-    const totals = aggregate(costs, owned);
+    const spread = allocateHoldings(costs, owned, db);
+    const totals = aggregate(costs, owned, db);
     checked += 1;
 
     for (const step of spread) {
@@ -88,28 +102,39 @@ for (const unit of player.units) {
       }
     }
 
-    // No item may be allocated more than the player actually holds.
+    // No item may be allocated more than the player actually holds — counting
+    // recipe ingredients, which draw on the same stock.
     const allocated = new Map();
-    for (const step of spread) {
-      for (const item of step.items) {
-        allocated.set(item.key, (allocated.get(item.key) ?? 0) + item.covered);
-      }
-    }
+    const tally = (item) => {
+      // Fitted materials are spent, not drawn from stock.
+      if (!item.applied) allocated.set(item.key, (allocated.get(item.key) ?? 0) + item.covered);
+      for (const component of item.components ?? []) tally(component);
+    };
+    for (const step of spread) for (const item of step.items) tally(item);
     for (const [key, total] of allocated) {
       if (total > (owned.get(key) ?? 0)) note(`${unit.name}: allocated ${total} of ${key}, holds ${owned.get(key) ?? 0}`);
     }
 
-    // Totals must equal the sum of the steps.
+    // Totals must equal the sum of the steps. Fitted materials pool separately
+    // from the same item still to find, so the key carries that split.
+    const poolKey = (item) => (item.applied ? `${item.key}#applied` : item.key);
     const summed = new Map();
     for (const { items } of costs) {
-      for (const item of items) summed.set(item.key, (summed.get(item.key) ?? 0) + item.amount);
+      for (const item of items) summed.set(poolKey(item), (summed.get(poolKey(item)) ?? 0) + item.amount);
     }
     for (const item of totals) {
-      if (item.amount !== summed.get(item.key)) note(`${unit.name}: total for ${item.name} disagrees with its steps`);
+      if (item.amount !== summed.get(poolKey(item))) {
+        note(`${unit.name}: total for ${item.name} disagrees with its steps`);
+      }
+      if (item.applied && item.missing !== 0) note(`${unit.name}: ${item.name} is fitted but reported missing`);
     }
 
-    // A blocked item must genuinely have no reachable source.
+    // A blocked item must genuinely have no reachable source, and must still be
+    // short of it — holding enough is not being blocked.
     for (const item of totals) {
+      if (item.missing <= 0 && isUnfarmable(item, db, playerResponse)) {
+        note(`${unit.name}: ${item.name} flagged blocked but nothing is missing`);
+      }
       if (!isUnfarmable(item, db, playerResponse)) continue;
       blockedSeen += 1;
       const source = itemSource(item, db);
@@ -117,6 +142,9 @@ for (const unit of player.units) {
         note(`${unit.name}: ${item.name} flagged blocked but has an unlocked node`);
       }
       if (source.kind === 'other') note(`${unit.name}: ${item.name} flagged blocked but is not campaign-farmed`);
+      if (source.kind === 'craft' && item.components?.every((c) => c.missing === 0)) {
+        note(`${unit.name}: ${item.name} flagged blocked but every ingredient is in hand`);
+      }
     }
   }
 }

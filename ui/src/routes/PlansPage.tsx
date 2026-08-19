@@ -6,12 +6,13 @@ import { resolvePlan } from '@lib/gamedata/plan.js';
 import type { GameDatabase } from '@lib/gamedata/types.js';
 import type { PlayerResponse } from '@lib/types/player.js';
 
-import { plansStore } from '../data/plans.ts';
+import { plansStore, type StoredPlan } from '../data/plans.ts';
 
 export function PlansPage({ db, player }: { db: GameDatabase; player: PlayerResponse }) {
   const navigate = useNavigate();
   const [plans, setPlans] = useState(() => plansStore.list());
   const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState<string>();
 
   const owned = useMemo(
     () => [...player.player.units].sort((a, b) => (a.name ?? a.id).localeCompare(b.name ?? b.id)),
@@ -28,17 +29,19 @@ export function PlansPage({ db, player }: { db: GameDatabase; player: PlayerResp
       <div className="toolbar">
         <h2 style={{ margin: 0, fontSize: 18 }}>Evolution plans</h2>
         <span style={{ flex: 1 }} />
-        <button className="primary" onClick={() => setCreating((v) => !v)}>
+        <button
+          className="primary"
+          onClick={() => {
+            setEditing(undefined);
+            setCreating((v) => !v);
+          }}
+        >
           {creating ? 'Cancel' : 'New plan'}
         </button>
       </div>
 
       {creating && (
-        <CreatePlan
-          db={db}
-          units={owned}
-          onCreated={(id) => navigate(`/plans/${id}`)}
-        />
+        <PlanForm db={db} units={owned} onSaved={(id) => navigate(`/plans/${id}`)} />
       )}
 
       {plans.length === 0 && !creating && (
@@ -66,10 +69,30 @@ export function PlansPage({ db, player }: { db: GameDatabase; player: PlayerResp
                 </div>
               </Link>
               <div className="row" style={{ marginTop: 10 }}>
+                <button
+                  className="small"
+                  onClick={() => {
+                    setCreating(false);
+                    setEditing((current) => (current === stored.id ? undefined : stored.id));
+                  }}
+                >
+                  {editing === stored.id ? 'Cancel' : 'Edit'}
+                </button>
                 <button className="danger small" onClick={() => remove(stored.id)}>
                   Delete
                 </button>
               </div>
+              {editing === stored.id && (
+                <PlanForm
+                  db={db}
+                  units={owned}
+                  plan={stored}
+                  onSaved={() => {
+                    setEditing(undefined);
+                    setPlans(plansStore.list());
+                  }}
+                />
+              )}
             </div>
           );
         })}
@@ -94,21 +117,32 @@ export function describeTarget(target: {
   return parts.length > 0 ? parts.join(' · ') : 'No target set';
 }
 
-function CreatePlan({
+/**
+ * Create or edit a plan.
+ *
+ * Editing reuses the same form so the two never drift apart; passing `plan`
+ * seeds the fields from it and saves back over the same entry, keeping the
+ * plan's id and the page that links to it.
+ */
+export function PlanForm({
   db,
   units,
-  onCreated,
+  plan: existing,
+  onSaved,
 }: {
   db: GameDatabase;
   units: PlayerResponse['player']['units'];
-  onCreated: (id: string) => void;
+  plan?: StoredPlan;
+  onSaved: (id: string) => void;
 }) {
-  const [unitId, setUnitId] = useState(units[0]?.id ?? '');
-  const [rarity, setRarity] = useState('');
-  const [rank, setRank] = useState('');
-  const [xpLevel, setXpLevel] = useState('');
-  const [active, setActive] = useState('');
-  const [passive, setPassive] = useState('');
+  const field = (value: number | undefined) => (value === undefined ? '' : String(value));
+  const [unitId, setUnitId] = useState(existing?.unitId ?? units[0]?.id ?? '');
+  const [name, setName] = useState(existing?.name ?? '');
+  const [rarity, setRarity] = useState(field(existing?.target.rarity));
+  const [rank, setRank] = useState(field(existing?.target.rank));
+  const [xpLevel, setXpLevel] = useState(field(existing?.target.xpLevel));
+  const [active, setActive] = useState(field(existing?.target.activeAbilityLevel));
+  const [passive, setPassive] = useState(field(existing?.target.passiveAbilityLevel));
 
   const num = (v: string) => (v === '' ? undefined : Number(v));
   const target = {
@@ -126,7 +160,7 @@ function CreatePlan({
 
   return (
     <section className="panel" style={{ marginBottom: 24 }}>
-      <h3>New plan</h3>
+      <h3>{existing ? 'Edit plan' : 'New plan'}</h3>
       <p className="small muted" style={{ marginTop: 0 }}>
         Set only what you care about. Anything else it depends on is worked out and added
         for you — an ability target pulls the character level with it, and level or rank
@@ -143,6 +177,16 @@ function CreatePlan({
               </option>
             ))}
           </select>
+        </label>
+
+        <label>
+          <span>Name</span>
+          <input
+            type="text"
+            placeholder="Unit name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
         </label>
 
         <label>
@@ -207,9 +251,18 @@ function CreatePlan({
       <button
         className="primary"
         disabled={!unitId || empty}
-        onClick={() => onCreated(plansStore.create({ unitId, target }).id)}
+        onClick={() => {
+          const trimmed = name.trim();
+          const fields = { unitId, target, ...(trimmed ? { name: trimmed } : { name: undefined }) };
+          if (existing) {
+            plansStore.update(existing.id, fields);
+            onSaved(existing.id);
+          } else {
+            onSaved(plansStore.create({ unitId, target, ...(trimmed ? { name: trimmed } : {}) }).id);
+          }
+        }}
       >
-        Create plan
+        {existing ? 'Save plan' : 'Create plan'}
       </button>
     </section>
   );

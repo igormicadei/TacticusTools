@@ -9,8 +9,9 @@ import {
   nodeStatuses,
   ownedByKey,
   planCosts,
+  type AllocatedComponent,
   type AllocatedItem,
-  type ItemRequirement,
+  type AggregatedItem,
 } from '@lib/gamedata/requirements.js';
 import type { EvolutionPlan } from '@lib/gamedata/plan.js';
 import type { GameDatabase } from '@lib/gamedata/types.js';
@@ -36,8 +37,8 @@ export function StepItems({
     const costs = planCosts(unit, plan, db);
     const owned = ownedByKey(player, db);
     return {
-      steps: allocateHoldings(costs, owned),
-      totals: aggregate(costs, owned),
+      steps: allocateHoldings(costs, owned, db),
+      totals: aggregate(costs, owned, db),
       gold: costs.reduce((sum, c) => sum + c.gold, 0),
     };
   }, [unit, plan, db, player]);
@@ -63,7 +64,9 @@ export function StepItems({
 
       <p className="small muted" style={{ marginTop: 0 }}>
         Held stock is spread across the steps that need it, earliest first, so a shortfall
-        shows up on the step where it actually bites. Click an item for where to get it.
+        shows up on the step where it actually bites. Recipe ingredients draw on the same
+        stock. Items already fitted to the unit are marked applied — they are spent, and
+        cannot be moved elsewhere. Click an item for where to get it.
         {gold > 0 && ` Gold across the plan: ${gold.toLocaleString()}.`}
       </p>
 
@@ -82,8 +85,8 @@ export function StepItems({
                 <ul className="item-list">
                   {items.map((item) => (
                     <ItemRow
-                      key={`${step.order}:${item.key}`}
-                      id={`${step.order}:${item.key}`}
+                      key={`${step.order}:${item.key}:${item.applied ? 'a' : 'n'}`}
+                      id={`${step.order}:${item.key}:${item.applied ? 'a' : 'n'}`}
                       item={item}
                       db={db}
                       player={player}
@@ -99,14 +102,18 @@ export function StepItems({
             <ul className="item-list">
               {totals.map((item) => (
                 <ItemRow
-                  key={item.key}
-                  id={item.key}
+                  key={`${item.key}:${item.applied ? 'a' : 'n'}`}
+                  id={`${item.key}:${item.applied ? 'a' : 'n'}`}
                   item={item}
                   db={db}
                   player={player}
                   open={open}
                   onToggle={toggle}
-                  extra={`${item.owned} held · ${item.steps} step${item.steps === 1 ? '' : 's'}`}
+                  extra={
+                    item.applied
+                      ? undefined
+                      : `${item.owned} held · ${item.steps} step${item.steps === 1 ? '' : 's'}`
+                  }
                 />
               ))}
             </ul>
@@ -125,16 +132,36 @@ function ItemRow({
   extra,
 }: {
   id: string;
-  item: AllocatedItem | (ItemRequirement & { covered: number; missing: number });
+  item: AllocatedItem | AggregatedItem;
   db: GameDatabase;
   player: PlayerResponse;
   open: string | undefined;
   onToggle: (id: string) => void;
-  extra?: string;
+  extra?: string | undefined;
 }) {
   const blocked = isUnfarmable(item, db, player);
   const complete = item.missing === 0;
   const expanded = open === id;
+
+  // Fitted materials have nowhere to go and nothing to find, so they do not
+  // open into sources.
+  if (item.applied) {
+    return (
+      <li className="item-row complete applied">
+        <div className="item-head static">
+          <span className="chevron" />
+          <span className="count">{item.amount}×</span>
+          <span className="item-name">
+            {item.name}
+            {item.rarity !== undefined && (
+              <span className="muted small"> · {rarityName(item.rarity)}</span>
+            )}
+          </span>
+          <span className="chip ok-chip">Already applied</span>
+        </div>
+      </li>
+    );
+  }
 
   return (
     <li className={`item-row${blocked ? ' blocked' : ''}${complete ? ' complete' : ''}`}>
@@ -152,7 +179,16 @@ function ItemRow({
         {blocked && <span className="chip warn">Nothing unlocked</span>}
         {extra && <span className="muted small">{extra}</span>}
       </button>
-      {expanded && <ItemSources item={item} db={db} player={player} />}
+      {expanded && (
+        <ItemSources
+          item={item}
+          db={db}
+          player={player}
+          idPrefix={id}
+          open={open}
+          onToggle={onToggle}
+        />
+      )}
     </li>
   );
 }
@@ -161,10 +197,16 @@ function ItemSources({
   item,
   db,
   player,
+  idPrefix,
+  open,
+  onToggle,
 }: {
-  item: ItemRequirement;
+  item: AllocatedItem | AggregatedItem;
   db: GameDatabase;
   player: PlayerResponse;
+  idPrefix: string;
+  open: string | undefined;
+  onToggle: (id: string) => void;
 }) {
   const source = itemSource(item, db);
 
@@ -179,21 +221,110 @@ function ItemSources({
     return <p className="source-note muted small">No published way to obtain this yet.</p>;
   }
   if (source.kind === 'craft') {
+    // The allocated recipe covers only the shortfall; when nothing is missing
+    // there is nothing to craft, so fall back to the raw recipe for reference.
+    const components: AllocatedComponent[] =
+      item.components ??
+      source.recipe.map((component) => ({ ...component, covered: 0, missing: 0 }));
     return (
       <div className="source-note">
         <div className="small muted" style={{ marginBottom: 6 }}>
-          Crafted from:
+          {item.missing > 0
+            ? `Crafting the ${item.missing} still missing needs:`
+            : 'Crafted from:'}
         </div>
         <ul className="item-list nested">
-          {source.recipe.map((component) => (
-            <CraftComponent key={component.key} component={component} db={db} player={player} />
+          {components.map((component) => (
+            <ComponentRow
+              key={component.key}
+              id={`${idPrefix}/${component.key}`}
+              component={component}
+              db={db}
+              player={player}
+              open={open}
+              onToggle={onToggle}
+            />
           ))}
         </ul>
       </div>
     );
   }
 
-  const nodes = nodeStatuses(source.nodes, player, db);
+  return <NodeTable nodes={nodeStatuses(source.nodes, player, db)} />;
+}
+
+function ComponentRow({
+  id,
+  component,
+  db,
+  player,
+  open,
+  onToggle,
+}: {
+  id: string;
+  component: AllocatedComponent;
+  db: GameDatabase;
+  player: PlayerResponse;
+  open: string | undefined;
+  onToggle: (id: string) => void;
+}) {
+  const item = { kind: 'upgrade' as const, ...component };
+  const source = itemSource(item, db);
+  const blocked = isUnfarmable(item, db, player);
+  const complete = component.missing === 0;
+  const expanded = open === id;
+
+  return (
+    <li className={`item-row${blocked ? ' blocked' : ''}${complete ? ' complete' : ''}`}>
+      <button className="item-head" onClick={() => onToggle(id)} aria-expanded={expanded}>
+        <span className="chevron">{expanded ? '▾' : '▸'}</span>
+        <span className="count">
+          {component.covered}/{component.amount}
+        </span>
+        <span className="item-name">
+          {component.name}
+          {component.rarity !== undefined && (
+            <span className="muted small"> · {rarityName(component.rarity)}</span>
+          )}
+        </span>
+        {blocked && <span className="chip warn">Nothing unlocked</span>}
+        {source.kind === 'craft' && <span className="muted small">crafted</span>}
+      </button>
+      {expanded &&
+        (source.kind === 'craft' ? (
+          <div className="source-note">
+            <div className="small muted" style={{ marginBottom: 6 }}>
+              {component.missing > 0
+                ? `Crafting the ${component.missing} still missing needs:`
+                : 'Crafted from:'}
+            </div>
+            <ul className="item-list nested">
+              {(
+                component.components ??
+                source.recipe.map((child) => ({ ...child, covered: 0, missing: 0 }))
+              ).map((child) => (
+                <ComponentRow
+                  key={child.key}
+                  id={`${id}/${child.key}`}
+                  component={child}
+                  db={db}
+                  player={player}
+                  open={open}
+                  onToggle={onToggle}
+                />
+              ))}
+            </ul>
+          </div>
+        ) : source.kind === 'farm' ? (
+          <NodeTable nodes={nodeStatuses(source.nodes, player, db)} />
+        ) : (
+          <p className="source-note muted small">No published way to obtain this yet.</p>
+        ))}
+    </li>
+  );
+}
+
+function NodeTable({ nodes }: { nodes: ReturnType<typeof nodeStatuses> }) {
   if (nodes.length === 0) {
     return <p className="source-note muted small">No campaign node drops this.</p>;
   }
@@ -202,7 +333,10 @@ function ItemSources({
       <table className="nodes">
         <tbody>
           {nodes.map((node) => (
-            <tr key={`${node.campaignId}#${node.battleIndex}`} className={node.unlocked ? '' : 'locked'}>
+            <tr
+              key={`${node.campaignId}#${node.battleIndex}`}
+              className={node.unlocked ? '' : 'locked'}
+            >
               <td>{node.campaignName}</td>
               <td className="muted">node {node.nodeNumber}</td>
               <td>
@@ -221,36 +355,5 @@ function ItemSources({
         </tbody>
       </table>
     </div>
-  );
-}
-
-function CraftComponent({
-  component,
-  db,
-  player,
-}: {
-  component: { key: string; name: string; amount: number; rarity?: number };
-  db: GameDatabase;
-  player: PlayerResponse;
-}) {
-  const source = itemSource({ kind: 'upgrade', key: component.key }, db);
-  const nodes = source.kind === 'farm' ? nodeStatuses(source.nodes, player, db) : [];
-  const openNodes = nodes.filter((n) => n.unlocked);
-  return (
-    <li className="item-row">
-      <div className="item-head static">
-        <span className="count">{component.amount}×</span>
-        <span className="item-name">{component.name}</span>
-        {source.kind === 'farm' ? (
-          <span className={`small ${openNodes.length === 0 ? 'warn-text' : 'muted'}`}>
-            {openNodes.length} of {nodes.length} nodes unlocked
-            {openNodes.length > 0 &&
-              ` · ${openNodes.reduce((s, n) => s + n.attemptsLeft, 0)} tries today`}
-          </span>
-        ) : (
-          <span className="muted small">crafted</span>
-        )}
-      </div>
-    </li>
   );
 }

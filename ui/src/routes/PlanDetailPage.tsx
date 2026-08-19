@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
 import { rankName, rarityName } from '@lib/gamedata/enums.js';
@@ -10,11 +10,18 @@ import type { PlayerResponse } from '@lib/types/player.js';
 import { PlanRoadmap } from '../components/PlanRoadmap.tsx';
 import { StepItems } from '../components/StepItems.tsx';
 import { plansStore } from '../data/plans.ts';
-import { describeTarget } from './PlansPage.tsx';
+import { describeTarget, PlanForm } from './PlansPage.tsx';
 
 export function PlanDetailPage({ db, player }: { db: GameDatabase; player: PlayerResponse }) {
   const { planId = '' } = useParams();
-  const stored = useMemo(() => plansStore.get(planId), [planId]);
+  const [editing, setEditing] = useState(false);
+  // Bumped on save so the stored plan is re-read after an edit.
+  const [revision, setRevision] = useState(0);
+  const stored = useMemo(() => plansStore.get(planId), [planId, revision]);
+  const units = useMemo(
+    () => [...player.player.units].sort((a, b) => (a.name ?? a.id).localeCompare(b.name ?? b.id)),
+    [player],
+  );
   const unit = stored
     ? player.player.units.find((u) => u.id === stored.unitId)
     : undefined;
@@ -52,8 +59,23 @@ export function PlanDetailPage({ db, player }: { db: GameDatabase; player: Playe
           <span className="chip">
             {plan.steps.length === 0 ? 'Complete' : `${plan.steps.length} steps`}
           </span>
+          <button className="small" onClick={() => setEditing((v) => !v)}>
+            {editing ? 'Cancel' : 'Edit plan'}
+          </button>
         </div>
       </div>
+
+      {editing && (
+        <PlanForm
+          db={db}
+          units={units}
+          plan={stored}
+          onSaved={() => {
+            setEditing(false);
+            setRevision((v) => v + 1);
+          }}
+        />
+      )}
 
       {plan.blocked && <div className="notice error">{plan.blocked}</div>}
       {plan.notes.map((n) => (

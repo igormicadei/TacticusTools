@@ -26,7 +26,9 @@ REPO_NAME="$(basename -s .git "$(git config --get remote.origin.url)")"
 BASE_PATH="${BASE_PATH:-/$REPO_NAME/}"
 
 # A relay baked in here means a fresh phone browser needs only the API key.
-DEFAULT_RELAY="${VITE_DEFAULT_RELAY:-}"
+# The Tacticus API sends no CORS headers, so a browser cannot call it directly;
+# this is the deployed Cloudflare Worker that forwards the read-only endpoints.
+DEFAULT_RELAY="${VITE_DEFAULT_RELAY:-https://tacticus-relay.i-micadei.workers.dev}"
 
 echo "==> building with BASE_PATH=$BASE_PATH${DEFAULT_RELAY:+ and relay $DEFAULT_RELAY}"
 rm -rf ui/dist

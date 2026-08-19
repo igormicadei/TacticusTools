@@ -26,6 +26,15 @@ export interface ItemRequirement {
   name: string;
   rarity?: Rarity;
   amount: number;
+  /**
+   * Already fitted to the unit at its current rank.
+   *
+   * The player API reports which of a rank's upgrade slots are filled. Those
+   * materials are spent — they cannot be recovered or used elsewhere — so they
+   * count as done rather than as something to find, and they never draw on
+   * inventory.
+   */
+  applied?: boolean;
 }
 
 export interface StepCost {
@@ -54,22 +63,32 @@ export function planCosts(unit: Unit, plan: EvolutionPlan, db: GameDatabase): St
 
     if (step.kind === 'rank') {
       // Reaching rank B consumes the upgrades of every rank from A up to B-1.
-      const pooled = new Map<string, number>();
+      // At the unit's *current* rank some slots are already filled; those
+      // materials are spent and are reported as done rather than as needs.
+      const pooled = new Map<string, { amount: number; applied: number }>();
       for (let rank = step.from; rank < step.to; rank += 1) {
-        for (const upgrade of definition?.ranks.find((r) => r.rank === rank)?.upgrades ?? []) {
-          pooled.set(upgrade.upgradeId, (pooled.get(upgrade.upgradeId) ?? 0) + upgrade.amount);
-        }
+        const slots = definition?.ranks.find((r) => r.rank === rank)?.upgrades ?? [];
+        const filled = rank === unit.rank ? new Set(unit.upgrades) : new Set<number>();
+        slots.forEach((upgrade, index) => {
+          const entry = pooled.get(upgrade.upgradeId) ?? { amount: 0, applied: 0 };
+          entry.amount += upgrade.amount;
+          if (filled.has(index)) entry.applied += upgrade.amount;
+          pooled.set(upgrade.upgradeId, entry);
+        });
       }
-      for (const [upgradeId, amount] of pooled) {
-        items.push({
+      for (const [upgradeId, { amount, applied }] of pooled) {
+        const base = {
           key: `upgrade:${upgradeId}`,
-          kind: 'upgrade',
+          kind: 'upgrade' as const,
           name: db.upgrades[upgradeId]?.name ?? upgradeId,
           ...(db.upgrades[upgradeId]?.rarity !== undefined
             ? { rarity: db.upgrades[upgradeId]!.rarity! }
             : {}),
-          amount,
-        });
+        };
+        // A material can be both fitted once and still needed again for a later
+        // slot, so the two are emitted separately rather than netted off.
+        if (applied > 0) items.push({ ...base, amount: applied, applied: true });
+        if (amount - applied > 0) items.push({ ...base, amount: amount - applied });
       }
     }
 
@@ -199,6 +218,26 @@ export interface AllocatedItem extends ItemRequirement {
   covered: number;
   /** `amount - covered`. */
   missing: number;
+  /**
+   * What the shortfall costs to craft, when this item is crafted rather than
+   * farmed. Only the `missing` part is expanded: what is already in hand does
+   * not need making.
+   */
+  components?: AllocatedComponent[];
+}
+
+/** One line of a recipe, with the player's stock spread over it like any item. */
+export interface AllocatedComponent {
+  key: string;
+  id: string;
+  name: string;
+  rarity?: Rarity;
+  /** Total needed to craft the parent's shortfall. */
+  amount: number;
+  covered: number;
+  missing: number;
+  /** Set when this component is itself crafted. */
+  components?: AllocatedComponent[];
 }
 
 export interface AllocatedStep {
@@ -213,22 +252,64 @@ export interface AllocatedStep {
  * Earlier steps are filled first because they happen first: 15 of an item split
  * evenly over three steps with only 12 in hand reads 5/5, 5/5, 2/5 rather than
  * four of each. What is left over is what actually has to be farmed, and when.
+ *
+ * Recipe components are drawn from the same pool, right after the step that
+ * needs them, so a component that is also a direct requirement of a later step
+ * is not counted twice.
  */
 export function allocateHoldings(
   costs: StepCost[],
   owned: Map<string, number>,
+  db?: GameDatabase,
 ): AllocatedStep[] {
   const remaining = new Map(owned);
   return costs.map(({ step, items, gold }) => ({
     step,
     gold,
     items: items.map((item) => {
+      // Materials already fitted to the unit are spent, not stock: they are
+      // covered by definition and must not eat into the inventory, which is
+      // still free for other steps.
+      if (item.applied) return { ...item, covered: item.amount, missing: 0 };
+
       const available = remaining.get(item.key) ?? 0;
       const covered = Math.min(available, item.amount);
       remaining.set(item.key, available - covered);
-      return { ...item, covered, missing: item.amount - covered };
+      const missing = item.amount - covered;
+      const components = db ? allocateComponents(item, missing, db, remaining, new Set()) : undefined;
+      return { ...item, covered, missing, ...(components ? { components } : {}) };
     }),
   }));
+}
+
+/** Recipe cost of `craftCount` copies of `item`, with holdings applied. */
+function allocateComponents(
+  item: Pick<ItemRequirement, 'kind' | 'key'>,
+  craftCount: number,
+  db: GameDatabase,
+  remaining: Map<string, number>,
+  seen: ReadonlySet<string>,
+): AllocatedComponent[] | undefined {
+  if (craftCount <= 0 || seen.has(item.key)) return undefined;
+  const source = itemSource(item, db);
+  if (source.kind !== 'craft') return undefined;
+
+  const nested = new Set(seen).add(item.key);
+  return source.recipe.map((component) => {
+    const amount = component.amount * craftCount;
+    const available = remaining.get(component.key) ?? 0;
+    const covered = Math.min(available, amount);
+    remaining.set(component.key, available - covered);
+    const missing = amount - covered;
+    const children = allocateComponents(
+      { kind: 'upgrade', key: component.key },
+      missing,
+      db,
+      remaining,
+      nested,
+    );
+    return { ...component, amount, covered, missing, ...(children ? { components: children } : {}) };
+  });
 }
 
 export interface AggregatedItem extends ItemRequirement {
@@ -238,27 +319,62 @@ export interface AggregatedItem extends ItemRequirement {
   missing: number;
   /** How many steps call for this item. */
   steps: number;
+  components?: AllocatedComponent[];
 }
 
 /** Roll every step's items into one list per item. */
-export function aggregate(costs: StepCost[], owned: Map<string, number>): AggregatedItem[] {
+export function aggregate(
+  costs: StepCost[],
+  owned: Map<string, number>,
+  db?: GameDatabase,
+): AggregatedItem[] {
   const pooled = new Map<string, AggregatedItem>();
   for (const { items } of costs) {
     for (const item of items) {
-      const existing = pooled.get(item.key);
+      // Fitted materials are a separate line from the same item still to find:
+      // one is done, the other is a need, and merging them would hide both.
+      const poolKey = item.applied ? `${item.key}#applied` : item.key;
+      const existing = pooled.get(poolKey);
       if (existing) {
         existing.amount += item.amount;
         existing.steps += 1;
       } else {
-        pooled.set(item.key, { ...item, owned: owned.get(item.key) ?? 0, covered: 0, missing: 0, steps: 1 });
+        pooled.set(poolKey, {
+          ...item,
+          owned: item.applied ? 0 : (owned.get(item.key) ?? 0),
+          covered: 0,
+          missing: 0,
+          steps: 1,
+        });
       }
     }
   }
+
+  const remaining = new Map(owned);
   for (const item of pooled.values()) {
-    item.covered = Math.min(item.owned, item.amount);
+    if (item.applied) {
+      item.covered = item.amount;
+      item.missing = 0;
+      continue;
+    }
+    const available = remaining.get(item.key) ?? 0;
+    item.covered = Math.min(available, item.amount);
+    remaining.set(item.key, available - item.covered);
     item.missing = item.amount - item.covered;
   }
-  return [...pooled.values()].sort((a, b) => b.missing - a.missing || a.name.localeCompare(b.name));
+  // Components are drawn only once the whole plan's direct needs are known, so
+  // a material that is both a requirement and an ingredient is spent on the
+  // requirement first.
+  if (db) {
+    for (const item of pooled.values()) {
+      const components = allocateComponents(item, item.missing, db, remaining, new Set());
+      if (components) item.components = components;
+    }
+  }
+
+  return [...pooled.values()].sort(
+    (a, b) => b.missing - a.missing || a.name.localeCompare(b.name),
+  );
 }
 
 /* -------------------------------------------------------------------------- */
@@ -338,15 +454,6 @@ export function itemSources(
   return source.kind === 'farm' ? source.nodes : undefined;
 }
 
-export interface NodeStatus extends BattleRef {
-  /** Present in the player's campaign progress, i.e. reachable. */
-  unlocked: boolean;
-  /** Runs left today. Meaningful only when unlocked. */
-  attemptsLeft: number;
-  attemptsUsed: number;
-  campaignName: string;
-}
-
 /** Annotate nodes with whether the player can run them, and how often today. */
 export function nodeStatuses(
   refs: readonly BattleRef[],
@@ -394,15 +501,22 @@ function unlockedNodes(
 }
 
 /**
- * True when nothing the player has unlocked can yield this item.
+ * True when the player cannot reach the part of this item they still lack.
  *
- * A farmed item is blocked when none of its nodes is unlocked; a crafted one
- * when any component is blocked, since a recipe needs all of them. This is
- * deliberately not about today's attempts — a node with none left refreshes
- * tomorrow, whereas a locked one is a wall.
+ * Only the shortfall matters: an item with no unlocked source is not a problem
+ * if enough of it is already in hand. A farmed item is blocked when none of its
+ * nodes is unlocked; a crafted one when any component's own shortfall is
+ * blocked, since a recipe needs all of them. This is deliberately not about
+ * today's attempts — a node with none left refreshes tomorrow, whereas a locked
+ * one is a wall.
  */
 export function isUnfarmable(
-  item: { kind: RequirementKind; key: string; missing: number },
+  item: {
+    kind: RequirementKind;
+    key: string;
+    missing: number;
+    components?: readonly AllocatedComponent[] | undefined;
+  },
   db: GameDatabase,
   player: PlayerResponse,
 ): boolean {
@@ -411,17 +525,33 @@ export function isUnfarmable(
 }
 
 function isBlocked(
-  item: Pick<ItemRequirement, 'kind' | 'key'>,
+  item: {
+    kind: RequirementKind;
+    key: string;
+    missing?: number;
+    components?: readonly AllocatedComponent[] | undefined;
+  },
   db: GameDatabase,
   unlocked: Map<string, unknown>,
   memo: Map<string, boolean>,
 ): boolean {
+  // Nothing left to find is never blocked, whatever the item is.
+  if (item.missing !== undefined && item.missing <= 0) return false;
+
+  const source = itemSource(item, db);
+  if (source.kind === 'craft' && item.components) {
+    // The allocated recipe already accounts for what the player holds, so walk
+    // it instead of the raw recipe: a component fully in stock is not a wall.
+    return item.components.some((component) =>
+      isBlocked({ kind: 'upgrade', ...component }, db, unlocked, memo),
+    );
+  }
+
   const seen = memo.get(item.key);
   if (seen !== undefined) return seen;
   // Guard against a recipe cycle before recursing.
   memo.set(item.key, false);
 
-  const source = itemSource(item, db);
   let blocked: boolean;
   switch (source.kind) {
     case 'other':

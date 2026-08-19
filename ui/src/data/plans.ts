@@ -13,8 +13,8 @@ const STORAGE_KEY = 'tacticus-tools:plans';
 export interface StoredPlan {
   id: string;
   unitId: string;
-  /** Optional label; the unit name is used when absent. */
-  name?: string;
+  /** Optional label; the unit name is used when absent. Cleared by setting undefined. */
+  name?: string | undefined;
   target: EvolutionTarget;
   createdAt: number;
 }

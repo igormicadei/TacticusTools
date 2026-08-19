@@ -230,6 +230,10 @@ table.steps tr:last-child td { border-bottom: none; }
 .item-row.complete .count { color: var(--status-owned); }
 .item-name { flex: 1; }
 .chip.warn { color: #e8a06a; border-color: #7a4a2a; }
+.chip.ok-chip { color: var(--status-owned); border-color: color-mix(in srgb, var(--status-owned) 45%, transparent); }
+.item-row.applied .item-name { color: var(--text-dim); }
+.item-head.static:hover { background: none; }
+.item-list.nested .source-note { padding-left: 30px; }
 .warn-text { color: #e8a06a; }
 .ok { color: var(--status-owned); }
 .source-note { padding: 4px 0 12px 46px; }
