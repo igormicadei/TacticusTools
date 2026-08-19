@@ -4,6 +4,7 @@ export * from './corrections.js';
 export * from './types.js';
 export * from './stats.js';
 export * from './plan.js';
+export * from './requirements.js';
 export * from './normalize.js';
 export * from './loader.js';
 export * as gameInfoSource from './sources/gameinfo.js';

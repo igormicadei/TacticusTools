@@ -407,7 +407,7 @@ export interface GameDatabaseStats {
  * stored version differs, so an older cache is refetched rather than served
  * with fields the current code expects but the file never had.
  */
-export const GAME_DATABASE_SCHEMA_VERSION = 5;
+export const GAME_DATABASE_SCHEMA_VERSION = 6;
 
 export interface GameDatabase {
   /** Value of {@link GAME_DATABASE_SCHEMA_VERSION} when this was assembled. */
@@ -421,6 +421,14 @@ export interface GameDatabase {
   abilities: Record<AbilityId, AbilityDefinition>;
   npcs: Record<NpcId, NpcDefinition>;
   campaigns: Record<CampaignId, CampaignDefinition>;
+  /**
+   * Nodes that drop a unit's shards, keyed by unit id.
+   *
+   * Derived from battle rewards. `upgrades[].farmableAt` covers materials; this
+   * is the equivalent index for shards, so both can be looked up without
+   * carrying the full battle list.
+   */
+  shardSources: Record<UnitId, BattleRef[]>;
   xpLevels: XpLevel[];
   xpBooks: XpBookDefinition[];
   abilityUpgradeCosts: AbilityUpgradeCost[];

@@ -406,6 +406,44 @@ is still gated.
 roster: no intermediate state may exceed a cap, no attribute may move backwards,
 and the plan must actually arrive at the resolved target.
 
+## Item requirements
+
+`planCosts(unit, plan, db)` gives what each step consumes, and
+`allocateHoldings` spreads what the player already holds across the steps that
+need it — **earliest first, never averaged**. Fifteen of an item split over three
+steps with twelve in hand reads `5/5, 5/5, 2/5`, so a shortfall lands on the step
+where it actually bites rather than being smeared across all of them.
+
+Costs by step kind:
+
+| Step | Consumes |
+| --- | --- |
+| rank | the upgrades of every rank from the old one up to the new, pooled |
+| level | XP — books are interchangeable currency, so holdings are counted in the XP they carry rather than inventing a book breakdown |
+| ability | badges of the tier for each level reached, plus gold |
+| promotion / ascension | shards for the unit, and orbs at the tier |
+
+### Where items come from
+
+Materials split in two: 195 of 558 upgrades drop from campaign nodes, the other
+352 are **crafted** from those. `itemSource` returns which, so a crafted item
+shows its recipe rather than an empty node list. Every recipe bottoms out in
+farmable components — no dead ends.
+
+`nodeStatuses` marks each node unlocked or locked from the player's campaign
+progress, with attempts left today.
+
+An item is flagged **"nothing unlocked"** when it is still short *and* nothing
+reachable yields it: for a farmed item, no node unlocked; for a crafted one, any
+component blocked, since a recipe needs all of them. This is deliberately not
+about today's attempts — a node with none left refreshes tomorrow, whereas a
+locked one is a wall.
+
+`npm run validate:requirements -- player.json` checks the distribution rule
+against that worked example, that no item is ever allocated beyond what is held
+or beyond what a step needs, that totals agree with the steps, and that every
+blocked flag is genuine.
+
 ## Known gaps
 
 - `eventCampaign6` appears in player progress but not in Codex battle data, so

@@ -8,6 +8,7 @@ import type { GameDatabase } from '@lib/gamedata/types.js';
 import type { PlayerResponse } from '@lib/types/player.js';
 
 import { PlanRoadmap } from '../components/PlanRoadmap.tsx';
+import { StepItems } from '../components/StepItems.tsx';
 import { plansStore } from '../data/plans.ts';
 import { describeTarget } from './PlansPage.tsx';
 
@@ -122,6 +123,8 @@ export function PlanDetailPage({ db, player }: { db: GameDatabase; player: Playe
           </table>
         )}
       </section>
+
+      <StepItems unit={unit} plan={plan} db={db} player={player} />
     </>
   );
 }

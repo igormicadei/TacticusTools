@@ -499,6 +499,7 @@ export function normalize(input: NormalizeInput): GameDatabase {
   /* ---- campaigns and battles ------------------------------------------ */
   const dropRatesByType = normalizeDropRates(input.codexCampaignConfigs?.configs);
   const campaigns: Record<string, CampaignDefinition> = {};
+  const shardSources: Record<string, BattleRef[]> = {};
   const unresolvedNpcIds = new Set<string>();
   let enemiesResolved = 0;
   let enemiesTotal = 0;
@@ -569,6 +570,10 @@ export function normalize(input: NormalizeInput): GameDatabase {
       dropRateProvenance: dropRates ? ('campaignType' as const) : undefined,
     });
 
+    if (shardUnitId) {
+      (shardSources[shardUnitId] ??= []).push(ref);
+    }
+
     const campaign = (campaigns[ref.campaignId] ??= {
       id: ref.campaignId,
       battles: {},
@@ -604,6 +609,7 @@ export function normalize(input: NormalizeInput): GameDatabase {
     abilities,
     npcs,
     campaigns,
+    shardSources,
     xpLevels,
     xpBooks,
     abilityUpgradeCosts,

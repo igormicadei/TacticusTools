@@ -24,14 +24,19 @@ const flag = (name) => {
 const full = args.includes('--full');
 const out = flag('--out') ?? 'ui/public/gamedata.json';
 
-/** Sections the units view never reads; together they are most of the bytes. */
-const HEAVY_UNUSED = ['campaigns', 'npcs'];
+/** Sections no view reads; together they are most of the bytes. */
+const HEAVY_UNUSED = ['npcs'];
 
 const db = await loadGameDatabase({ refresh: args.includes('--refresh') });
 
 const snapshot = { ...db };
 if (!full) {
   for (const key of HEAVY_UNUSED) snapshot[key] = Array.isArray(db[key]) ? [] : {};
+  // Campaign names are needed to label farming nodes, but the per-node battle
+  // lists behind them are the bulk of the file and nothing reads them.
+  snapshot.campaigns = Object.fromEntries(
+    Object.entries(db.campaigns).map(([id, campaign]) => [id, { ...campaign, battles: {} }]),
+  );
   snapshot.slim = true;
 }
 
