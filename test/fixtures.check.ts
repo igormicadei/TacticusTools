@@ -5,6 +5,7 @@
  */
 
 import type {
+  ApiErrorBody,
   GuildRaidResponse,
   GuildResponse,
   PlayerResponse,
@@ -125,6 +126,24 @@ const player: PlayerResponse = {
   },
 };
 
+// Observed live: a non-expiring key sends an explicit `null`, not an omission.
+const nonExpiringKey: PlayerResponse['metaData'] = {
+  configHash: '75ac12095df2ed41b1d9325b8f350700',
+  apiKeyExpiresOn: null,
+  lastUpdatedOn: 1787136934,
+  scopes: ['Player'],
+};
+
+// Observed live: `Extremis` is a real campaign type absent from the spec enum,
+// and two campaigns can share an id, differing only by type.
+const eventCampaigns: PlayerResponse['player']['progress']['campaigns'] = [
+  { id: 'eventCampaign6', name: '', type: 'Standard', battles: [] },
+  { id: 'eventCampaign6', name: '', type: 'Extremis', battles: [] },
+];
+
+// Observed live: error bodies carry an undocumented numeric `code`.
+const forbidden: ApiErrorBody = { type: 'FORBIDDEN', code: 2 };
+
 const guild: GuildResponse = {
   guild: {
     guildId: 'e2b03cf8-93c0-4d01-ba66-abcdef62d65c',
@@ -169,4 +188,13 @@ const guildRaid: GuildRaidResponse = {
 const started: Date | undefined = toDate(guildRaid.entries[0]?.startedOn);
 const ended: Date | undefined = toDate(guildRaid.entries[0]?.completedOn);
 
-export const fixtures = { player, guild, guildRaid, started, ended };
+export const fixtures = {
+  player,
+  nonExpiringKey,
+  eventCampaigns,
+  forbidden,
+  guild,
+  guildRaid,
+  started,
+  ended,
+};

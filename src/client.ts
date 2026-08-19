@@ -122,7 +122,12 @@ export class TacticusClient {
         status,
         path,
         body,
-        ...(isApiErrorBody(body) ? { type: body.type } : {}),
+        ...(isApiErrorBody(body)
+          ? {
+              type: body.type,
+              ...(typeof body.code === 'number' ? { code: body.code } : {}),
+            }
+          : {}),
       });
     }
 

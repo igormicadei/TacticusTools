@@ -195,9 +195,23 @@ export interface Inventory {
 /* Campaign progress                                                          */
 /* -------------------------------------------------------------------------- */
 
-export const CAMPAIGN_TYPES = ['Standard', 'Mirror', 'Elite', 'EliteMirror'] as const;
+/**
+ * Campaign types.
+ *
+ * The spec's enum is `["Standard", "Mirror", "Elite", "EliteMirror"]`, but a
+ * live response also returned `Extremis` (on an event campaign), so the enum is
+ * demonstrably not exhaustive. `Extremis` is included here and the type stays
+ * open via `(string & {})` so a new type does not break ingestion.
+ */
+export const CAMPAIGN_TYPES = [
+  'Standard',
+  'Mirror',
+  'Elite',
+  'EliteMirror',
+  'Extremis',
+] as const;
 
-export type CampaignType = (typeof CAMPAIGN_TYPES)[number];
+export type CampaignType = (typeof CAMPAIGN_TYPES)[number] | (string & {});
 
 export interface CampaignLevel {
   /**
@@ -210,9 +224,17 @@ export interface CampaignLevel {
 }
 
 export interface CampaignProgress {
-  /** @example "campaign2" */
+  /**
+   * Campaign id.
+   *
+   * Not unique across the array: a live response returned two entries with
+   * id `eventCampaign6` differing only by {@link CampaignProgress.type}, so key
+   * campaigns by `id` + `type` rather than by `id` alone.
+   *
+   * @example "campaign2"
+   */
   id: string;
-  /** @example "Fall of Cadia" */
+  /** Display name. Observed empty (`""`) for event campaigns. @example "Fall of Cadia" */
   name: string;
   type: CampaignType;
   battles: CampaignLevel[];
@@ -336,8 +358,13 @@ export type ApiScope = (typeof API_SCOPES)[number] | (string & {});
 export interface PlayerMetaData {
   /** `gameConfigVersion` for the player. */
   configHash: string;
-  /** Unix seconds. Absent if the key never expires. */
-  apiKeyExpiresOn?: UnixSeconds;
+  /**
+   * Unix seconds at which the API key expires.
+   *
+   * The spec says "empty if key never expires"; a live response sends an
+   * explicit `null` rather than omitting the field, so both are modelled.
+   */
+  apiKeyExpiresOn?: UnixSeconds | null;
   /**
    * Unix seconds at which the player was last refreshed from the game server.
    * Player data is cached by the API, so this — not request time — is the age

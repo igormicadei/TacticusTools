@@ -44,6 +44,36 @@ npm run typecheck                                  # types + fixtures + examples
 TACTICUS_API_KEY=<key> npx tsx examples/fetch-all.ts
 ```
 
+## Verified against the live API
+
+The `player` endpoint has been validated against a real response (29 units,
+47 items, 102 upgrades, 8 campaigns): **no drift**, across 21 shapes. Re-check
+any time with:
+
+```bash
+npm run validate -- response.json          # a saved body
+TACTICUS_API_KEY=<key> npm run validate -- --live
+```
+
+The validator reports missing required fields, undeclared fields, and
+out-of-union enum values.
+
+Three corrections came out of that first live response, and are now encoded:
+
+| Finding | Spec said | API actually sends |
+| --- | --- | --- |
+| `CampaignProgress.type` | `Standard`/`Mirror`/`Elite`/`EliteMirror` | also **`Extremis`** |
+| `metaData.apiKeyExpiresOn` | "empty if key never expires" | explicit **`null`** |
+| Error bodies | `{ type }` only | also **`code`** (e.g. `{"type":"FORBIDDEN","code":2}`) |
+
+Also observed: `CampaignProgress.id` is **not unique** — two entries came back
+as `eventCampaign6`, differing only by `type`. Key campaigns by `id` + `type`.
+
+Still unverified, because the sample response could not exercise them:
+`legendaryEvents` and `inventory.mythicShards` were empty arrays, and the
+`guild` / `guildRaid` endpoints need a key with those scopes (a `Player`-scoped
+key gets `403 FORBIDDEN`). Those types remain as the spec describes them.
+
 ## Design notes
 
 The types are a faithful reading of the OpenAPI document, with a few places
@@ -68,7 +98,10 @@ deliberate:
 - **`XP_BOOK_IDS`.** The spec enum reads
   `["xpUncommon", "xpUncommon", "xpRare", "xpEpic", "xpLegendary"]` — a duplicate
   and no common tier, which looks like a copy/paste slip for `xpCommon`. The
-  duplicate is dropped; the type stays open.
+  duplicate is dropped; the type stays open. A live response returned exactly
+  the four deduplicated ids.
+- **`CampaignType` is open.** The spec's enum was proven incomplete by a live
+  response (`Extremis`), so this union carries a `(string & {})` arm too.
 - **Optionality follows the spec's `required` lists**, not the presence of a
   property. Notably `Unit.name`, `Unit.faction`, `Unit.grandAlliance`,
   `Item.name`, `Token.nextTokenInSeconds` and every `progress.*` game mode are
@@ -84,3 +117,4 @@ The OpenAPI document declares `servers: [{ url: "/" }]`, so it pins no host.
 environment.
 
 - `npm run smoke` runs the client against a local mock server (no network, no deps).
+- `npm run validate -- <file.json|--live>` checks a real response against the types.

@@ -21,6 +21,11 @@ export type ApiErrorType = (typeof API_ERROR_TYPES)[number] | (string & {});
 
 export interface ApiErrorBody {
   type: ApiErrorType;
+  /**
+   * Numeric error code. Undocumented in the spec, but present on live
+   * responses (e.g. `{"type":"FORBIDDEN","code":2}`).
+   */
+  code?: number;
 }
 
 /**
@@ -42,6 +47,8 @@ export class TacticusApiError extends Error {
   readonly status: number;
   /** The API's `type` discriminator, when the body carried one. */
   readonly type: ApiErrorType | undefined;
+  /** The API's numeric `code`, when the body carried one. */
+  readonly code: number | undefined;
   /** Raw parsed body, for diagnostics. */
   readonly body: unknown;
   /** Request path that produced the error, without the API key. */
@@ -50,6 +57,7 @@ export class TacticusApiError extends Error {
   constructor(args: {
     status: number;
     type?: ApiErrorType | undefined;
+    code?: number | undefined;
     body?: unknown;
     path: string;
     message?: string;
@@ -63,6 +71,7 @@ export class TacticusApiError extends Error {
     this.name = 'TacticusApiError';
     this.status = args.status;
     this.type = args.type;
+    this.code = args.code;
     this.body = args.body;
     this.path = args.path;
   }

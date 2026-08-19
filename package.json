@@ -18,7 +18,8 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.check.json",
     "clean": "rm -rf dist",
-    "smoke": "npm run build && node test/client.smoke.mjs"
+    "smoke": "npm run build && node test/client.smoke.mjs",
+    "validate": "node test/validate-response.mjs"
   },
   "engines": {
     "node": ">=18"
