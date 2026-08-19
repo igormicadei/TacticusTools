@@ -146,8 +146,42 @@ const farmAt = db.upgrades['upgDmgU019'].farmableAt; // [{ campaignId, nodeNumbe
 
 `gameInfo.json` is ~11 MB and Codex is a volunteer-run community service, so the
 loader is cache-first (`.cache/gamedata.json`, 7-day TTL) and Codex failures are
-non-fatal — the database still builds from `gameInfo.json` alone, minus
-`campaigns`.
+non-fatal — the database still builds from `gameInfo.json` alone, minus the
+Codex-sourced sections. `db.sources.codex` reports which of them made it in.
+
+## Caching
+
+The loader is cache-first (`.cache/gamedata.json`, 7-day TTL, ~3.7 MB). A cached
+entry is used only if it parses, was written by a build with the same
+`GAME_DATABASE_SCHEMA_VERSION`, and is younger than `maxAgeMs`; anything else
+refetches. The schema check matters — without it, a cache written before a field
+existed is served to code that expects it, and reads come back `undefined`.
+
+**Bump `GAME_DATABASE_SCHEMA_VERSION` in `src/gamedata/types.ts` whenever the
+normalized shape changes.** That is the whole mechanism for invalidating stale
+caches across a schema change.
+
+| Call | Behaviour |
+| --- | --- |
+| `loadGameDatabase()` | cache if valid and < 7 days old, else fetch |
+| `loadGameDatabase({ refresh: true })` | always fetch |
+| `loadGameDatabase({ maxAgeMs: 0 })` | treat any cache as stale, fetch |
+| `loadGameDatabase({ maxAgeMs: Infinity })` | accept a cache of any age |
+| `loadGameDatabase({ cachePath: null })` | never read or write a cache |
+
+Writes go to a temporary file and are renamed into place, so a crash mid-write
+cannot leave a truncated cache; a corrupt one is discarded and refetched anyway.
+
+Each Codex section is fetched independently and its failure is non-fatal —
+`db.sources.codex` reports which ones made it in. A `gameInfo.json`-only build
+still yields all 127 units, 558 upgrades and the XP table, with the
+Codex-sourced arrays empty rather than absent.
+
+### Running behind a proxy
+
+Node's built-in `fetch` ignores `HTTPS_PROXY`. In a proxied environment run with
+`NODE_USE_ENV_PROXY=1` (Node >= 22.21), or pass your own agent-aware
+implementation via `loadGameDatabase({ fetch })`.
 
 ## Normalization guarantees
 

@@ -358,8 +358,23 @@ export interface GameDatabaseSources {
   /** `gameInfo.json` config version, e.g. `1.41.101.1`. */
   gameInfoVersion?: string;
   gameInfoId?: string;
-  /** True when Codex battle data was merged in. */
-  codexBattleData: boolean;
+  /**
+   * Which Codex sections were merged in. Each is fetched independently and
+   * failures are non-fatal, so these are reported separately rather than as one
+   * flag — a build can have progression data but no battle data, or vice versa.
+   */
+  codex: {
+    /** Per-node enemy compositions and rewards. */
+    battleData: boolean;
+    /** Campaign-type drop rates. */
+    campaignConfigs: boolean;
+    /** Shard costs per star level. */
+    unitLevels: boolean;
+    /** Orb costs per star level. */
+    orbPromotions: boolean;
+    /** Rarity level caps. */
+    levelProgression: boolean;
+  };
 }
 
 /** Counters describing how cleanly the sources merged. */
@@ -384,7 +399,19 @@ export interface GameDatabaseStats {
   progressionConflicts: number[];
 }
 
+/**
+ * Shape version of {@link GameDatabase}.
+ *
+ * Bump this whenever the normalized shape changes — a new field, a renamed one,
+ * different semantics for an existing one. The loader discards any cache whose
+ * stored version differs, so an older cache is refetched rather than served
+ * with fields the current code expects but the file never had.
+ */
+export const GAME_DATABASE_SCHEMA_VERSION = 5;
+
 export interface GameDatabase {
+  /** Value of {@link GAME_DATABASE_SCHEMA_VERSION} when this was assembled. */
+  schemaVersion: number;
   sources: GameDatabaseSources;
   /** Unix milliseconds when this database was assembled. */
   fetchedAt: number;

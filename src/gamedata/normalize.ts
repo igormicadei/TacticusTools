@@ -39,6 +39,7 @@ import type {
   RawGameInfoHero,
   RawGameInfoStatRow,
 } from './sources/gameinfo.js';
+import { GAME_DATABASE_SCHEMA_VERSION } from './types.js';
 import type {
   AbilityDefinition,
   AbilityUpgradeCost,
@@ -242,9 +243,11 @@ function normalizeProgression(
     PROGRESSION_SHARD_CORRECTIONS.map((c) => [c.progressionIndex, c.shards]),
   );
 
-  const indices = [
-    ...new Set([...shardRows.keys(), ...orbRows.keys(), ...corrections.keys()]),
-  ].sort((a, b) => a - b);
+  // Corrections patch values on rows the sources already define; they never
+  // introduce a level of their own. Without that rule a build with no
+  // progression source at all would still emit the corrected indices as
+  // phantom rows carrying nothing but a shard count.
+  const indices = [...new Set([...shardRows.keys(), ...orbRows.keys()])].sort((a, b) => a - b);
   const requirements: ProgressionRequirement[] = [];
   const gaps: number[] = [];
   const conflicts: number[] = [];
@@ -582,10 +585,17 @@ export function normalize(input: NormalizeInput): GameDatabase {
   }
 
   return {
+    schemaVersion: GAME_DATABASE_SCHEMA_VERSION,
     sources: compact({
       gameInfoVersion: str(gameInfo.version),
       gameInfoId: str(gameInfo.id),
-      codexBattleData: Boolean(input.codexBattleData),
+      codex: {
+        battleData: Boolean(input.codexBattleData),
+        campaignConfigs: Boolean(input.codexCampaignConfigs),
+        unitLevels: Boolean(input.codexUnitLevels),
+        orbPromotions: Boolean(input.codexOrbPromotions),
+        levelProgression: Boolean(input.codexLevelProgression),
+      },
     }),
     fetchedAt: Date.now(),
     units,

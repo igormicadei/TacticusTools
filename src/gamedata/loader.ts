@@ -7,10 +7,11 @@
  * refresh ask for one explicitly.
  */
 
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 
 import { normalize } from './normalize.js';
+import { GAME_DATABASE_SCHEMA_VERSION } from './types.js';
 import {
   fetchCodexBattleData,
   fetchCodexCampaignConfigs,
@@ -33,8 +34,12 @@ export interface LoadOptions {
    */
   cachePath?: string | null;
   /**
-   * Maximum age of a usable cache entry, in milliseconds.
-   * Defaults to 7 days. `0` forces a refresh.
+   * Maximum age of a usable cache entry, in milliseconds. Defaults to 7 days.
+   *
+   * `0` treats any existing cache as stale and refetches; `Infinity` accepts a
+   * cache of any age. Note that a cache is also rejected when it was written by
+   * a build with a different {@link GAME_DATABASE_SCHEMA_VERSION}, regardless
+   * of this setting.
    */
   maxAgeMs?: number;
   /** Skip the cache and refetch. */
@@ -52,6 +57,14 @@ export interface LoadOptions {
 const DEFAULT_CACHE_PATH = '.cache/gamedata.json';
 const DEFAULT_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
+/**
+ * Read a usable cache entry, or `undefined` to force a refetch.
+ *
+ * Every rejection path here is deliberate: a cache is only usable if it parses,
+ * carries the shape this build expects, and is young enough. In particular a
+ * cache written by an older build is discarded rather than returned — its
+ * fields would be missing exactly where newer code reads them.
+ */
 async function readCache(path: string, maxAgeMs: number): Promise<GameDatabase | undefined> {
   let raw: string;
   try {
@@ -68,14 +81,24 @@ async function readCache(path: string, maxAgeMs: number): Promise<GameDatabase |
     return undefined;
   }
 
+  if (parsed.schemaVersion !== GAME_DATABASE_SCHEMA_VERSION) return undefined;
   if (typeof parsed.fetchedAt !== 'number') return undefined;
-  if (maxAgeMs > 0 && Date.now() - parsed.fetchedAt > maxAgeMs) return undefined;
+  if (Date.now() - parsed.fetchedAt > maxAgeMs) return undefined;
   return parsed;
 }
 
+/**
+ * Write the cache atomically.
+ *
+ * The file is several megabytes, so a crash or a concurrent reader partway
+ * through a direct write would see truncated JSON. Writing to a sibling
+ * temporary file and renaming makes the swap atomic on POSIX filesystems.
+ */
 async function writeCache(path: string, database: GameDatabase): Promise<void> {
   await mkdir(dirname(path), { recursive: true });
-  await writeFile(path, JSON.stringify(database), 'utf8');
+  const temporary = `${path}.${process.pid}.tmp`;
+  await writeFile(temporary, JSON.stringify(database), 'utf8');
+  await rename(temporary, path);
 }
 
 /**
