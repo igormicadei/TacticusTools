@@ -57,8 +57,8 @@ export function buildRoster(player: PlayerResponse, db: GameDatabase): RosterEnt
     mythicById.set(shard.id, (mythicById.get(shard.id) ?? 0) + shard.amount);
   }
 
-  const rarityByStar = new Map(
-    db.progressionRequirements.map((r) => [r.progressionIndex, r.rarity]),
+  const progressionByIndex = new Map(
+    db.progressionRequirements.map((r) => [r.progressionIndex, r]),
   );
 
   const ids = new Set([...Object.keys(db.units), ...owned.keys()]);
@@ -87,8 +87,12 @@ export function buildRoster(player: PlayerResponse, db: GameDatabase): RosterEnt
       shards,
       mythicShards,
       factionId: unit?.faction ?? definition?.factionId ?? 'Unknown',
-      rarity: unit ? rarityByStar.get(unit.progressionIndex) : undefined,
-      starLevel: unit ? unit.progressionIndex : undefined,
+      rarity: unit ? progressionByIndex.get(unit.progressionIndex)?.rarity : undefined,
+      // The displayed star count is not progressionIndex: an ascension advances
+      // the index without adding a star, so 9 steps is 6 stars.
+      starLevel: unit
+        ? progressionByIndex.get(unit.progressionIndex)?.starLevel
+        : undefined,
     });
   }
 

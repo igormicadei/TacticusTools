@@ -23,7 +23,8 @@
     "validate:gamedata": "node test/validate-gamedata.mjs",
     "gamedata:snapshot": "npm run build && node scripts/snapshot-gamedata.mjs",
     "ui:dev": "npm --prefix ui run dev",
-    "ui:build": "npm --prefix ui run build"
+    "ui:build": "npm --prefix ui run build",
+    "validate:stats": "node test/validate-stats.mjs"
   },
   "engines": {
     "node": ">=18"

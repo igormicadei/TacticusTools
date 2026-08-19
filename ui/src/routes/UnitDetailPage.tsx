@@ -1,7 +1,8 @@
-import { useMemo } from 'react';
+import { Fragment, useMemo } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
 import { rankName, rarityName } from '@lib/gamedata/enums.js';
+import { computeUnitStats } from '@lib/gamedata/stats.js';
 import type { GameDatabase } from '@lib/gamedata/types.js';
 import type { PlayerResponse, Unit } from '@lib/types/player.js';
 
@@ -197,42 +198,78 @@ function Progress({ unit, db }: { unit: Unit; db: GameDatabase }) {
   );
 }
 
+const ITEM_STAT_LABELS: Record<string, string> = {
+  critChance: 'Crit chance',
+  critDmg: 'Crit damage',
+  blockChance: 'Block chance',
+  blockDmg: 'Block damage',
+};
+
+const PERCENT_STATS = new Set(['critChance', 'blockChance']);
+
 function Attributes({ unit, db }: { unit: Unit; db: GameDatabase }) {
   const definition = db.units[unit.id];
-  const rankStats = definition?.ranks.find((r) => r.rank === unit.rank);
+  const stats = computeUnitStats(unit, db);
   return (
     <section className="panel">
       <h3>Attributes at {rankName(unit.rank)}</h3>
-      {rankStats ? (
-        <div className="stat-grid">
-          <div className="stat">
-            <div className="label">Health</div>
-            <div className="value">{rankStats.health.toLocaleString()}</div>
+      {stats ? (
+        <>
+          <div className="stat-grid">
+            <div className="stat">
+              <div className="label">Health</div>
+              <div className="value">{stats.health.toLocaleString()}</div>
+            </div>
+            <div className="stat">
+              <div className="label">Damage</div>
+              <div className="value">{stats.damage.toLocaleString()}</div>
+            </div>
+            <div className="stat">
+              <div className="label">Armour</div>
+              <div className="value">{stats.armour.toLocaleString()}</div>
+            </div>
           </div>
-          <div className="stat">
-            <div className="label">Damage</div>
-            <div className="value">{rankStats.damage.toLocaleString()}</div>
-          </div>
-          <div className="stat">
-            <div className="label">Armour</div>
-            <div className="value">{rankStats.armour.toLocaleString()}</div>
-          </div>
-        </div>
+          <p className="small muted" style={{ marginBottom: 0 }}>
+            Base {stats.base.health}/{stats.base.damage}/{stats.base.armour} for the rank,
+            ×{stats.starMultiplier.toFixed(2)} from {stats.starLevel ?? 0} stars (+10% each).
+          </p>
+        </>
       ) : (
         <p className="muted small" style={{ margin: 0 }}>
           No stat block published for this rank.
         </p>
       )}
+
+      {stats && Object.keys(stats.itemBonuses).length > 0 && (
+        <>
+          <h3 style={{ marginTop: 16 }}>From equipment</h3>
+          <dl className="kv">
+            {Object.entries(stats.itemBonuses).map(([key, value]) => (
+              <Fragment key={key}>
+                <dt>{ITEM_STAT_LABELS[key] ?? humaniseStat(key)}</dt>
+                <dd>
+                  +{value}
+                  {PERCENT_STATS.has(key) ? '%' : ''}
+                </dd>
+              </Fragment>
+            ))}
+          </dl>
+        </>
+      )}
+
       {definition && (
         <dl className="kv" style={{ marginTop: 12 }}>
           <dt>Movement</dt>
           <dd>{definition.movement ?? '—'}</dd>
           <dt>Grand alliance</dt>
           <dd>{unit.grandAlliance ?? '—'}</dd>
+          <dt>Power score</dt>
+          <dd className="muted">not published</dd>
         </dl>
       )}
       <p className="small muted" style={{ marginBottom: 0 }}>
-        Base values for the rank. Each star adds +10%, each rarity +20% to ability stats.
+        Rarity adds +20% per tier to <em>ability</em> stats, which the source data leaves
+        as unresolved placeholders and this does not compute.
       </p>
     </section>
   );
@@ -374,10 +411,10 @@ function Badges({ unit, player }: { unit: Unit; player: PlayerResponse }) {
       ) : (
         <dl className="kv">
           {badges.map((badge) => (
-            <>
-              <dt key={`${badge.rarity}-t`}>{badge.name ?? badge.rarity}</dt>
-              <dd key={`${badge.rarity}-d`}>{badge.amount.toLocaleString()}</dd>
-            </>
+            <Fragment key={`${badge.rarity}-${badge.name ?? ''}`}>
+              <dt>{badge.name ?? badge.rarity}</dt>
+              <dd>{badge.amount.toLocaleString()}</dd>
+            </Fragment>
           ))}
         </dl>
       )}

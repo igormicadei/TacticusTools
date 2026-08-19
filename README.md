@@ -331,6 +331,42 @@ table on all 59 shared levels. Note `XpLevel.totalXp` is the XP at which a level
 is **reached** (so it compares directly against `Unit.xp`), which is off by one
 row from Codex's identically-named field.
 
+## Derived stats
+
+`computeUnitStats(unit, db)` reconstructs what the game shows on the character
+screen from the unit's state:
+
+```ts
+const stats = gamedata.computeUnitStats(unit, db);
+// base 100/26/26  x1.60 (6 stars)  ->  health 160, damage 41, armour 41
+// itemBonuses: { critChance: 35, critDmg: 43, blockChance: 34, blockDmg: 103 }
+```
+
+Base stats scale with **stars**, not rarity: the game's progression panel states
+"Each star gives a +10% bonus to the Character's base stats. Each Rarity after
+Common gives a +20% bonus to the Character's *ability* stats." Ability stats are
+not computed — their values are unresolved placeholders in the source data.
+
+The game truncates rather than rounds (26 × 1.6 = 41.6 displays as 41), and
+booster items merge into the item they boost: a Force Field at 30% plus an
+Amplifier at 4% displays as one 34% figure, so `*Bonus` stat keys are summed onto
+their base key.
+
+`npm run validate:stats -- player.json` checks the output against values
+transcribed from in-game character screens. Gulgortz at Stone I with 6 stars
+matches on all seven figures.
+
+### Power Score is not computed
+
+The formula is unpublished. The [community wiki](https://tacticus.wiki.gg/wiki/Power_Score)
+records that it is non-linear and that two characters with identical ability
+levels, ranks, rarity, stars and equipment can still differ — so it depends on
+inputs no available source exposes. Any number here would be a guess.
+
+Real values do exist for units that have fought in a guild raid: the `guildRaid`
+endpoint returns `PublicHeroDetail.power` per hero, given a key with the Guild
+Raid scope.
+
 ## Known gaps
 
 - `eventCampaign6` appears in player progress but not in Codex battle data, so

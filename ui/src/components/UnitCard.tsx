@@ -48,9 +48,9 @@ export function UnitCard({ entry }: { entry: RosterEntry }) {
         )}
       </div>
 
-      {unit && unit.progressionIndex > 0 && (
+      {entry.starLevel !== undefined && entry.starLevel > 0 && (
         <div style={{ marginTop: 6 }}>
-          <Stars count={unit.progressionIndex} />
+          <Stars count={entry.starLevel} />
         </div>
       )}
     </Link>
