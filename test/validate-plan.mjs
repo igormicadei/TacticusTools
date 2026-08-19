@@ -54,6 +54,14 @@ function auditPlan(unit, target) {
     if (s.passiveAbilityLevel > s.xpLevel) note(`${where}: passive ability above character level`);
   }
 
+  // A rank step must advance exactly one rank: each rank consumes its own
+  // materials, so a span collapsed into one step would hide what is needed when.
+  for (const step of plan.steps) {
+    if (step.kind === 'rank' && step.to - step.from !== 1) {
+      note(`${unit.name} step ${step.order}: rank step spans ${step.to - step.from} ranks`);
+    }
+  }
+
   // Steps must only ever move forward.
   let prev = plan.current;
   for (const step of plan.steps) {

@@ -265,15 +265,20 @@ export function resolvePlan(
     const levelCap = maxLevelForRarity(rarity, db) ?? state.xpLevel;
 
     if (state.rank < wantRank && state.rank < rankCap) {
-      const to = Math.min(wantRank, rankCap) as Rank;
+      // One rank at a time. Each rank consumes its own six materials, so
+      // collapsing a span into a single step would hide which materials are
+      // needed now and which belong to a rank days away.
       const from = state.rank;
+      const to = (from + 1) as Rank;
       state.rank = to;
       push({
         kind: 'rank',
         label: `Rank up to ${rankName(to)}`,
         from,
         to,
-        ...(to < wantRank ? { reason: `capped by ${rarityName(rarity)} until ascension` } : {}),
+        ...(to === rankCap && to < wantRank
+          ? { reason: `capped by ${rarityName(rarity)} until ascension` }
+          : {}),
       });
       continue;
     }

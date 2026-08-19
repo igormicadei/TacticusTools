@@ -416,9 +416,15 @@ where it actually bites rather than being smeared across all of them.
 
 Costs by step kind:
 
+Rank steps are emitted **one rank at a time** — Bronze I to Silver I is three
+steps, not one — because each rank consumes its own six materials. Collapsing
+the span would hide which materials are needed now and which belong to a rank
+days away, and it also hides that the same material often recurs across ranks,
+which is exactly where the allocation rule matters.
+
 | Step | Consumes |
 | --- | --- |
-| rank | the upgrades of every rank from the old one up to the new, pooled |
+| rank | the six upgrades of the rank being left |
 | level | XP — books are interchangeable currency, so holdings are counted in the XP they carry rather than inventing a book breakdown |
 | ability | badges of the tier for each level reached, plus gold |
 | promotion / ascension | shards for the unit, and orbs at the tier |
