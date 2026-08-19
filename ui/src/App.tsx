@@ -12,15 +12,22 @@ import { UnitsPage } from './routes/UnitsPage.tsx';
 import type { GameDatabase } from '@lib/gamedata/types.js';
 import type { PlayerResponse } from '@lib/types/player.js';
 
-/** Refresh in the background if the stored roster is older than this. */
-const STALE_AFTER_MS = 60 * 60 * 1000;
+/**
+ * How old a stored roster may be before it is refreshed on its own.
+ *
+ * Short, because the API does not cache: `metaData.lastUpdatedOn` comes back
+ * within seconds of the request, so a refresh genuinely reflects the game. The
+ * limit exists to avoid refetching on every tab switch, not to hide staleness.
+ */
+const STALE_AFTER_MS = 2 * 60 * 1000;
 
 export function App() {
   const [db, setDb] = useState<GameDatabase>();
   const [player, setPlayer] = useState<PlayerResponse | undefined>(() => storage.readPlayer());
   const [fetchedAt, setFetchedAt] = useState<number | undefined>(() => storage.readFetchedAt());
   const [error, setError] = useState<string>();
-  const refreshed = useRef(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const inFlight = useRef(false);
 
   useEffect(() => {
     loadGameData().then(setDb, (e: unknown) => setError(String(e)));
@@ -38,17 +45,46 @@ export function App() {
     setFetchedAt(undefined);
   }, []);
 
-  // With a key saved, keep the roster current without the user asking. Failures
-  // are silent here: the Player data page is where problems get reported.
+  /**
+   * Fetch the roster with the stored credentials.
+   *
+   * `force` is what the toolbar button uses; without it the call is skipped
+   * while the stored copy is still fresh, so returning to the tab does not
+   * refetch every time.
+   */
+  const refresh = useCallback(
+    async (force = false) => {
+      const credentials = storage.readCredentials();
+      if (!credentials.apiKey || inFlight.current) return;
+      if (!force && Date.now() - (storage.readFetchedAt() ?? 0) < STALE_AFTER_MS) return;
+      inFlight.current = true;
+      setRefreshing(true);
+      try {
+        handleLoaded(await fetchPlayer(credentials));
+      } catch {
+        // Reported on the Player data page, where the settings that fix it live.
+      } finally {
+        inFlight.current = false;
+        setRefreshing(false);
+      }
+    },
+    [handleLoaded],
+  );
+
+  // On load, and whenever the tab is brought back into view — the usual rhythm
+  // is to play, switch back, and expect the roster to have caught up.
   useEffect(() => {
-    if (refreshed.current) return;
-    refreshed.current = true;
-    const credentials = storage.readCredentials();
-    if (!credentials.apiKey) return;
-    const age = Date.now() - (storage.readFetchedAt() ?? 0);
-    if (player && age < STALE_AFTER_MS) return;
-    fetchPlayer(credentials).then(handleLoaded, () => undefined);
-  }, [player, handleLoaded]);
+    void refresh();
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void refresh();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onVisible);
+    };
+  }, [refresh]);
 
   return (
     <div className="app">
@@ -67,8 +103,19 @@ export function App() {
         </nav>
         <span className="spacer" />
         {player && (
-          <span className="small muted">
-            {player.player.details.name} · power {player.player.details.powerLevel}
+          <span className="row small muted" style={{ gap: 8 }}>
+            <span>
+              {player.player.details.name} · power {player.player.details.powerLevel}
+            </span>
+            <span title={syncedAtTitle(player, fetchedAt)}>{age(player, fetchedAt)}</span>
+            <button
+              className="small"
+              onClick={() => void refresh(true)}
+              disabled={refreshing}
+              title="Fetch the roster again now"
+            >
+              {refreshing ? 'Refreshing…' : 'Refresh'}
+            </button>
           </span>
         )}
       </header>
@@ -130,4 +177,28 @@ export function App() {
       </main>
     </div>
   );
+}
+
+/**
+ * Age of the roster, measured from the game's own sync time.
+ *
+ * `metaData.lastUpdatedOn` is when the API last took data from the game, which
+ * is the number that matters; the time we fetched only says when we asked.
+ */
+function age(player: PlayerResponse, fetchedAt: number | undefined): string {
+  const syncedAt = (player.metaData.lastUpdatedOn || 0) * 1000 || fetchedAt;
+  if (!syncedAt) return '';
+  const minutes = Math.floor((Date.now() - syncedAt) / 60000);
+  if (minutes < 1) return 'just now';
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  return hours < 24 ? `${hours}h ago` : `${Math.floor(hours / 24)}d ago`;
+}
+
+function syncedAtTitle(player: PlayerResponse, fetchedAt: number | undefined): string {
+  const synced = player.metaData.lastUpdatedOn
+    ? new Date(player.metaData.lastUpdatedOn * 1000).toLocaleString()
+    : 'unknown';
+  const got = fetchedAt ? new Date(fetchedAt).toLocaleString() : 'unknown';
+  return `Game data as of ${synced}\nFetched ${got}`;
 }

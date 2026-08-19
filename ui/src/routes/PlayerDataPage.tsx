@@ -82,6 +82,9 @@ export function PlayerDataPage({
               <strong>{player.player.details.name}</strong>{' '}
               <span className="muted small">
                 · power {player.player.details.powerLevel} · {player.player.units.length} units
+                {player.metaData.lastUpdatedOn
+                  ? ` · game data as of ${new Date(player.metaData.lastUpdatedOn * 1000).toLocaleString()}`
+                  : ''}
                 {fetchedAt ? ` · fetched ${new Date(fetchedAt).toLocaleString()}` : ''}
               </span>
             </div>
