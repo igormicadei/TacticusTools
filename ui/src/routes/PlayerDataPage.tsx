@@ -1,4 +1,4 @@
-import { useCallback, useState, type ChangeEvent } from 'react';
+import { useCallback, useEffect, useState, type ChangeEvent } from 'react';
 
 import {
   InvalidPlayerDataError,
@@ -226,10 +226,100 @@ export function PlayerDataPage({
         </section>
       </div>
 
+      <RelaySetup />
+
       <p className="small muted" style={{ marginTop: 24 }}>
         Game database: version {db.sources.gameInfoVersion ?? 'unknown'} · {db.stats.units}{' '}
         units · {db.stats.items} items · {db.stats.abilities} abilities.
       </p>
     </>
+  );
+}
+
+/**
+ * The worker source, with a copy button.
+ *
+ * Deploying the relay means pasting this into a Worker editor; on a phone,
+ * selecting it by hand is the worst part of the process.
+ */
+function RelaySetup() {
+  const [open, setOpen] = useState(false);
+  const [source, setSource] = useState<string>();
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!open || source !== undefined) return;
+    fetch(`${import.meta.env.BASE_URL}cloudflare-worker.js`)
+      .then((r) => (r.ok ? r.text() : Promise.reject(new Error(String(r.status)))))
+      .then(setSource)
+      .catch(() => setSource('Could not load the worker source.'));
+  }, [open, source]);
+
+  const copy = useCallback(async () => {
+    if (!source) return;
+    try {
+      await navigator.clipboard.writeText(source);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopied(false);
+    }
+  }, [source]);
+
+  return (
+    <section className="panel" style={{ marginTop: 16 }}>
+      <div className="row">
+        <h3 style={{ margin: 0 }}>Set up a hosted relay</h3>
+        <span style={{ flex: 1 }} />
+        <button onClick={() => setOpen((v) => !v)}>{open ? 'Hide' : 'Show steps'}</button>
+      </div>
+
+      {open && (
+        <>
+          <ol className="small" style={{ paddingLeft: 18, lineHeight: 1.7 }}>
+            <li>
+              Open{' '}
+              <a
+                href="https://workers.cloudflare.com/playground"
+                target="_blank"
+                rel="noreferrer"
+                style={{ color: 'var(--accent)' }}
+              >
+                workers.cloudflare.com/playground
+              </a>{' '}
+              — a plain editor, no upload or build step.
+            </li>
+            <li>Select everything there, delete it, and paste the code below.</li>
+            <li>Deploy, and name it something you will recognise.</li>
+            <li>
+              Open the Worker URL in a browser. A small JSON reply means it is live. Paste
+              that URL above.
+            </li>
+            <li>
+              In the Worker&apos;s Settings → Variables, add <code className="inline">RELAY_KEY</code>{' '}
+              (encrypted) set to any string you invent, then put the same string in the
+              Relay key field above. Without it, anyone who learns the URL can use it.
+            </li>
+          </ol>
+
+          <div className="row" style={{ marginBottom: 8 }}>
+            <button className="primary" onClick={() => void copy()} disabled={!source}>
+              {copied ? 'Copied' : 'Copy worker code'}
+            </button>
+            <a
+              className="button"
+              href={`${import.meta.env.BASE_URL}cloudflare-worker.js`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Open raw
+            </a>
+          </div>
+          <pre className="cmd" style={{ maxHeight: 260 }}>
+            {source ?? 'Loading…'}
+          </pre>
+        </>
+      )}
+    </section>
   );
 }

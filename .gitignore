@@ -7,3 +7,4 @@ dist/
 .cache/
 ui/node_modules/
 ui/dist/
+public/cloudflare-worker.js
