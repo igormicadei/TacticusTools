@@ -1,0 +1,323 @@
+/**
+ * The normalized game database.
+ *
+ * Assembled from one or more upstream sources and reshaped so that:
+ * - every identifier follows the Tacticus API convention (see `./ids.ts`);
+ * - every ordered or closed-domain property is an integer enum (see `./enums.ts`);
+ * - every collection is keyed by id, so joins against a player payload are
+ *   direct lookups rather than scans.
+ */
+
+import type {
+  CampaignType,
+  EquipmentSlot,
+  GrandAlliance,
+  Rank,
+  Rarity,
+} from './enums.js';
+import type {
+  AbilityId,
+  BattleRef,
+  CampaignId,
+  ItemId,
+  NpcId,
+  UnitId,
+  UpgradeId,
+} from './ids.js';
+
+/* -------------------------------------------------------------------------- */
+/* Units                                                                      */
+/* -------------------------------------------------------------------------- */
+
+/** Combat stats at a single rank. */
+export interface UnitRankStats {
+  rank: Rank;
+  health: number;
+  damage: number;
+  armour: number;
+  /** Materials consumed to complete this rank. */
+  upgrades: UnitRankUpgrade[];
+}
+
+export interface UnitRankUpgrade {
+  upgradeId: UpgradeId;
+  amount: number;
+  /** Stat points granted when applied. */
+  statIncrease?: number;
+  statType?: string;
+}
+
+export interface UnitDefinition {
+  id: UnitId;
+  name: string;
+  fullName?: string;
+  factionId?: string;
+  grandAlliance?: GrandAlliance;
+  baseRarity?: Rarity;
+  movement?: number;
+  /** Equipment slot types, indexed by {@link EquipmentSlot}. */
+  itemSlots: string[];
+  traits: string[];
+  activeAbilityId?: AbilityId;
+  passiveAbilityId?: AbilityId;
+  mythicAbilityIds: AbilityId[];
+  /** Per-rank stats and rank-up materials, indexed by {@link Rank}. */
+  ranks: UnitRankStats[];
+  /** True when this unit is a Machine of War rather than a character. */
+  isMachineOfWar: boolean;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Materials and items                                                        */
+/* -------------------------------------------------------------------------- */
+
+export interface UpgradeDefinition {
+  id: UpgradeId;
+  name: string;
+  rarity?: Rarity;
+  statType?: string;
+  /** Crafting inputs, as `{ [upgradeId]: amount }`. Empty when not craftable. */
+  crafting: Record<UpgradeId, number>;
+  /** Flattened base materials, as `{ [upgradeId]: amount }`. */
+  baseUpgrades: Record<UpgradeId, number>;
+  /** Nodes that drop this material, normalized from every source spelling. */
+  farmableAt: BattleRef[];
+}
+
+export interface ItemLevel {
+  /** 1-based level, matching `UnitItem.level` in the player API. */
+  level: number;
+  stats: Record<string, number>;
+  dustCost?: number;
+  goldCost?: number;
+  mythicDustCost?: number;
+}
+
+export interface ItemDefinition {
+  id: ItemId;
+  name: string;
+  itemType: string;
+  rarity?: Rarity;
+  /** Next item in the same upgrade series, when one exists. */
+  nextInSeries?: ItemId;
+  levels: ItemLevel[];
+  /** Factions permitted to equip this item. Empty means unrestricted. */
+  allowedFactions: string[];
+}
+
+/* -------------------------------------------------------------------------- */
+/* Abilities and progression                                                  */
+/* -------------------------------------------------------------------------- */
+
+export interface AbilityDefinition {
+  id: AbilityId;
+  name: string;
+  /** Source description. May contain HTML markup from the game client. */
+  description?: string;
+}
+
+/** Cost to raise an ability from `level` to `level + 1`. */
+export interface AbilityUpgradeCost {
+  /** The level being left behind; index 0 is the 1 -> 2 upgrade. */
+  level: number;
+  gold: number;
+  badgeType: string;
+  badgeRarity?: Rarity;
+  amount: number;
+}
+
+/**
+ * A row of the character XP table.
+ *
+ * Note the semantics of {@link XpLevel.totalXp}, which differ from the field of
+ * the same name in Codex's `levelprogression`: here it is the XP at which the
+ * level is *reached*, so it compares directly against `Unit.xp` from the player
+ * API. Codex's field is the XP at which the level is *completed* — its value
+ * for level `L` equals this type's value for level `L + 1`.
+ *
+ * Verified against 29 live units (`totalXp(L) <= unit.xp < totalXp(L + 1)` held
+ * for every one) and against Codex's independent table, which agrees on
+ * {@link XpLevel.xpToNextLevel} for all 59 shared levels.
+ */
+export interface XpLevel {
+  level: number;
+  /**
+   * XP needed to go from this level to the next.
+   * Equals `totalXp(level + 1) - totalXp(level)`.
+   */
+  xpToNextLevel: number;
+  /**
+   * Cumulative XP at which this level is reached. `0` for level 1.
+   *
+   * To find a unit's remaining XP: `totalXp(unit.xpLevel + 1) - unit.xp`.
+   */
+  totalXp: number;
+}
+
+export interface XpBookDefinition {
+  id: string;
+  rarity: Rarity;
+  xpIncrease: number;
+  gold: number;
+}
+
+/** Shards and orbs required to reach a given star level. */
+export interface ProgressionRequirement {
+  /** Star level, matching `Unit.progressionIndex` in the player API. */
+  progressionIndex: number;
+  rank?: Rank;
+  shards: number;
+  orbs: number;
+  orbRarity?: Rarity;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Campaigns and battles                                                      */
+/* -------------------------------------------------------------------------- */
+
+/** Per-rarity drop chance for a node. */
+export interface DropRates {
+  common: number;
+  uncommon: number;
+  rare: number;
+  epic: number;
+  legendary: number;
+  shard: number;
+}
+
+/**
+ * Where a node's drop rates came from.
+ *
+ * No source publishes true per-node rates today, so nodes inherit their
+ * campaign type's rates. The field is stored per node regardless, so a future
+ * per-node source can be dropped in by replacing the values and switching this
+ * marker — no consumer changes.
+ */
+export type DropRateProvenance = 'campaignType' | 'node';
+
+export interface BattleEnemy {
+  npcId: NpcId;
+  /** The id exactly as the source spelled it, before alias resolution. */
+  sourceNpcId: string;
+  count: number;
+  rank?: Rank;
+  /**
+   * Star level of the enemy.
+   *
+   * Codex battle data always reports `0` here; where the NPC's stat table has a
+   * row for this rank, the real value is filled in from it and
+   * {@link BattleEnemy.statsResolved} is true.
+   */
+  stars: number;
+  /** Rarity of the enemy. Same provenance caveat as {@link BattleEnemy.stars}. */
+  rarity?: Rarity;
+  /** Stats at this rank, when the NPC's stat table covers it. */
+  health?: number;
+  damage?: number;
+  armour?: number;
+  /** True when the fields above were resolved from NPC stats rather than copied. */
+  statsResolved: boolean;
+}
+
+export interface BattleDefinition extends BattleRef {
+  /** Stable key, `battleKey(ref)`. */
+  key: string;
+  campaignType?: CampaignType;
+  /** Team slots available to the player, 1–5. */
+  slots?: number;
+  expectedGold?: number;
+  enemiesTotal?: number;
+  enemies: BattleEnemy[];
+  enemyFactions: string[];
+  enemyAlliances: GrandAlliance[];
+  /** Material dropped by this node, when it drops one. */
+  rewardUpgradeId?: UpgradeId;
+  /** Unit whose shards this node drops, when it drops shards. */
+  rewardShardUnitId?: UnitId;
+  /** Reward string exactly as the source gave it, when it resolved to neither. */
+  rewardRaw?: string;
+  dropRates?: DropRates;
+  dropRateProvenance?: DropRateProvenance;
+}
+
+export interface CampaignDefinition {
+  id: CampaignId;
+  name?: string;
+  type?: CampaignType;
+  energyCost?: number;
+  dailyBattleCount?: number;
+  /** Nodes keyed by {@link battleKey}. */
+  battles: Record<string, BattleDefinition>;
+}
+
+/* -------------------------------------------------------------------------- */
+/* NPCs                                                                       */
+/* -------------------------------------------------------------------------- */
+
+export interface NpcStatRow {
+  rank: Rank;
+  stars: number;
+  rarity?: Rarity;
+  health?: number;
+  damage?: number;
+  armour?: number;
+  abilityLevel?: number;
+}
+
+export interface NpcDefinition {
+  id: NpcId;
+  name: string;
+  factionId?: string;
+  grandAlliance?: GrandAlliance;
+  movement?: number;
+  traits: string[];
+  /** Stats by rank. Sparse: many NPCs define only a few ranks. */
+  stats: NpcStatRow[];
+}
+
+/* -------------------------------------------------------------------------- */
+/* Database                                                                   */
+/* -------------------------------------------------------------------------- */
+
+export interface GameDatabaseSources {
+  /** `gameInfo.json` config version, e.g. `1.41.101.1`. */
+  gameInfoVersion?: string;
+  gameInfoId?: string;
+  /** True when Codex battle data was merged in. */
+  codexBattleData: boolean;
+}
+
+/** Counters describing how cleanly the sources merged. */
+export interface GameDatabaseStats {
+  units: number;
+  upgrades: number;
+  items: number;
+  abilities: number;
+  npcs: number;
+  campaigns: number;
+  battles: number;
+  /** Battle enemy entries whose stats resolved against an NPC stat row. */
+  enemiesResolved: number;
+  enemiesTotal: number;
+  /** Source NPC ids that matched no NPC, even after aliasing. */
+  unresolvedNpcIds: string[];
+  /** Battle references that pointed at an unknown node. */
+  unresolvedBattleRefs: string[];
+}
+
+export interface GameDatabase {
+  sources: GameDatabaseSources;
+  /** Unix milliseconds when this database was assembled. */
+  fetchedAt: number;
+  units: Record<UnitId, UnitDefinition>;
+  upgrades: Record<UpgradeId, UpgradeDefinition>;
+  items: Record<ItemId, ItemDefinition>;
+  abilities: Record<AbilityId, AbilityDefinition>;
+  npcs: Record<NpcId, NpcDefinition>;
+  campaigns: Record<CampaignId, CampaignDefinition>;
+  xpLevels: XpLevel[];
+  xpBooks: XpBookDefinition[];
+  abilityUpgradeCosts: AbilityUpgradeCost[];
+  progressionRequirements: ProgressionRequirement[];
+  stats: GameDatabaseStats;
+}

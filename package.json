@@ -19,7 +19,8 @@
     "typecheck": "tsc -p tsconfig.check.json",
     "clean": "rm -rf dist",
     "smoke": "npm run build && node test/client.smoke.mjs",
-    "validate": "node test/validate-response.mjs"
+    "validate": "node test/validate-response.mjs",
+    "validate:gamedata": "node test/validate-gamedata.mjs"
   },
   "engines": {
     "node": ">=18"

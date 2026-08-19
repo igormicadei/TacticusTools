@@ -118,3 +118,99 @@ environment.
 
 - `npm run smoke` runs the client against a local mock server (no network, no deps).
 - `npm run validate -- <file.json|--live>` checks a real response against the types.
+
+---
+
+# Game database
+
+The Tacticus API returns **only account state** — no XP tables, material costs,
+stats, or drop locations. Those come from published game configuration, which
+`src/gamedata` fetches, normalizes and caches.
+
+```ts
+import { gamedata } from 'tacticus-tools';
+
+const db = await gamedata.loadGameDatabase();       // cache-first, 7-day TTL
+const certus = db.units['ultraEliminatorSgt'];      // keyed by API unit id
+const rankMaterials = certus.ranks[player.rank].upgrades;
+const toNextLevel = db.xpLevels[player.xpLevel].totalXp - player.xp;
+const farmAt = db.upgrades['upgDmgU019'].farmableAt; // [{ campaignId, nodeNumber, battleIndex }]
+```
+
+## Sources
+
+| Source | Provides |
+| --- | --- |
+| [`gameInfo.json`](https://www.tacticustable.com/gameInfo.json) | units, ranks, stats, materials, items, abilities, XP, NPCs |
+| [Tacticus Codex](https://www.tacticuscodex.com/) `battledata` + `campaignconfig` | per-node enemy compositions, campaign drop rates |
+
+`gameInfo.json` is ~11 MB and Codex is a volunteer-run community service, so the
+loader is cache-first (`.cache/gamedata.json`, 7-day TTL) and Codex failures are
+non-fatal — the database still builds from `gameInfo.json` alone, minus
+`campaigns`.
+
+## Normalization guarantees
+
+**Identifiers follow the Tacticus API convention.** Sources disagree; the
+database does not. Units come from `hero.gameId` / `machinesOfWar.gameId`, not
+the display slugs the sources key on. Verified against a live player payload:
+
+| Join | Coverage |
+| --- | --- |
+| `units`, `shards` → `db.units` | 29/29, 81/81 |
+| `inventory.upgrades` → `db.upgrades` | 102/102 |
+| `inventory.items`, equipped → `db.items` | 42/42, 29/29 |
+| unit `abilities` → `db.abilities` | 59/59 |
+
+**Battle locations are unified.** The two sources spell the same node
+differently — `campaign1_01` vs `campaign2_2_53` vs `eventExtremis1_1012_03B` —
+and share *zero* raw strings. All three parse to
+`{ campaignId, nodeNumber, battleIndex, variant? }`, where `battleIndex` matches
+`CampaignProgress.battles[].battleIndex` in the player API. After normalizing,
+1091/1127 farming references resolve to a known node.
+
+**Ordered and closed-domain values are integers, never source strings.**
+`Rank` (0–19, `Stone I`…`Mythic II`), `Rarity` (0–5), `GrandAlliance`,
+`CampaignType`, `EquipmentSlot`. Each ships a display-name table and a tolerant
+parser, so `"STONE I"`, `"Stone I"`, `"Adamantine I"` and `"Rank 18"` all land on
+`Rank.MythicI`. Rank ordering comes from `gameInfo` and agrees with the API's
+documented anchors (0 = Stone I, 12 = Gold I, 17 = Diamond III).
+
+**Drop rates are stored per node.** No source publishes true per-node rates, so
+each node inherits its campaign type's rates and records
+`dropRateProvenance: 'campaignType'`. The shape is already per-node, so a future
+per-node source is a value swap plus flipping the marker to `'node'` — no
+consumer changes.
+
+**Placeholder fields are kept and backfilled where possible.** Codex reports
+every battle enemy as `stars: 0, rarity: "Unknown"`. Those fields are retained,
+but where the NPC's stat table covers the enemy's rank, the real `stars`,
+`rarity`, `health`, `damage` and `armour` are filled in and `statsResolved` is
+set. Currently 2678/3760 enemy entries resolve (71%); the rest keep the
+placeholder, since NPC stat tables are sparse and often lack a row for the exact
+rank.
+
+## Checking it
+
+```bash
+npm run validate:gamedata -- --player response.json
+```
+
+Checks enum integrity, XP-table consistency, drop-rate provenance, battle-ref
+resolution, and — with `--player` — joins against a real payload. It is
+negative-tested: corrupting a `gameId`, a rank name or an XP threshold makes it
+fail.
+
+The XP table was validated twice over: `totalXp(L) <= unit.xp < totalXp(L+1)`
+held for all 29 live units, and `xpToNextLevel` agrees with Codex's independent
+table on all 59 shared levels. Note `XpLevel.totalXp` is the XP at which a level
+is **reached** (so it compares directly against `Unit.xp`), which is off by one
+row from Codex's identically-named field.
+
+## Known gaps
+
+- `eventCampaign6` appears in player progress but not in Codex battle data, so
+  it has no node-level detail.
+- 36 of 1127 farming references point at event nodes absent from Codex.
+- `progressionRequirements` (shards/orbs per star level) is declared but not yet
+  populated — the data exists in Codex `unitlevel` / `orbpromotionrequirement`.
