@@ -5,3 +5,5 @@ dist/
 .env.*
 !.env.example
 .cache/
+ui/node_modules/
+ui/dist/
