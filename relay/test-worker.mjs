@@ -63,4 +63,38 @@ const viaVar = await worker.fetch(
 );
 console.log('  ALLOWED_ORIGINS variable override ->', viaVar.status);
 
+
+console.log('\n=== relay key ===');
+{
+  globalThis.fetch = async (url, init) =>
+    init?.headers?.['X-API-KEY'] === 'good'
+      ? new Response(JSON.stringify({ player: { units: [] } }), { status: 200 })
+      : new Response(JSON.stringify({ type: 'FORBIDDEN' }), { status: 403 });
+
+  const ENV = { RELAY_KEY: 's3cret' };
+  const req = (headers) =>
+    new Request('https://relay.example.dev/api/v1/player', {
+      headers: { Origin: ORIGIN, ...headers },
+    });
+
+  const cases = [
+    ['no relay key       ', await worker.fetch(req({ 'X-API-KEY': 'good' }), ENV)],
+    ['wrong relay key    ', await worker.fetch(req({ 'X-API-KEY': 'good', 'X-Relay-Key': 'nope' }), ENV)],
+    ['correct relay key  ', await worker.fetch(req({ 'X-API-KEY': 'good', 'X-Relay-Key': 's3cret' }), ENV)],
+    ['relay key, no api  ', await worker.fetch(req({ 'X-Relay-Key': 's3cret' }), ENV)],
+  ];
+  for (const [label, res] of cases) console.log(`  ${label} ${res.status}`);
+
+  const guarded = await worker.fetch(new Request('https://relay.example.dev/'), ENV);
+  const open = await worker.fetch(new Request('https://relay.example.dev/'), {});
+  console.log('  health, key set    ', JSON.parse(await guarded.text()).requiresRelayKey);
+  console.log('  health, no key set ', JSON.parse(await open.text()).warning);
+
+  // The upstream host must not be reachable from the request path.
+  let target = null;
+  globalThis.fetch = async (url) => { target = String(url); return new Response('{}', { status: 200 }); };
+  await worker.fetch(req({ 'X-API-KEY': 'good', 'X-Relay-Key': 's3cret' }), ENV);
+  console.log('  forwards only to   ', target);
+}
+
 globalThis.fetch = realFetch;

@@ -22,9 +22,17 @@
  * Open the Worker's URL in a browser afterwards: it answers with a small JSON
  * health object, which confirms it is live.
  *
- * ALLOWED_ORIGINS below decides who may use it. It can also be set as a Worker
- * variable (Settings -> Variables) as a comma-separated list, which overrides
- * this list without editing code.
+ * Two controls decide who may use it:
+ *
+ * - RELAY_KEY, a secret you invent and set as a Worker variable. When set, every
+ *   proxied request must carry it as the X-Relay-Key header. This is the real
+ *   lock: an Origin header can be forged by anything that is not a browser, a
+ *   shared secret cannot.
+ * - ALLOWED_ORIGINS, a comma-separated list, also settable as a Worker variable.
+ *   Useful against other *pages* calling it, but not against a scripted client.
+ *
+ * It can only ever reach the Tacticus API: the upstream host is hard-coded and
+ * only the three read-only endpoints are forwarded.
  */
 
 /** Origins permitted to use this relay. `*` allows any — prefer naming yours. */
@@ -34,10 +42,19 @@ const ALLOWED_ORIGINS = [
   'http://localhost:4173',
 ];
 
+/** Hard-coded: this relay cannot be pointed at any other host. */
 const API_ORIGIN = 'https://api.tacticusgame.com';
 
 /** Only these paths are proxied, so the relay cannot be used against anything else. */
 const ALLOWED_PATHS = /^\/api\/v1\/(player|guild|guildRaid(\/\d+)?)$/;
+
+/** Constant-time compare, so a wrong key cannot be found byte by byte. */
+function timingSafeEqual(a, b) {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i += 1) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
 
 function allowedOrigins(env) {
   return (env?.ALLOWED_ORIGINS ?? ALLOWED_ORIGINS.join(','))
@@ -57,7 +74,7 @@ function corsHeaders(origin, env) {
   return {
     'Access-Control-Allow-Origin': allow,
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
-    'Access-Control-Allow-Headers': 'X-API-KEY, Accept',
+    'Access-Control-Allow-Headers': 'X-API-KEY, X-Relay-Key, Accept',
     'Access-Control-Max-Age': '86400',
     Vary: 'Origin',
   };
@@ -76,12 +93,17 @@ export default {
     // A health check, so the Worker URL can be opened in a browser to confirm
     // the deploy worked before wiring it into the app.
     if (url.pathname === '/' || url.pathname === '/health') {
+      const guarded = Boolean(env?.RELAY_KEY);
       return json(
         {
           ok: true,
           relay: 'tacticus',
           usage: 'GET /api/v1/player with an X-API-KEY header',
+          requiresRelayKey: guarded,
           allowedOrigins: allowedOrigins(env),
+          ...(guarded
+            ? {}
+            : { warning: 'No RELAY_KEY set — anyone who learns this URL can use it.' }),
         },
         200,
         { 'Access-Control-Allow-Origin': '*' },
@@ -116,6 +138,23 @@ export default {
         JSON.stringify({ type: 'NOT_FOUND', detail: 'Path not proxied by this relay.' }),
         { status: 404, headers: { ...cors, 'Content-Type': 'application/json' } },
       );
+    }
+
+    // The relay's own secret, checked before anything is forwarded.
+    if (env?.RELAY_KEY) {
+      const presented = request.headers.get('X-Relay-Key') ?? '';
+      if (!timingSafeEqual(presented, env.RELAY_KEY)) {
+        return json(
+          {
+            type: 'RELAY_KEY_INVALID',
+            detail: presented
+              ? 'The relay key is wrong.'
+              : 'This relay requires a relay key. Set it on the Player data page.',
+          },
+          401,
+          cors,
+        );
+      }
     }
 
     const apiKey = request.headers.get('X-API-KEY');

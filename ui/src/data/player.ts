@@ -18,6 +18,7 @@ const KEYS = {
   player: 'tacticus-tools:player',
   apiKey: 'tacticus-tools:apiKey',
   relay: 'tacticus-tools:relay',
+  relayKey: 'tacticus-tools:relayKey',
   fetchedAt: 'tacticus-tools:fetchedAt',
 } as const;
 
@@ -42,6 +43,14 @@ export interface Credentials {
   apiKey: string | undefined;
   /** Base URL of a relay, e.g. `https://tacticus-relay.someone.workers.dev`. */
   relayUrl: string | undefined;
+  /**
+   * The relay's own secret, when it requires one. Distinct from the Tacticus
+   * key: this one only proves you are allowed to use the relay.
+   *
+   * Never baked into the build — it would be readable by anyone loading the
+   * public page, which is the opposite of what it is for.
+   */
+  relayKey: string | undefined;
 }
 
 /** Thrown when imported or fetched data is not a usable player payload. */
@@ -73,16 +82,19 @@ export const storage = {
     return {
       apiKey: read(KEYS.apiKey),
       relayUrl: read(KEYS.relay) ?? (DEFAULT_RELAY_URL || undefined),
+      relayKey: read(KEYS.relayKey),
     };
   },
-  writeCredentials({ apiKey, relayUrl }: Credentials): void {
+  writeCredentials({ apiKey, relayUrl, relayKey }: Credentials): void {
     write(KEYS.apiKey, apiKey?.trim());
     // Trailing slashes would double up against PLAYER_PATH.
     write(KEYS.relay, relayUrl?.trim().replace(/\/+$/, ''));
+    write(KEYS.relayKey, relayKey?.trim());
   },
   clearCredentials(): void {
     write(KEYS.apiKey, undefined);
     write(KEYS.relay, undefined);
+    write(KEYS.relayKey, undefined);
   },
   readPlayer(): PlayerResponse | undefined {
     const raw = read(KEYS.player);
@@ -169,7 +181,13 @@ export async function fetchPlayer(credentials: Credentials): Promise<PlayerRespo
   let response: Response;
   try {
     response = await fetch(`${base}${PLAYER_PATH}`, {
-      headers: { 'X-API-KEY': apiKey, Accept: 'application/json' },
+      headers: {
+        'X-API-KEY': apiKey,
+        Accept: 'application/json',
+        ...(credentials.relayKey?.trim()
+          ? { 'X-Relay-Key': credentials.relayKey.trim() }
+          : {}),
+      },
     });
   } catch {
     throw new PlayerFetchError(
@@ -188,6 +206,12 @@ export async function fetchPlayer(credentials: Credentials): Promise<PlayerRespo
 
     // The relay explains its own refusals; pass that through rather than
     // reporting a generic failure the user cannot act on.
+    if (body?.type === 'RELAY_KEY_INVALID') {
+      throw new PlayerFetchError(
+        body.detail ?? 'The relay rejected the relay key.',
+        response.status,
+      );
+    }
     if (body?.type === 'ORIGIN_NOT_ALLOWED') {
       throw new PlayerFetchError(
         body.detail ?? 'The relay refused this site. Add this origin to its allowed list.',

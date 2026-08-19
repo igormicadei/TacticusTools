@@ -28,6 +28,7 @@ export function PlayerDataPage({
   const stored = storage.readCredentials();
   const [apiKey, setApiKey] = useState(stored.apiKey ?? '');
   const [relayUrl, setRelayUrl] = useState(stored.relayUrl ?? '');
+  const [relayKey, setRelayKey] = useState(stored.relayKey ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   const [text, setText] = useState('');
@@ -142,11 +143,28 @@ export function PlayerDataPage({
             <code className="inline">relay/</code> if you would rather not run anything.
           </p>
 
+          <h3 style={{ marginTop: 20 }}>Relay key</h3>
+          <p className="small muted" style={{ marginTop: 0 }}>
+            Only if your relay sets one. This is the relay&apos;s own secret, not your
+            Tacticus key — it stops anyone else who learns the URL from using it. Stored in
+            this browser only, and never built into the page.
+          </p>
+          <input
+            className="search"
+            style={{ width: '100%' }}
+            type="password"
+            autoComplete="off"
+            spellCheck={false}
+            placeholder="leave blank if the relay has no RELAY_KEY"
+            value={relayKey}
+            onChange={(e) => setRelayKey(e.target.value)}
+          />
+
           <div className="row" style={{ marginTop: 16 }}>
             <button
               className="primary"
               disabled={busy || !apiKey.trim()}
-              onClick={() => void refresh({ apiKey, relayUrl })}
+              onClick={() => void refresh({ apiKey, relayUrl, relayKey })}
             >
               {busy ? 'Fetching…' : player ? 'Refresh roster' : 'Fetch roster'}
             </button>
@@ -156,6 +174,7 @@ export function PlayerDataPage({
                 storage.clearCredentials();
                 setApiKey('');
                 setRelayUrl('');
+                setRelayKey('');
               }}
             >
               Forget key
