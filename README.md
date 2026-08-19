@@ -190,6 +190,42 @@ set. Currently 2678/3760 enemy entries resolve (71%); the rest keep the
 placeholder, since NPC stat tables are sparse and often lack a row for the exact
 rank.
 
+## Star progression
+
+`db.progressionRequirements` gives the shards and orbs to reach each star level
+(`Unit.progressionIndex`), merged from Codex's `unitlevel` and
+`orbpromotionrequirement`:
+
+```ts
+const need = db.progressionRequirements.find(r => r.progressionIndex === unit.progressionIndex + 1);
+// { progressionIndex: 13, rarity: 4, shards: 150, shardType: 'regular',
+//   orbs: 10, orbRarity: 4 }
+```
+
+Costs are **per step**, not cumulative — going from star 13 to 15 needs
+`shards(14) + shards(15)`.
+
+`shardType` distinguishes the two currencies the player API tracks separately:
+star levels 16–19 are the Mythic band and consume `Unit.mythicShards`, not
+`Unit.shards`.
+
+The two sources disagree, and the merge resolves it deliberately:
+
+| Source | Used for | Why |
+| --- | --- | --- |
+| `orbpromotionrequirement` | orbs, orb rarity | dedicated, self-consistent, covers every threshold |
+| `unitlevel` | shards, rarity tier | the only source of shard counts |
+
+`unitlevel`'s own orb column is **ignored entirely**. It agrees with the orb
+table at nine indices, reads zero on several rows that do require orbs, and at
+index 5 reports a requirement the dedicated table places at index 6 — so
+consulting it can only add phantom costs. Levels where the two disagree are
+flagged `orbsDisputed` and listed in `stats.progressionConflicts` (currently
+indices 5 and 6), so the call can be revisited if a better source appears.
+
+The resulting table puts orbs only at rarity-tier boundaries (3, 6, 9) and at
+every Legendary and Mythic step (12–19), which is what the tier bands predict.
+
 ## Checking it
 
 ```bash
@@ -197,7 +233,8 @@ npm run validate:gamedata -- --player response.json
 ```
 
 Checks enum integrity, XP-table consistency, drop-rate provenance, battle-ref
-resolution, and — with `--player` — joins against a real payload. It is
+resolution, star-progression coverage, and — with `--player` — joins against a
+real payload plus a row for every star level you actually own. It is
 negative-tested: corrupting a `gameId`, a rank name or an XP threshold makes it
 fail.
 
@@ -212,5 +249,6 @@ row from Codex's identically-named field.
 - `eventCampaign6` appears in player progress but not in Codex battle data, so
   it has no node-level detail.
 - 36 of 1127 farming references point at event nodes absent from Codex.
-- `progressionRequirements` (shards/orbs per star level) is declared but not yet
-  populated — the data exists in Codex `unitlevel` / `orbpromotionrequirement`.
+- Star level 3 has an orb cost but no published shard cost: Codex's `unitlevel`
+  table skips that index entirely. It is reported in
+  `stats.progressionGaps`.

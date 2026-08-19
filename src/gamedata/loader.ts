@@ -14,8 +14,12 @@ import { normalize } from './normalize.js';
 import {
   fetchCodexBattleData,
   fetchCodexCampaignConfigs,
+  fetchCodexOrbPromotionRequirements,
+  fetchCodexUnitLevels,
   type RawCodexBattleData,
   type RawCodexCampaignConfigs,
+  type RawCodexOrbPromotionRequirements,
+  type RawCodexUnitLevels,
 } from './sources/codex.js';
 import { fetchGameInfo, type RawGameInfo } from './sources/gameinfo.js';
 import type { GameDatabase } from './types.js';
@@ -34,8 +38,9 @@ export interface LoadOptions {
   /** Skip the cache and refetch. */
   refresh?: boolean;
   /**
-   * Include Codex battle data (per-node enemy compositions and drop rates).
-   * Defaults to `true`; set `false` to build from `gameInfo.json` alone.
+   * Include the Codex-sourced sections: per-node enemy compositions, campaign
+   * drop rates, and the star-progression table. Defaults to `true`; set `false`
+   * to build from `gameInfo.json` alone.
    */
   includeBattleData?: boolean;
   signal?: AbortSignal;
@@ -97,14 +102,26 @@ export async function loadGameDatabase(options: LoadOptions = {}): Promise<GameD
 
   let codexBattleData: RawCodexBattleData | undefined;
   let codexCampaignConfigs: RawCodexCampaignConfigs | undefined;
+  let codexUnitLevels: RawCodexUnitLevels | undefined;
+  let codexOrbPromotions: RawCodexOrbPromotionRequirements | undefined;
   if (options.includeBattleData !== false) {
-    [codexBattleData, codexCampaignConfigs] = await Promise.all([
-      fetchCodexBattleData(fetchOptions).catch(() => undefined),
-      fetchCodexCampaignConfigs(fetchOptions).catch(() => undefined),
-    ]);
+    // Each section is independent: one failing endpoint must not cost the rest.
+    [codexBattleData, codexCampaignConfigs, codexUnitLevels, codexOrbPromotions] =
+      await Promise.all([
+        fetchCodexBattleData(fetchOptions).catch(() => undefined),
+        fetchCodexCampaignConfigs(fetchOptions).catch(() => undefined),
+        fetchCodexUnitLevels(fetchOptions).catch(() => undefined),
+        fetchCodexOrbPromotionRequirements(fetchOptions).catch(() => undefined),
+      ]);
   }
 
-  const database = normalize({ gameInfo, codexBattleData, codexCampaignConfigs });
+  const database = normalize({
+    gameInfo,
+    codexBattleData,
+    codexCampaignConfigs,
+    codexUnitLevels,
+    codexOrbPromotions,
+  });
   if (cachePath) await writeCache(cachePath, database);
   return database;
 }

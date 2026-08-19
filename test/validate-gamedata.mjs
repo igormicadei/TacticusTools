@@ -7,8 +7,8 @@
  *   node test/validate-gamedata.mjs --player p.json     # also check joins
  *   node test/validate-gamedata.mjs --raw <dir>         # build from saved raw files
  *
- * With --raw, <dir> must contain gameInfo.json, and optionally
- * battledata.json and campaignconfig.json.
+ * With --raw, <dir> must contain gameInfo.json, and optionally battledata.json,
+ * campaignconfig.json, unitlevel.json and orbpromotion.json.
  */
 
 import { readFileSync, existsSync } from 'node:fs';
@@ -35,6 +35,12 @@ const db = rawDir
         : undefined,
       codexCampaignConfigs: existsSync(join(rawDir, 'campaignconfig.json'))
         ? read(join(rawDir, 'campaignconfig.json'))
+        : undefined,
+      codexUnitLevels: existsSync(join(rawDir, 'unitlevel.json'))
+        ? read(join(rawDir, 'unitlevel.json'))
+        : undefined,
+      codexOrbPromotions: existsSync(join(rawDir, 'orbpromotion.json'))
+        ? read(join(rawDir, 'orbpromotion.json'))
         : undefined,
     })
   : await loadGameDatabase();
@@ -95,6 +101,21 @@ for (const e of enemies) {
   }
 }
 
+/* ---- star progression ---------------------------------------------------- */
+const prog = db.progressionRequirements;
+console.log(`progression : ${prog.length} star levels, ${db.stats.progressionGaps.length} without shard data, ${db.stats.progressionConflicts.length} orb conflicts`);
+const seenIdx = new Set();
+for (const r of prog) {
+  if (seenIdx.has(r.progressionIndex)) note(`progression: duplicate index ${r.progressionIndex}`);
+  seenIdx.add(r.progressionIndex);
+  if (!int(r.rarity) || !int(r.orbRarity)) note(`progression ${r.progressionIndex}: non-integer rarity`);
+  if (r.shards !== undefined && r.shardType === undefined) note(`progression ${r.progressionIndex}: shards without shardType`);
+  if (r.shardType === 'mythic' && r.rarity !== 5) note(`progression ${r.progressionIndex}: mythic shardType on non-mythic tier`);
+}
+for (let i = 1; i < prog.length; i += 1) {
+  if (prog[i].progressionIndex <= prog[i - 1].progressionIndex) note('progression: not sorted ascending');
+}
+
 /* ---- optional: joins against a real player payload ----------------------- */
 const playerPath = flag('--player');
 if (playerPath) {
@@ -121,6 +142,12 @@ if (playerPath) {
     else { xpBad += 1; note(`xp: ${u.id} lvl ${u.xpLevel} xp ${u.xp} outside [${cur.totalXp}, ${next.totalXp})`); }
   }
   console.log(`xp table    : ${xpOk}/${xpOk + xpBad} units consistent`);
+
+  // Every owned unit's current star level must exist in the progression table.
+  const progIdx = new Set(prog.map((r) => r.progressionIndex));
+  const missingProg = [...new Set(p.units.map((u) => u.progressionIndex))].filter((i) => i > 0 && !progIdx.has(i));
+  console.log(`progression : covers ${[...new Set(p.units.map((u) => u.progressionIndex))].length - missingProg.length}/${[...new Set(p.units.map((u) => u.progressionIndex))].length} owned star levels`);
+  if (missingProg.length) note(`progression: no row for owned star levels ${missingProg.join(', ')}`);
 
   const sample = p.units[0];
   const def = db.units[sample.id];

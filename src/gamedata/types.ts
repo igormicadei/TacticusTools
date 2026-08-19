@@ -161,14 +161,46 @@ export interface XpBookDefinition {
   gold: number;
 }
 
-/** Shards and orbs required to reach a given star level. */
+/**
+ * Which shard currency a star promotion consumes. The player API tracks the two
+ * separately as `Unit.shards` and `Unit.mythicShards`.
+ */
+export type ShardType = 'regular' | 'mythic';
+
+/**
+ * Shards and orbs required to reach one star level, i.e. to go from
+ * `progressionIndex - 1` to `progressionIndex`.
+ *
+ * Merged from two Codex tables that disagree in places:
+ * - `orbpromotionrequirement` is authoritative for orbs. It is self-consistent
+ *   and covers every promotion threshold.
+ * - `unitlevel` is the only source of shard counts. Its orb column is ignored
+ *   entirely: it agrees with the orb table at nine indices, is zero on several
+ *   rows that do require orbs, and at index 5 reports a requirement the orb
+ *   table places at index 6 — so consulting it can only introduce phantom
+ *   costs. Indices where the two disagree set
+ *   {@link ProgressionRequirement.orbsDisputed}.
+ *
+ * Costs are per step, not cumulative: reaching index 15 from 13 needs
+ * `shards(14) + shards(15)`.
+ */
 export interface ProgressionRequirement {
   /** Star level, matching `Unit.progressionIndex` in the player API. */
   progressionIndex: number;
-  rank?: Rank;
-  shards: number;
-  orbs: number;
+  /** Rarity tier at this star level. */
+  rarity?: Rarity;
+  /** Shards consumed. Absent when no source publishes a value. */
+  shards?: number;
+  /** Which shard currency {@link ProgressionRequirement.shards} refers to. */
+  shardType?: ShardType;
+  /** Orbs consumed. Absent when this level needs none. */
+  orbs?: number;
   orbRarity?: Rarity;
+  /**
+   * True when `unitlevel`'s orb column disagreed with the orb table at this
+   * level. The orb table's value is always the one used.
+   */
+  orbsDisputed?: boolean;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -303,6 +335,10 @@ export interface GameDatabaseStats {
   unresolvedNpcIds: string[];
   /** Battle references that pointed at an unknown node. */
   unresolvedBattleRefs: string[];
+  /** Star levels with no published shard cost. */
+  progressionGaps: number[];
+  /** Star levels where the two orb sources disagreed. */
+  progressionConflicts: number[];
 }
 
 export interface GameDatabase {

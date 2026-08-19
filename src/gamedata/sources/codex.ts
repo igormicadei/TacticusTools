@@ -54,6 +54,42 @@ export interface RawCodexCampaignConfig {
   } | null;
 }
 
+/** A row of Codex's `unitlevel` table: shards per star level. */
+export interface RawCodexUnitLevel {
+  /** Rarity tier name at this star level, e.g. `"UnCommon"`. */
+  level: string;
+  /**
+   * Star level. Despite the name this is the API's `progressionIndex`, not
+   * `Unit.rank` — shards and orbs drive ascension, while rank-up consumes
+   * upgrade materials from `heroes[x].ranks`.
+   */
+  rank: number;
+  shards: number;
+  /**
+   * Orb count. Unreliable: zero on several rows that do require orbs, and the
+   * accompanying `orbType` names the tier being promoted *into* rather than the
+   * tier at this row. {@link RawCodexOrbPromotionRequirement} is preferred.
+   */
+  orbs: number;
+  orbType: string;
+}
+
+/** A row of Codex's `orbpromotionrequirement` table: orbs per star level. */
+export interface RawCodexOrbPromotionRequirement {
+  /** Star level, i.e. the API's `progressionIndex`. */
+  level: number;
+  orbType: string;
+  qty: number;
+}
+
+export interface RawCodexUnitLevels {
+  unitLevels?: RawCodexUnitLevel[] | null;
+}
+
+export interface RawCodexOrbPromotionRequirements {
+  requirements?: RawCodexOrbPromotionRequirement[] | null;
+}
+
 export interface RawCodexBattleData {
   battles?: RawCodexBattle[] | null;
 }
@@ -84,3 +120,11 @@ export const fetchCodexBattleData = (
 export const fetchCodexCampaignConfigs = (
   options: { base?: string; signal?: AbortSignal; fetch?: typeof globalThis.fetch } = {},
 ): Promise<RawCodexCampaignConfigs> => get('/campaignconfig/all', options);
+
+export const fetchCodexUnitLevels = (
+  options: { base?: string; signal?: AbortSignal; fetch?: typeof globalThis.fetch } = {},
+): Promise<RawCodexUnitLevels> => get('/unitlevel/all', options);
+
+export const fetchCodexOrbPromotionRequirements = (
+  options: { base?: string; signal?: AbortSignal; fetch?: typeof globalThis.fetch } = {},
+): Promise<RawCodexOrbPromotionRequirements> => get('/orbpromotionrequirement/all', options);

@@ -10,6 +10,7 @@
  */
 
 import {
+  Rarity,
   parseCampaignType,
   parseGrandAlliance,
   parseRank,
@@ -28,6 +29,8 @@ import {
 import type {
   RawCodexBattleData,
   RawCodexCampaignConfigs,
+  RawCodexOrbPromotionRequirements,
+  RawCodexUnitLevels,
 } from './sources/codex.js';
 import type {
   RawGameInfo,
@@ -47,6 +50,7 @@ import type {
   NpcStatRow,
   UnitDefinition,
   UnitRankStats,
+  ProgressionRequirement,
   UnitRankUpgrade,
   UpgradeDefinition,
   XpBookDefinition,
@@ -187,6 +191,110 @@ function normalizeDropRates(raw: RawCodexCampaignConfigs['configs']): Map<number
 }
 
 /* -------------------------------------------------------------------------- */
+/* Star progression                                                           */
+/* -------------------------------------------------------------------------- */
+
+interface ProgressionResult {
+  requirements: ProgressionRequirement[];
+  gaps: number[];
+  conflicts: number[];
+}
+
+/**
+ * Merge the two Codex progression tables into one per-star-level table.
+ *
+ * See {@link ProgressionRequirement} for why orbs come from one source and
+ * shards from the other. Levels present in either source produce a row, so a
+ * level the shard table skips still appears — with `shards` absent and its
+ * index reported in {@link GameDatabaseStats.progressionGaps}. Indices where
+ * `unitlevel`'s orb column contradicts the orb table are reported in
+ * {@link GameDatabaseStats.progressionConflicts}; the orb table always wins.
+ */
+function normalizeProgression(
+  unitLevels: RawCodexUnitLevels | undefined,
+  orbPromotions: RawCodexOrbPromotionRequirements | undefined,
+): ProgressionResult {
+  const shardRows = new Map<number, { shards: number; rarity: Rarity | undefined; orbs: number }>();
+  for (const row of unitLevels?.unitLevels ?? []) {
+    const index = nn(row.rank);
+    if (index === undefined) continue;
+    // Duplicated rows exist and repeat the same values; first wins.
+    if (shardRows.has(index)) continue;
+    shardRows.set(index, {
+      shards: nn(row.shards) ?? 0,
+      rarity: parseRarity(row.level),
+      orbs: nn(row.orbs) ?? 0,
+    });
+  }
+
+  const orbRows = new Map<number, { orbs: number; rarity: Rarity | undefined }>();
+  for (const row of orbPromotions?.requirements ?? []) {
+    const index = nn(row.level);
+    if (index === undefined) continue;
+    orbRows.set(index, { orbs: nn(row.qty) ?? 0, rarity: parseRarity(row.orbType) });
+  }
+
+  const indices = [...new Set([...shardRows.keys(), ...orbRows.keys()])].sort((a, b) => a - b);
+  const requirements: ProgressionRequirement[] = [];
+  const gaps: number[] = [];
+  const conflicts: number[] = [];
+
+  for (const progressionIndex of indices) {
+    const shardRow = shardRows.get(progressionIndex);
+    const orbRow = orbRows.get(progressionIndex);
+
+    if (!shardRow) gaps.push(progressionIndex);
+
+    // Orbs come exclusively from the orb table. `unitlevel`'s orb column agrees
+    // with it at nine indices and never supplies a requirement the orb table
+    // lacks -- except at index 5, where it reports a requirement the dedicated
+    // table places at index 6. Falling back to it therefore only ever adds a
+    // phantom cost, so it is recorded as a disagreement and otherwise ignored.
+    const disputed =
+      shardRow !== undefined && shardRow.orbs !== (orbRow?.orbs ?? 0);
+    if (disputed) conflicts.push(progressionIndex);
+
+    const orbs = orbRow?.orbs;
+    const rarity = shardRow?.rarity ?? inferProgressionRarity(progressionIndex, shardRows);
+
+    requirements.push(
+      compact({
+        progressionIndex,
+        rarity,
+        shards: shardRow?.shards,
+        shardType:
+          shardRow === undefined
+            ? undefined
+            : rarity === Rarity.Mythic
+              ? ('mythic' as const)
+              : ('regular' as const),
+        orbs,
+        orbRarity: orbRow?.rarity,
+        orbsDisputed: disputed ? true : undefined,
+      }),
+    );
+  }
+
+  return { requirements, gaps, conflicts };
+}
+
+/**
+ * Rarity for a star level the shard table omits, taken from its neighbours.
+ * Star levels run in contiguous rarity bands, so a missing row sits in the same
+ * band as the next level that is present.
+ */
+function inferProgressionRarity(
+  index: number,
+  rows: Map<number, { rarity: Rarity | undefined }>,
+): Rarity | undefined {
+  for (let probe = index + 1; probe <= index + 3; probe += 1) {
+    const rarity = rows.get(probe)?.rarity;
+    if (rarity !== undefined) return rarity;
+  }
+  return undefined;
+}
+
+/* -------------------------------------------------------------------------- */
 /* Entry point                                                                */
 /* -------------------------------------------------------------------------- */
 
@@ -194,6 +302,8 @@ export interface NormalizeInput {
   gameInfo: RawGameInfo;
   codexBattleData?: RawCodexBattleData | undefined;
   codexCampaignConfigs?: RawCodexCampaignConfigs | undefined;
+  codexUnitLevels?: RawCodexUnitLevels | undefined;
+  codexOrbPromotions?: RawCodexOrbPromotionRequirements | undefined;
 }
 
 export function normalize(input: NormalizeInput): GameDatabase {
@@ -318,6 +428,9 @@ export function normalize(input: NormalizeInput): GameDatabase {
     }),
   );
 
+  /* ---- star progression ------------------------------------------------ */
+  const progression = normalizeProgression(input.codexUnitLevels, input.codexOrbPromotions);
+
   /* ---- campaigns and battles ------------------------------------------ */
   const dropRatesByType = normalizeDropRates(input.codexCampaignConfigs?.configs);
   const campaigns: Record<string, CampaignDefinition> = {};
@@ -422,7 +535,7 @@ export function normalize(input: NormalizeInput): GameDatabase {
     xpLevels,
     xpBooks,
     abilityUpgradeCosts,
-    progressionRequirements: [],
+    progressionRequirements: progression.requirements,
     stats: {
       units: Object.keys(units).length,
       upgrades: Object.keys(upgrades).length,
@@ -435,6 +548,8 @@ export function normalize(input: NormalizeInput): GameDatabase {
       enemiesTotal,
       unresolvedNpcIds: [...unresolvedNpcIds].sort(),
       unresolvedBattleRefs: [...unresolvedBattleRefs].sort(),
+      progressionGaps: progression.gaps,
+      progressionConflicts: progression.conflicts,
     },
   };
 }
