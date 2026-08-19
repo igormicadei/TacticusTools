@@ -25,9 +25,12 @@ cd "$REPO_ROOT"
 REPO_NAME="$(basename -s .git "$(git config --get remote.origin.url)")"
 BASE_PATH="${BASE_PATH:-/$REPO_NAME/}"
 
-echo "==> building with BASE_PATH=$BASE_PATH"
+# A relay baked in here means a fresh phone browser needs only the API key.
+DEFAULT_RELAY="${VITE_DEFAULT_RELAY:-}"
+
+echo "==> building with BASE_PATH=$BASE_PATH${DEFAULT_RELAY:+ and relay $DEFAULT_RELAY}"
 rm -rf ui/dist
-BASE_PATH="$BASE_PATH" npm --prefix ui run build
+BASE_PATH="$BASE_PATH" VITE_DEFAULT_RELAY="$DEFAULT_RELAY" npm --prefix ui run build
 
 STAGE="$(mktemp -d)"
 INDEX="$(mktemp -u)"

@@ -10,6 +10,9 @@ import { defineConfig } from 'vite';
  *
  * `BASE_PATH` sets the deploy sub-path (GitHub Pages serves project sites from
  * `/<repo>/`). Default `/` keeps `npm run dev` and root deploys working.
+ *
+ * `VITE_DEFAULT_RELAY` bakes in a relay URL so a fresh browser needs only the
+ * API key. Anything the user saves themselves takes precedence.
  */
 export default defineConfig({
   base: process.env['BASE_PATH'] ?? '/',

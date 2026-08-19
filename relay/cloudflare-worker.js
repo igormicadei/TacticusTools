@@ -1,5 +1,6 @@
 /**
- * Minimal CORS relay for the Tacticus API.
+ * CORS relay for the Tacticus API — paste this whole file into a Cloudflare
+ * Worker.
  *
  * The API sends no CORS headers and answers a browser preflight with
  * `403 Invalid CORS request`, so a page cannot call it directly — no origin is
@@ -10,13 +11,16 @@
  * It stores nothing. The key arrives on each request from the caller's browser
  * and is passed straight through.
  *
- * Deploy (free tier is ample — this is a handful of requests per day):
- *   npm create cloudflare@latest -- tacticus-relay
- *   # replace src/index.js with this file, then:
- *   npx wrangler deploy
+ * Deploy from the Cloudflare dashboard (no tooling, works from a phone):
+ * Workers & Pages -> Create -> Start from Hello World -> Deploy, then Edit code,
+ * replace everything with this file, and Deploy again.
  *
- * Then set ALLOWED_ORIGINS below, or as a Worker variable, so only your own
- * page can use it.
+ * Open the Worker's URL in a browser afterwards: it answers with a small JSON
+ * health object, which confirms it is live.
+ *
+ * ALLOWED_ORIGINS below decides who may use it. It can also be set as a Worker
+ * variable (Settings -> Variables) as a comma-separated list, which overrides
+ * this list without editing code.
  */
 
 /** Origins permitted to use this relay. `*` allows any — prefer naming yours. */
@@ -31,11 +35,15 @@ const API_ORIGIN = 'https://api.tacticusgame.com';
 /** Only these paths are proxied, so the relay cannot be used against anything else. */
 const ALLOWED_PATHS = /^\/api\/v1\/(player|guild|guildRaid(\/\d+)?)$/;
 
-function corsHeaders(origin, env) {
-  const allowed = (env?.ALLOWED_ORIGINS ?? ALLOWED_ORIGINS.join(','))
+function allowedOrigins(env) {
+  return (env?.ALLOWED_ORIGINS ?? ALLOWED_ORIGINS.join(','))
     .split(',')
     .map((o) => o.trim())
     .filter(Boolean);
+}
+
+function corsHeaders(origin, env) {
+  const allowed = allowedOrigins(env);
   const allow = allowed.includes('*')
     ? '*'
     : allowed.includes(origin)
@@ -51,12 +59,45 @@ function corsHeaders(origin, env) {
   };
 }
 
+const json = (body, status, headers = {}) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json', ...headers },
+  });
+
 export default {
   async fetch(request, env) {
+    const url = new URL(request.url);
+
+    // A health check, so the Worker URL can be opened in a browser to confirm
+    // the deploy worked before wiring it into the app.
+    if (url.pathname === '/' || url.pathname === '/health') {
+      return json(
+        {
+          ok: true,
+          relay: 'tacticus',
+          usage: 'GET /api/v1/player with an X-API-KEY header',
+          allowedOrigins: allowedOrigins(env),
+        },
+        200,
+        { 'Access-Control-Allow-Origin': '*' },
+      );
+    }
+
     const origin = request.headers.get('Origin') ?? '';
     const cors = corsHeaders(origin, env);
     if (!cors) {
-      return new Response('Origin not allowed by this relay.', { status: 403 });
+      // Answered with a wildcard so the page can actually read the reason
+      // rather than seeing an opaque network failure. Nothing is proxied.
+      return json(
+        {
+          type: 'ORIGIN_NOT_ALLOWED',
+          detail: `This relay does not allow ${origin || 'requests without an Origin'}.`,
+          allowedOrigins: allowedOrigins(env),
+        },
+        403,
+        { 'Access-Control-Allow-Origin': '*' },
+      );
     }
 
     if (request.method === 'OPTIONS') {
@@ -66,7 +107,6 @@ export default {
       return new Response('Only GET is proxied.', { status: 405, headers: cors });
     }
 
-    const url = new URL(request.url);
     if (!ALLOWED_PATHS.test(url.pathname)) {
       return new Response(
         JSON.stringify({ type: 'NOT_FOUND', detail: 'Path not proxied by this relay.' }),

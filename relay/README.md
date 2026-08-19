@@ -43,20 +43,45 @@ behaviour here has shifted between versions, though. If your browser refuses,
 run the UI locally too — `npm run ui:dev` — where both sides are local and the
 question does not arise.
 
-## Option 2 — deploy the worker
+## Option 2 — a Cloudflare Worker (no tooling, works from a phone)
+
+The dashboard is entirely web-based, so this needs no terminal. Free tier is far
+more than enough — this is a handful of requests a day.
+
+1. Sign up or log in at **dash.cloudflare.com**.
+2. **Compute (Workers)** → **Workers & Pages** → **Create** → **Start with Hello
+   World!** → **Deploy**. Give it a name you will recognise, e.g.
+   `tacticus-relay`.
+3. Open the Worker → **Edit code**. Select everything in the editor, delete it,
+   and paste the whole of [`cloudflare-worker.js`](cloudflare-worker.js).
+   → **Deploy**.
+4. Open the Worker's URL (`https://<name>.<your-subdomain>.workers.dev`) in the
+   browser. It should answer with a small JSON health object listing the origins
+   it accepts. That confirms the deploy worked.
+5. Paste that URL into the app's **Player data** page next to your key.
+
+If step 4 lists origins that do not include the site you are using, either edit
+`ALLOWED_ORIGINS` at the top of the worker, or add a Worker variable named
+`ALLOWED_ORIGINS` (Settings → Variables) with a comma-separated list — the
+variable overrides the code without editing it. The app surfaces the relay's own
+refusal message, so a mismatch says exactly which origin was rejected rather
+than failing silently.
+
+The worker forwards only `/api/v1/player`, `/guild` and `/guildRaid`, restricts
+callers by origin, and stores nothing — your key passes through on each request
+and is never written down. Do not use a public CORS proxy for this: anything you
+point the app at can read every request it forwards.
+
+### Making it the default
+
+Once the Worker URL exists it can be baked into the build so a fresh browser
+needs only the API key:
 
 ```bash
-npm create cloudflare@latest -- tacticus-relay
-# replace src/index.js with cloudflare-worker.js
-npx wrangler deploy
+VITE_DEFAULT_RELAY=https://tacticus-relay.example.workers.dev npm run ui:deploy
 ```
 
-Edit `ALLOWED_ORIGINS` first so only your page can use it. The free tier is far
-more than enough — this is a few requests a day. Then paste the Worker URL into
-the **Player data** page.
-
-Use this if you want the deployed page to work without starting anything, and
-accept that the key transits a service you host.
+A relay saved in the browser always takes precedence over the baked-in one.
 
 ## What it can and cannot see
 

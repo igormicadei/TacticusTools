@@ -27,6 +27,17 @@ export const PLAYER_PATH = '/api/v1/player';
 /** Direct API origin. Reachable from Node or a relay, never from a browser page. */
 export const TACTICUS_API_ORIGIN = 'https://api.tacticusgame.com';
 
+/**
+ * Relay used when the user has not set one.
+ *
+ * Baked in at build time from `VITE_DEFAULT_RELAY` so a fresh browser — a phone,
+ * a cleared cache — needs only the API key. An explicitly saved relay always
+ * wins over this.
+ */
+export const DEFAULT_RELAY_URL = (import.meta.env['VITE_DEFAULT_RELAY'] ?? '')
+  .trim()
+  .replace(/\/+$/, '');
+
 export interface Credentials {
   apiKey: string | undefined;
   /** Base URL of a relay, e.g. `https://tacticus-relay.someone.workers.dev`. */
@@ -59,7 +70,10 @@ const write = (key: string, value: string | undefined): void => {
 
 export const storage = {
   readCredentials(): Credentials {
-    return { apiKey: read(KEYS.apiKey), relayUrl: read(KEYS.relay) };
+    return {
+      apiKey: read(KEYS.apiKey),
+      relayUrl: read(KEYS.relay) ?? (DEFAULT_RELAY_URL || undefined),
+    };
   },
   writeCredentials({ apiKey, relayUrl }: Credentials): void {
     write(KEYS.apiKey, apiKey?.trim());
@@ -169,8 +183,17 @@ export async function fetchPlayer(credentials: Credentials): Promise<PlayerRespo
 
   if (!response.ok) {
     const body = (await response.json().catch(() => undefined)) as
-      | { type?: string }
+      | { type?: string; detail?: string }
       | undefined;
+
+    // The relay explains its own refusals; pass that through rather than
+    // reporting a generic failure the user cannot act on.
+    if (body?.type === 'ORIGIN_NOT_ALLOWED') {
+      throw new PlayerFetchError(
+        body.detail ?? 'The relay refused this site. Add this origin to its allowed list.',
+        response.status,
+      );
+    }
     if (response.status === 403) {
       throw new PlayerFetchError(
         'The API rejected that key (403). Check it, and that it has the Player scope.',
@@ -178,7 +201,10 @@ export async function fetchPlayer(credentials: Credentials): Promise<PlayerRespo
       );
     }
     throw new PlayerFetchError(
-      `Request failed: HTTP ${response.status}${body?.type ? ` (${body.type})` : ''}.`,
+      `Request failed: HTTP ${response.status}` +
+        (body?.type ? ` (${body.type})` : '') +
+        (body?.detail ? ` — ${body.detail}` : '') +
+        '.',
       response.status,
     );
   }

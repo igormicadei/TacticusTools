@@ -43,4 +43,24 @@ await show('GET /guildRaid/68 (allowed path)', await call('/api/v1/guildRaid/68'
 await show('GET /etc/passwd (not proxied)', await call('/etc/passwd', { key:'good' }));
 await show('POST (not proxied)', await call('/api/v1/player', { method:'POST', key:'good' }));
 console.log('\n  upstream actually called:', JSON.stringify(lastUpstream));
+
+console.log('\n=== phone-setup helpers ===');
+const health = await worker.fetch(new Request('https://relay.example.dev/'), {});
+console.log('  GET /            ', health.status, await health.text());
+const denied = await worker.fetch(
+  new Request('https://relay.example.dev/api/v1/player', {
+    headers: { Origin: 'https://someone-else.example', 'X-API-KEY': 'good' },
+  }),
+  {},
+);
+console.log('  disallowed origin', denied.status, 'ACAO=' + denied.headers.get('Access-Control-Allow-Origin'));
+console.log('   body:', (await denied.text()).slice(0, 150));
+const viaVar = await worker.fetch(
+  new Request('https://relay.example.dev/api/v1/player', {
+    headers: { Origin: 'https://custom.example', 'X-API-KEY': 'good' },
+  }),
+  { ALLOWED_ORIGINS: 'https://custom.example' },
+);
+console.log('  ALLOWED_ORIGINS variable override ->', viaVar.status);
+
 globalThis.fetch = realFetch;
