@@ -11,9 +11,13 @@
  * It stores nothing. The key arrives on each request from the caller's browser
  * and is passed straight through.
  *
- * Deploy from the Cloudflare dashboard (no tooling, works from a phone):
- * Workers & Pages -> Create -> Start from Hello World -> Deploy, then Edit code,
- * replace everything with this file, and Deploy again.
+ * Deploy with no tooling, from a phone if need be: paste this whole file into
+ * workers.cloudflare.com/playground and hit Deploy. A Worker is executed code,
+ * not a static asset — uploading this file to a static-hosting flow would serve
+ * it as text instead of running it.
+ *
+ * It uses only Request/Response and tolerates being called without `env`, so it
+ * also runs unchanged on Deno Deploy and similar runtimes.
  *
  * Open the Worker's URL in a browser afterwards: it answers with a small JSON
  * health object, which confirms it is live.

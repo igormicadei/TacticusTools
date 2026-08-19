@@ -45,37 +45,55 @@ question does not arise.
 
 ## Option 2 — a Cloudflare Worker (no tooling, works from a phone)
 
-The dashboard is entirely web-based, so this needs no terminal. Free tier is far
-more than enough — this is a handful of requests a day.
+**A Worker is executed code, not a static file.** If the dashboard is offering to
+upload files or connect a repository for static assets, that is the Pages flow —
+uploading `cloudflare-worker.js` there would serve it as text rather than run it.
+Look for the Worker path instead.
 
-1. Sign up or log in at **dash.cloudflare.com**.
-2. **Compute (Workers)** → **Workers & Pages** → **Create** → **Start with Hello
-   World!** → **Deploy**. Give it a name you will recognise, e.g.
-   `tacticus-relay`.
-3. Open the Worker → **Edit code**. Select everything in the editor, delete it,
-   and paste the whole of [`cloudflare-worker.js`](cloudflare-worker.js).
-   → **Deploy**.
-4. Open the Worker's URL (`https://<name>.<your-subdomain>.workers.dev`) in the
-   browser. It should answer with a small JSON health object listing the origins
-   it accepts. That confirms the deploy worked.
-5. Paste that URL into the app's **Player data** page next to your key.
+### Easiest on a phone: the Playground
 
-If step 4 lists origins that do not include the site you are using, either edit
-`ALLOWED_ORIGINS` at the top of the worker, or add a Worker variable named
-`ALLOWED_ORIGINS` (Settings → Variables) with a comma-separated list — the
-variable overrides the code without editing it. The app surfaces the relay's own
-refusal message, so a mismatch says exactly which origin was rejected rather
-than failing silently.
+1. Open **workers.cloudflare.com/playground**.
+2. Select everything in the editor, delete it, paste the whole of
+   [`cloudflare-worker.js`](cloudflare-worker.js).
+3. **Deploy** (log in when prompted) and give it a name.
+
+The Playground is a plain code editor, so it behaves on a small screen.
+
+### Or from the dashboard
+
+**Compute (Workers)** → **Workers & Pages** → **Create** → the **Workers** tab →
+**Start with Hello World!** → **Deploy**, then **Edit code**, paste, **Deploy**
+again. Direct link: `dash.cloudflare.com/?to=/:account/workers/services/new`.
+
+### Confirm it works
+
+Open the Worker's URL (`https://<name>.<your-subdomain>.workers.dev`) in your
+browser. It answers with a small JSON health object listing the origins it
+accepts — that is the deploy confirmed, with no tooling. Then paste that URL into
+the app's **Player data** page next to your key.
+
+If the listed origins do not include the site you are using, either edit
+`ALLOWED_ORIGINS` at the top of the worker or add a Worker variable named
+`ALLOWED_ORIGINS` (Settings → Variables) as a comma-separated list; the variable
+overrides the code. The app displays the relay's own refusal, so a mismatch names
+the rejected origin rather than failing silently.
+
+## Option 3 — anywhere else that runs Web-standard handlers
+
+`cloudflare-worker.js` uses only `Request`/`Response` and a default export, and
+it tolerates being called without a `env` argument, so it runs unchanged on Deno
+Deploy and similar. Deno Deploy also has a browser playground, which is another
+phone-friendly route: paste the file, deploy, use the URL it gives you.
 
 The worker forwards only `/api/v1/player`, `/guild` and `/guildRaid`, restricts
 callers by origin, and stores nothing — your key passes through on each request
-and is never written down. Do not use a public CORS proxy for this: anything you
-point the app at can read every request it forwards.
+and is never written down. Do not point the app at a public CORS proxy: anything
+it is aimed at can read every request it forwards.
 
 ### Making it the default
 
-Once the Worker URL exists it can be baked into the build so a fresh browser
-needs only the API key:
+Once the URL exists it can be baked into the build so a fresh browser needs only
+the API key:
 
 ```bash
 VITE_DEFAULT_RELAY=https://tacticus-relay.example.workers.dev npm run ui:deploy
