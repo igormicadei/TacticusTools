@@ -68,6 +68,25 @@ detail page opens, and fails on any console error.
 
 ## Deploying
 
-`.github/workflows/deploy-ui.yml` builds and publishes to Pages. Enable it under
-**Settings → Pages → Source: GitHub Actions**. `BASE_PATH` is set to the repo
-name for project-site sub-paths.
+Two routes, pick one.
+
+**Branch deploy** (`gh-pages`, no Actions needed):
+
+```bash
+npm run ui:deploy          # build, commit to gh-pages, push
+npm run ui:deploy -- --no-push
+```
+
+`scripts/deploy-pages.sh` builds with `BASE_PATH=/<repo>/`, stages the output,
+and commits it to `gh-pages` using a temporary index — your working tree and
+checked-out branch are never touched. The first commit is an orphan; later ones
+parent onto the previous deploy, so pushes fast-forward. Sourcemaps are dropped
+and `.nojekyll` is added so Pages does not run the output through Jekyll.
+
+Select it under **Settings → Pages → Source: Deploy from a branch → `gh-pages` /
+(root)**.
+
+**Actions deploy**: `.github/workflows/deploy-ui.yml` does the same on push to
+`main`. Enable it under **Settings → Pages → Source: GitHub Actions**. The two
+are alternatives — choosing a source in the Pages settings picks which one is
+live.
