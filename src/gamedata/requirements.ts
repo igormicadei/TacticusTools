@@ -524,6 +524,29 @@ export function isUnfarmable(
   return isBlocked(item, db, unlockedNodes(player), new Map());
 }
 
+/**
+ * True when there is no reachable source for this item at all, whatever the
+ * player currently holds.
+ *
+ * {@link isUnfarmable} asks whether the *shortfall* can be reached, so an item
+ * fully covered by stock is not flagged. This asks the other question: once
+ * that stock is spent, can any more be had? A material with none — no unlocked
+ * node, or a recipe that bottoms out in one — is worth spending carefully even
+ * while the cupboard is full.
+ */
+export function isUnobtainable(
+  item: Pick<ItemRequirement, 'kind' | 'key'>,
+  db: GameDatabase,
+  player: PlayerResponse,
+): boolean {
+  return isBlocked(
+    { kind: item.kind, key: item.key },
+    db,
+    unlockedNodes(player),
+    new Map(),
+  );
+}
+
 function isBlocked(
   item: {
     kind: RequirementKind;

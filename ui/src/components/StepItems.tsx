@@ -5,6 +5,7 @@ import {
   aggregate,
   allocateHoldings,
   isUnfarmable,
+  isUnobtainable,
   itemSource,
   nodeStatuses,
   ownedByKey,
@@ -140,6 +141,9 @@ function ItemRow({
   extra?: string | undefined;
 }) {
   const blocked = isUnfarmable(item, db, player);
+  // Covered by stock, but with no source to replace it: worth spending
+  // carefully, since there is nowhere to farm more.
+  const finite = !blocked && item.covered > 0 && isUnobtainable(item, db, player);
   const complete = item.missing === 0;
   const expanded = open === id;
 
@@ -177,6 +181,11 @@ function ItemRow({
           )}
         </span>
         {blocked && <span className="chip warn">Nothing unlocked</span>}
+        {finite && (
+          <span className="chip caution" title="You hold enough, but no unlocked source can replace what you spend.">
+            Stock only — cannot farm more
+          </span>
+        )}
         {extra && <span className="muted small">{extra}</span>}
       </button>
       {expanded && (
@@ -271,6 +280,7 @@ function ComponentRow({
   const item = { kind: 'upgrade' as const, ...component };
   const source = itemSource(item, db);
   const blocked = isUnfarmable(item, db, player);
+  const finite = !blocked && component.covered > 0 && isUnobtainable(item, db, player);
   const complete = component.missing === 0;
   const expanded = open === id;
 
@@ -288,6 +298,11 @@ function ComponentRow({
           )}
         </span>
         {blocked && <span className="chip warn">Nothing unlocked</span>}
+        {finite && (
+          <span className="chip caution" title="You hold enough, but no unlocked source can replace what you spend.">
+            Stock only — cannot farm more
+          </span>
+        )}
         {source.kind === 'craft' && <span className="muted small">crafted</span>}
       </button>
       {expanded &&

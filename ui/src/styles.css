@@ -230,6 +230,7 @@ table.steps tr:last-child td { border-bottom: none; }
 .item-row.complete .count { color: var(--status-owned); }
 .item-name { flex: 1; }
 .chip.warn { color: #e8a06a; border-color: #7a4a2a; }
+.chip.caution { color: #d8c46a; border-color: #6a5c2a; }
 .chip.ok-chip { color: var(--status-owned); border-color: color-mix(in srgb, var(--status-owned) 45%, transparent); }
 .item-row.applied .item-name { color: var(--text-dim); }
 .item-head.static:hover { background: none; }

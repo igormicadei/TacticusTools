@@ -20,6 +20,7 @@ import {
   itemSource,
   nodeStatuses,
   isUnfarmable,
+  isUnobtainable,
 } from '../dist/gamedata/index.js';
 
 const args = process.argv.slice(2);
@@ -127,6 +128,27 @@ for (const unit of player.units) {
         note(`${unit.name}: total for ${item.name} disagrees with its steps`);
       }
       if (item.applied && item.missing !== 0) note(`${unit.name}: ${item.name} is fitted but reported missing`);
+    }
+
+    // "Stock only" warns that what is in hand cannot be replaced, so it must
+    // only ever appear where there is genuinely no reachable source.
+    for (const item of totals) {
+      if (!isUnobtainable(item, db, playerResponse)) continue;
+      const source = itemSource(item, db);
+      if (source.kind === 'other') note(`${unit.name}: ${item.name} unobtainable but is not campaign-farmed`);
+      if (source.kind === 'farm' && nodeStatuses(source.nodes, playerResponse, db).some((n) => n.unlocked)) {
+        note(`${unit.name}: ${item.name} unobtainable but has an unlocked node`);
+      }
+    }
+
+    // The reverse must hold: nothing can be a wall for its shortfall while
+    // still having somewhere to come from. (Not the converse — a recipe with
+    // no farmable ingredient is still craftable from what is in hand, which is
+    // precisely what "stock only" warns about.)
+    for (const item of totals) {
+      if (isUnfarmable(item, db, playerResponse) && !isUnobtainable(item, db, playerResponse)) {
+        note(`${unit.name}: ${item.name} flagged blocked yet has a reachable source`);
+      }
     }
 
     // A blocked item must genuinely have no reachable source, and must still be
