@@ -14,10 +14,12 @@ import { normalize } from './normalize.js';
 import {
   fetchCodexBattleData,
   fetchCodexCampaignConfigs,
+  fetchCodexLevelProgression,
   fetchCodexOrbPromotionRequirements,
   fetchCodexUnitLevels,
   type RawCodexBattleData,
   type RawCodexCampaignConfigs,
+  type RawCodexLevelProgressions,
   type RawCodexOrbPromotionRequirements,
   type RawCodexUnitLevels,
 } from './sources/codex.js';
@@ -104,15 +106,22 @@ export async function loadGameDatabase(options: LoadOptions = {}): Promise<GameD
   let codexCampaignConfigs: RawCodexCampaignConfigs | undefined;
   let codexUnitLevels: RawCodexUnitLevels | undefined;
   let codexOrbPromotions: RawCodexOrbPromotionRequirements | undefined;
+  let codexLevelProgression: RawCodexLevelProgressions | undefined;
   if (options.includeBattleData !== false) {
     // Each section is independent: one failing endpoint must not cost the rest.
-    [codexBattleData, codexCampaignConfigs, codexUnitLevels, codexOrbPromotions] =
-      await Promise.all([
-        fetchCodexBattleData(fetchOptions).catch(() => undefined),
-        fetchCodexCampaignConfigs(fetchOptions).catch(() => undefined),
-        fetchCodexUnitLevels(fetchOptions).catch(() => undefined),
-        fetchCodexOrbPromotionRequirements(fetchOptions).catch(() => undefined),
-      ]);
+    [
+      codexBattleData,
+      codexCampaignConfigs,
+      codexUnitLevels,
+      codexOrbPromotions,
+      codexLevelProgression,
+    ] = await Promise.all([
+      fetchCodexBattleData(fetchOptions).catch(() => undefined),
+      fetchCodexCampaignConfigs(fetchOptions).catch(() => undefined),
+      fetchCodexUnitLevels(fetchOptions).catch(() => undefined),
+      fetchCodexOrbPromotionRequirements(fetchOptions).catch(() => undefined),
+      fetchCodexLevelProgression(fetchOptions).catch(() => undefined),
+    ]);
   }
 
   const database = normalize({
@@ -121,6 +130,7 @@ export async function loadGameDatabase(options: LoadOptions = {}): Promise<GameD
     codexCampaignConfigs,
     codexUnitLevels,
     codexOrbPromotions,
+    codexLevelProgression,
   });
   if (cachePath) await writeCache(cachePath, database);
   return database;

@@ -26,9 +26,11 @@ import {
   type UnitId,
   type UpgradeId,
 } from './ids.js';
+import { PROGRESSION_SHARD_CORRECTIONS } from './corrections.js';
 import type {
   RawCodexBattleData,
   RawCodexCampaignConfigs,
+  RawCodexLevelProgressions,
   RawCodexOrbPromotionRequirements,
   RawCodexUnitLevels,
 } from './sources/codex.js';
@@ -50,7 +52,9 @@ import type {
   NpcStatRow,
   UnitDefinition,
   UnitRankStats,
+  ProgressionKind,
   ProgressionRequirement,
+  RarityCap,
   UnitRankUpgrade,
   UpgradeDefinition,
   XpBookDefinition,
@@ -234,16 +238,28 @@ function normalizeProgression(
     orbRows.set(index, { orbs: nn(row.qty) ?? 0, rarity: parseRarity(row.orbType) });
   }
 
-  const indices = [...new Set([...shardRows.keys(), ...orbRows.keys()])].sort((a, b) => a - b);
+  const corrections = new Map(
+    PROGRESSION_SHARD_CORRECTIONS.map((c) => [c.progressionIndex, c.shards]),
+  );
+
+  const indices = [
+    ...new Set([...shardRows.keys(), ...orbRows.keys(), ...corrections.keys()]),
+  ].sort((a, b) => a - b);
   const requirements: ProgressionRequirement[] = [];
   const gaps: number[] = [];
   const conflicts: number[] = [];
+
+  // An ascension is a step whose rarity differs from the step before it; a star
+  // is added by every other step. Tracked across the loop since both depend on
+  // the previous row.
+  let previousRarity: Rarity | undefined;
+  let starLevel = 0;
 
   for (const progressionIndex of indices) {
     const shardRow = shardRows.get(progressionIndex);
     const orbRow = orbRows.get(progressionIndex);
 
-    if (!shardRow) gaps.push(progressionIndex);
+    if (!shardRow && !corrections.has(progressionIndex)) gaps.push(progressionIndex);
 
     // Orbs come exclusively from the orb table. `unitlevel`'s orb column agrees
     // with it at nine indices and never supplies a requirement the orb table
@@ -257,17 +273,40 @@ function normalizeProgression(
     const orbs = orbRow?.orbs;
     const rarity = shardRow?.rarity ?? inferProgressionRarity(progressionIndex, shardRows);
 
+    const kind: ProgressionKind | undefined =
+      previousRarity === undefined || rarity === undefined
+        ? progressionIndex === 0
+          ? 'promotion'
+          : undefined
+        : rarity === previousRarity
+          ? 'promotion'
+          : 'ascension';
+    if (progressionIndex > 0 && kind === 'promotion') starLevel += 1;
+    previousRarity = rarity ?? previousRarity;
+
+    // A correction supplies the value where the source is silent or wrong.
+    const corrected = corrections.get(progressionIndex);
+    const shards = corrected ?? shardRow?.shards;
+
     requirements.push(
       compact({
         progressionIndex,
         rarity,
-        shards: shardRow?.shards,
+        kind,
+        starLevel,
+        shards,
         shardType:
-          shardRow === undefined
+          shards === undefined
             ? undefined
             : rarity === Rarity.Mythic
               ? ('mythic' as const)
               : ('regular' as const),
+        shardsSource:
+          shards === undefined
+            ? undefined
+            : corrected !== undefined
+              ? ('gameUi' as const)
+              : ('unitLevel' as const),
         orbs,
         orbRarity: orbRow?.rarity,
         orbsDisputed: disputed ? true : undefined,
@@ -294,6 +333,27 @@ function inferProgressionRarity(
   return undefined;
 }
 
+/**
+ * Extract the level ceiling for each rarity.
+ *
+ * Codex publishes these only as free-text annotations on its `levelprogression`
+ * rows (`"Max Common Level"`), so the parse is deliberately narrow and simply
+ * yields nothing when the wording changes. The values it finds for Common (8)
+ * and Uncommon (17) match the game's own progression panel.
+ */
+function normalizeRarityCaps(source: RawCodexLevelProgressions | undefined): RarityCap[] {
+  const caps: RarityCap[] = [];
+  for (const row of source?.levels ?? []) {
+    const matched = /^max\s+(\w+)\s+level$/i.exec((row.notes ?? '').trim());
+    if (!matched?.[1]) continue;
+    const rarity = parseRarity(matched[1]);
+    const maxLevel = nn(row.level);
+    if (rarity === undefined || maxLevel === undefined) continue;
+    caps.push({ rarity, maxLevel });
+  }
+  return caps.sort((a, b) => a.rarity - b.rarity);
+}
+
 /* -------------------------------------------------------------------------- */
 /* Entry point                                                                */
 /* -------------------------------------------------------------------------- */
@@ -304,6 +364,7 @@ export interface NormalizeInput {
   codexCampaignConfigs?: RawCodexCampaignConfigs | undefined;
   codexUnitLevels?: RawCodexUnitLevels | undefined;
   codexOrbPromotions?: RawCodexOrbPromotionRequirements | undefined;
+  codexLevelProgression?: RawCodexLevelProgressions | undefined;
 }
 
 export function normalize(input: NormalizeInput): GameDatabase {
@@ -430,6 +491,7 @@ export function normalize(input: NormalizeInput): GameDatabase {
 
   /* ---- star progression ------------------------------------------------ */
   const progression = normalizeProgression(input.codexUnitLevels, input.codexOrbPromotions);
+  const rarityCaps = normalizeRarityCaps(input.codexLevelProgression);
 
   /* ---- campaigns and battles ------------------------------------------ */
   const dropRatesByType = normalizeDropRates(input.codexCampaignConfigs?.configs);
@@ -536,6 +598,7 @@ export function normalize(input: NormalizeInput): GameDatabase {
     xpBooks,
     abilityUpgradeCosts,
     progressionRequirements: progression.requirements,
+    rarityCaps,
     stats: {
       units: Object.keys(units).length,
       upgrades: Object.keys(upgrades).length,

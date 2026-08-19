@@ -167,6 +167,20 @@ export interface XpBookDefinition {
  */
 export type ShardType = 'regular' | 'mythic';
 
+/** What a progression step does. */
+export type ProgressionKind =
+  /** Adds a star. Grants +10% to base stats. */
+  | 'promotion'
+  /** Raises rarity. Grants +20% to ability stats and lifts the level and rank caps. */
+  | 'ascension';
+
+/** Where a shard cost came from. */
+export type ShardSource =
+  /** Codex's `unitlevel` table. */
+  | 'unitLevel'
+  /** The game's own progression panel, via `./corrections.ts`. */
+  | 'gameUi';
+
 /**
  * Shards and orbs required to reach one star level, i.e. to go from
  * `progressionIndex - 1` to `progressionIndex`.
@@ -185,14 +199,36 @@ export type ShardType = 'regular' | 'mythic';
  * `shards(14) + shards(15)`.
  */
 export interface ProgressionRequirement {
-  /** Star level, matching `Unit.progressionIndex` in the player API. */
+  /** Progression step, matching `Unit.progressionIndex` in the player API. */
   progressionIndex: number;
-  /** Rarity tier at this star level. */
+  /** Rarity tier reached at this step. */
   rarity?: Rarity;
+  /**
+   * Whether this step adds a star or raises rarity.
+   *
+   * Derived, not published: a step is an ascension when its rarity differs from
+   * the previous step's. That puts ascensions at indices 3, 6, 9, 12 and 16,
+   * which matches the rarity anchors the API documents for `progressionIndex`
+   * (0 = Common, 3 = Uncommon, 6 = Rare, 9 = Epic, 12 = Legendary).
+   */
+  kind?: ProgressionKind;
+  /**
+   * Star count after this step.
+   *
+   * Also derived. An ascension does not add a star — the game's progression
+   * panel shows Common ending at 2 stars, then an ascension, then Uncommon's
+   * first promotion granting the 3rd — so this runs behind
+   * {@link ProgressionRequirement.progressionIndex}, topping out at 14. That
+   * ceiling matches the highest `stars` value in the game config's NPC stat
+   * tables, which is the only independent check available.
+   */
+  starLevel?: number;
   /** Shards consumed. Absent when no source publishes a value. */
   shards?: number;
   /** Which shard currency {@link ProgressionRequirement.shards} refers to. */
   shardType?: ShardType;
+  /** Where {@link ProgressionRequirement.shards} came from. */
+  shardsSource?: ShardSource;
   /** Orbs consumed. Absent when this level needs none. */
   orbs?: number;
   orbRarity?: Rarity;
@@ -311,6 +347,13 @@ export interface NpcDefinition {
 /* Database                                                                   */
 /* -------------------------------------------------------------------------- */
 
+/** Level and rank ceilings that apply while a unit sits at a given rarity. */
+export interface RarityCap {
+  rarity: Rarity;
+  /** Highest `Unit.xpLevel` reachable before ascending. */
+  maxLevel: number;
+}
+
 export interface GameDatabaseSources {
   /** `gameInfo.json` config version, e.g. `1.41.101.1`. */
   gameInfoVersion?: string;
@@ -355,5 +398,10 @@ export interface GameDatabase {
   xpBooks: XpBookDefinition[];
   abilityUpgradeCosts: AbilityUpgradeCost[];
   progressionRequirements: ProgressionRequirement[];
+  /**
+   * Level ceiling per rarity. A unit cannot exceed its rarity's `maxLevel`
+   * without ascending, so this bounds "XP to next level".
+   */
+  rarityCaps: RarityCap[];
   stats: GameDatabaseStats;
 }

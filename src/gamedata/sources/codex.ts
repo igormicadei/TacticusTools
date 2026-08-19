@@ -82,6 +82,23 @@ export interface RawCodexOrbPromotionRequirement {
   qty: number;
 }
 
+/** A row of Codex's `levelprogression` table. */
+export interface RawCodexLevelProgression {
+  level: number;
+  xpToNextLevel: number;
+  totalXp: number;
+  totalLegendaryTomes?: number | null;
+  /**
+   * Free-text annotation. A handful of rows carry the rarity level ceilings,
+   * e.g. `"Max Common Level"`, which is the only published source for them.
+   */
+  notes?: string | null;
+}
+
+export interface RawCodexLevelProgressions {
+  levels?: RawCodexLevelProgression[] | null;
+}
+
 export interface RawCodexUnitLevels {
   unitLevels?: RawCodexUnitLevel[] | null;
 }
@@ -128,3 +145,7 @@ export const fetchCodexUnitLevels = (
 export const fetchCodexOrbPromotionRequirements = (
   options: { base?: string; signal?: AbortSignal; fetch?: typeof globalThis.fetch } = {},
 ): Promise<RawCodexOrbPromotionRequirements> => get('/orbpromotionrequirement/all', options);
+
+export const fetchCodexLevelProgression = (
+  options: { base?: string; signal?: AbortSignal; fetch?: typeof globalThis.fetch } = {},
+): Promise<RawCodexLevelProgressions> => get('/levelprogression/all', options);

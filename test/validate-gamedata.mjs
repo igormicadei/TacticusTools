@@ -42,6 +42,9 @@ const db = rawDir
       codexOrbPromotions: existsSync(join(rawDir, 'orbpromotion.json'))
         ? read(join(rawDir, 'orbpromotion.json'))
         : undefined,
+      codexLevelProgression: existsSync(join(rawDir, 'levelprogression.json'))
+        ? read(join(rawDir, 'levelprogression.json'))
+        : undefined,
     })
   : await loadGameDatabase();
 
@@ -114,6 +117,25 @@ for (const r of prog) {
 }
 for (let i = 1; i < prog.length; i += 1) {
   if (prog[i].progressionIndex <= prog[i - 1].progressionIndex) note('progression: not sorted ascending');
+  const prev = prog[i - 1], cur = prog[i];
+  // A star is added by promotions and only by promotions.
+  const delta = (cur.starLevel ?? 0) - (prev.starLevel ?? 0);
+  if (cur.kind === 'promotion' && delta !== 1) note(`progression ${cur.progressionIndex}: promotion did not add exactly one star`);
+  if (cur.kind === 'ascension' && delta !== 0) note(`progression ${cur.progressionIndex}: ascension changed the star count`);
+  if (cur.kind === 'ascension' && cur.rarity === prev.rarity) note(`progression ${cur.progressionIndex}: ascension without a rarity change`);
+  if (cur.kind === 'promotion' && cur.rarity !== prev.rarity) note(`progression ${cur.progressionIndex}: rarity changed on a promotion`);
+}
+const ascensions = prog.filter((r) => r.kind === 'ascension').map((r) => r.progressionIndex);
+console.log(`progression : ascensions at ${ascensions.join(', ')}; max star ${Math.max(...prog.map((r) => r.starLevel ?? 0))}`);
+// The API documents rarity anchors for progressionIndex; ascensions must sit on them.
+for (const anchor of [3, 6, 9, 12]) {
+  if (!ascensions.includes(anchor)) note(`progression: no ascension at documented rarity anchor ${anchor}`);
+}
+
+/* ---- rarity level caps --------------------------------------------------- */
+console.log(`rarityCaps  : ${db.rarityCaps.map((c) => `r${c.rarity}=L${c.maxLevel}`).join(' ')}`);
+for (let i = 1; i < db.rarityCaps.length; i += 1) {
+  if (db.rarityCaps[i].maxLevel <= db.rarityCaps[i - 1].maxLevel) note('rarityCaps: maxLevel not increasing with rarity');
 }
 
 /* ---- optional: joins against a real player payload ----------------------- */
@@ -148,6 +170,20 @@ if (playerPath) {
   const missingProg = [...new Set(p.units.map((u) => u.progressionIndex))].filter((i) => i > 0 && !progIdx.has(i));
   console.log(`progression : covers ${[...new Set(p.units.map((u) => u.progressionIndex))].length - missingProg.length}/${[...new Set(p.units.map((u) => u.progressionIndex))].length} owned star levels`);
   if (missingProg.length) note(`progression: no row for owned star levels ${missingProg.join(', ')}`);
+
+  // A unit's level must respect the cap for the rarity its star level implies.
+  const rarityByIdx = new Map(prog.map((r) => [r.progressionIndex, r.rarity]));
+  const capByRarity = new Map(db.rarityCaps.map((c) => [c.rarity, c.maxLevel]));
+  let capOk = 0, capChecked = 0;
+  for (const u of p.units) {
+    const rarity = rarityByIdx.get(u.progressionIndex);
+    const cap = rarity === undefined ? undefined : capByRarity.get(rarity);
+    if (cap === undefined) continue;
+    capChecked += 1;
+    if (u.xpLevel <= cap) capOk += 1;
+    else note(`rarity cap: ${u.id} is level ${u.xpLevel} at star ${u.progressionIndex} (rarity ${rarity}, cap ${cap})`);
+  }
+  console.log(`rarity caps : ${capOk}/${capChecked} units within their rarity's level cap`);
 
   const sample = p.units[0];
   const def = db.units[sample.id];

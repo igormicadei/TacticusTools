@@ -205,6 +205,52 @@ const need = db.progressionRequirements.find(r => r.progressionIndex === unit.pr
 Costs are **per step**, not cumulative — going from star 13 to 15 needs
 `shards(14) + shards(15)`.
 
+### Promotion vs ascension
+
+`progressionIndex` counts two different things, and the distinction matters:
+
+- **promotion** adds a star (+10% base stats), costing shards
+- **ascension** raises rarity (+20% ability stats) and lifts the level and rank
+  caps, costing shards *and* orbs
+
+An ascension does **not** add a star, so `starLevel` runs behind
+`progressionIndex` and tops out at 14:
+
+```
+idx  rarity     kind        star   shards        orbs
+  2  Common     promotion    2★     15           —
+  3  Uncommon   ascension    2★     15           10 Uncommon
+  4  Uncommon   promotion    3★     15           —
+ 12  Legendary  ascension    8★    100           10 Legendary
+ 13  Legendary  promotion    9★    150           10 Legendary
+ 16  Mythic     ascension   11★     20 mythic    10 Mythic
+```
+
+Both `kind` and `starLevel` are **derived**, not published — a step is an
+ascension when its rarity differs from the step before. Three independent
+checks agree: ascensions land on 3, 6, 9, 12 and 16, matching the rarity anchors
+the API documents for `progressionIndex`; the derived maximum of 14 stars equals
+the highest `stars` value in the game config's NPC stat tables; and the sequence
+matches the game's own Character Progression panel.
+
+Note that "promotion costs shards only" holds for the lower bands but not the
+Legendary and Mythic ones, where every step costs orbs too.
+
+### Rarity level caps
+
+`db.rarityCaps` gives the level ceiling per rarity — a unit cannot level past it
+without ascending, so it bounds any "XP to next level" calculation:
+
+| Common | Uncommon | Rare | Epic | Legendary |
+| --- | --- | --- | --- | --- |
+| 8 | 17 | 26 | 35 | 50 |
+
+Codex publishes these only as free-text annotations (`"Max Common Level"`) on its
+`levelprogression` rows, so the parse is narrow and yields nothing if the wording
+changes. The Common and Uncommon values match the game's progression panel, and
+all 29 live units sit within their rarity's cap. No source states a Mythic cap,
+so none is emitted.
+
 `shardType` distinguishes the two currencies the player API tracks separately:
 star levels 16–19 are the Mythic band and consume `Unit.mythicShards`, not
 `Unit.shards`.
@@ -215,6 +261,13 @@ The two sources disagree, and the merge resolves it deliberately:
 | --- | --- | --- |
 | `orbpromotionrequirement` | orbs, orb rarity | dedicated, self-consistent, covers every threshold |
 | `unitlevel` | shards, rarity tier | the only source of shard counts |
+
+Two shard costs come from the game's Character Progression panel rather than a
+data source, and are marked `shardsSource: 'gameUi'` with their rationale in
+`src/gamedata/corrections.ts`: star 1 (Codex reports 0, the game shows 10) and
+star 3, the Uncommon ascension, which Codex omits entirely. Both assume the
+promotion table is global rather than per character, which a single 20-row
+source table implies.
 
 `unitlevel`'s own orb column is **ignored entirely**. It agrees with the orb
 table at nine indices, reads zero on several rows that do require orbs, and at
@@ -249,6 +302,7 @@ row from Codex's identically-named field.
 - `eventCampaign6` appears in player progress but not in Codex battle data, so
   it has no node-level detail.
 - 36 of 1127 farming references point at event nodes absent from Codex.
-- Star level 3 has an orb cost but no published shard cost: Codex's `unitlevel`
-  table skips that index entirely. It is reported in
-  `stats.progressionGaps`.
+- No source publishes a Mythic level cap or the per-rarity **rank** caps the
+  game's progression panel shows, so neither is modelled.
+- Two shard costs are sourced from the game UI rather than a data feed; see
+  `src/gamedata/corrections.ts`.
