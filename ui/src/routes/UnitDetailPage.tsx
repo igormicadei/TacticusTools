@@ -2,7 +2,7 @@ import { Fragment, useMemo } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
 import { rankName, rarityName } from '@lib/gamedata/enums.js';
-import { computeUnitStats } from '@lib/gamedata/stats.js';
+import { computeTierStarLevel, computeUnitStats } from '@lib/gamedata/stats.js';
 import type { GameDatabase } from '@lib/gamedata/types.js';
 import type { PlayerResponse, Unit } from '@lib/types/player.js';
 
@@ -83,7 +83,7 @@ export function UnitDetailPage({
             </span>
           )}
           {unit ? (
-            <span className="chip">{unit.progressionIndex} stars</span>
+            <span className="chip">{starsLabel(computeTierStarLevel(unit.progressionIndex, db))}</span>
           ) : (
             <span className="chip">
               {entry.status === 'unlockable' ? `${entry.shards} shards` : 'Not unlocked'}
@@ -174,8 +174,8 @@ function Progress({ unit, db }: { unit: Unit; db: GameDatabase }) {
         <div className="stat">
           <div className="label">Stars</div>
           <div className="value">
-            {unit.progressionIndex}
-            {star?.starLevel !== undefined && <small> ({star.starLevel}★)</small>}
+            {computeTierStarLevel(unit.progressionIndex, db) ?? '—'}
+            {star?.starLevel !== undefined && <small> ({star.starLevel} total)</small>}
           </div>
         </div>
       </div>
@@ -230,8 +230,17 @@ function Attributes({ unit, db }: { unit: Unit; db: GameDatabase }) {
             </div>
           </div>
           <p className="small muted" style={{ marginBottom: 0 }}>
-            Base {stats.base.health}/{stats.base.damage}/{stats.base.armour} for the rank,
-            ×{stats.starMultiplier.toFixed(2)} from {stats.starLevel ?? 0} stars (+10% each).
+            Base {stats.base.health}/{stats.base.damage}/{stats.base.armour} × 
+            {stats.starMultiplier.toFixed(2)} ({stats.starLevel ?? 0} cumulative stars, +10%
+            each)
+            {stats.rankUpgradesApplied > 0 && (
+              <>
+                , then +{stats.rankUpgrades.health}/{stats.rankUpgrades.damage}/
+                {stats.rankUpgrades.armour} from {stats.rankUpgradesApplied} of{' '}
+                {stats.rankUpgradesAvailable} rank upgrades
+              </>
+            )}
+            .
           </p>
         </>
       ) : (
@@ -438,6 +447,11 @@ function Traits({ definition }: { definition: NonNullable<GameDatabase['units'][
       </div>
     </section>
   );
+}
+
+function starsLabel(stars: number | undefined): string {
+  if (stars === undefined) return 'stars unknown';
+  return `${stars} ${stars === 1 ? 'star' : 'stars'}`;
 }
 
 function humaniseStat(key: string): string {

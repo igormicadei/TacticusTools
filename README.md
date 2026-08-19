@@ -334,27 +334,38 @@ row from Codex's identically-named field.
 ## Derived stats
 
 `computeUnitStats(unit, db)` reconstructs what the game shows on the character
-screen from the unit's state:
+screen:
 
-```ts
-const stats = gamedata.computeUnitStats(unit, db);
-// base 100/26/26  x1.60 (6 stars)  ->  health 160, damage 41, armour 41
-// itemBonuses: { critChance: 35, critDmg: 43, blockChance: 34, blockDmg: 103 }
+```
+stat = floor(base_for_rank × starMultiplier) + appliedRankUpgrades
+starMultiplier = 1 + 0.10 × cumulativeStars
 ```
 
-Base stats scale with **stars**, not rarity: the game's progression panel states
-"Each star gives a +10% bonus to the Character's base stats. Each Rarity after
-Common gives a +20% bonus to the Character's *ability* stats." Ability stats are
-not computed — their values are unresolved placeholders in the source data.
+Three details, each established by matching the game rather than assumed:
 
-The game truncates rather than rounds (26 × 1.6 = 41.6 displays as 41), and
-booster items merge into the item they boost: a Force Field at 30% plus an
-Amplifier at 4% displays as one 34% figure, so `*Bonus` stat keys are summed onto
-their base key.
+- **Stars drive it, not rarity.** At progression index 9 both readings give
+  ×1.60, so that unit cannot tell them apart. Index 11 can: the game needs
+  ×1.80, which is 8 cumulative stars, where Epic's three rarity steps would give
+  ×1.60.
+- **Rank upgrades are added after scaling.** Haarken is
+  `floor(234 × 1.8) + 58 = 479`; scaling the sum instead gives 525.
+- **The game truncates, not rounds.** 26 × 1.6 = 41.6 displays as 41.
+
+Equipment stats are summed, with booster items merged onto the stat they boost —
+a Force Field at 30% plus an Amplifier at 4% is one 34% figure — so `*Bonus` keys
+fold onto their base key.
+
+`starLevel` is the cumulative count that drives the multiplier; `tierStarLevel`
+is what the character screen displays, counted within the current rarity, so
+index 11 reads 3 stars while the multiplier uses 8.
+
+Ability stats are not computed: rarity adds +20% per tier to them, but their base
+values are unresolved placeholders in the source data.
 
 `npm run validate:stats -- player.json` checks the output against values
-transcribed from in-game character screens. Gulgortz at Stone I with 6 stars
-matches on all seven figures.
+transcribed from in-game character screens. Two units currently pass on all 16
+figures: Gulgortz (Stone I, no upgrades applied) and Haarken (Iron II, five of
+six upgrades applied).
 
 ### Power Score is not computed
 

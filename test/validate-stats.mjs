@@ -40,12 +40,24 @@ const player = read(playerPath).player;
 const CASES = [
   {
     unitId: 'orksWarboss',
-    label: 'Gulgortz — Epic, Stone I, 6 stars, level 15',
+    label: 'Gulgortz — Epic, Stone I, no rank upgrades applied',
     expect: {
       health: 160,
       damage: 41,
       armour: 41,
+      tierStarLevel: 1,
       itemBonuses: { critChance: 35, critDmg: 43, blockChance: 34, blockDmg: 103 },
+    },
+  },
+  {
+    unitId: 'blackHaarken',
+    label: 'Haarken — Epic, Iron II, five of six rank upgrades applied',
+    expect: {
+      health: 479,
+      damage: 55,
+      armour: 92,
+      tierStarLevel: 3,
+      itemBonuses: { critChance: 37, critDmg: 98, blockChance: 20, blockDmg: 138 },
     },
   },
 ];
@@ -72,11 +84,16 @@ for (const testCase of CASES) {
   }
   console.log(
     `    base ${stats.base.health}/${stats.base.damage}/${stats.base.armour}` +
-      ` x${stats.starMultiplier.toFixed(2)} (${stats.starLevel} stars)`,
+      ` x${stats.starMultiplier.toFixed(2)} (${stats.starLevel} cumulative stars)` +
+      ` + upgrades ${stats.rankUpgrades.health}/${stats.rankUpgrades.damage}/${stats.rankUpgrades.armour}` +
+      ` (${stats.rankUpgradesApplied}/${stats.rankUpgradesAvailable} applied)`,
   );
   check('health', stats.health, testCase.expect.health);
   check('damage', stats.damage, testCase.expect.damage);
   check('armour', stats.armour, testCase.expect.armour);
+  if (testCase.expect.tierStarLevel !== undefined) {
+    check('stars shown', stats.tierStarLevel, testCase.expect.tierStarLevel);
+  }
   for (const [key, value] of Object.entries(testCase.expect.itemBonuses)) {
     check(key, stats.itemBonuses[key], value);
   }

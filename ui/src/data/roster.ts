@@ -3,6 +3,7 @@
  */
 
 import { Rarity, rarityName } from '@lib/gamedata/enums.js';
+import { computeTierStarLevel } from '@lib/gamedata/stats.js';
 import type { GameDatabase, UnitDefinition } from '@lib/gamedata/types.js';
 import type { PlayerResponse, Unit } from '@lib/types/player.js';
 
@@ -22,6 +23,7 @@ export interface RosterEntry {
   factionId: string;
   /** Rarity implied by the unit's star level, for owned units. */
   rarity: Rarity | undefined;
+  /** Stars as the game's character screen counts them, within the rarity. */
   starLevel: number | undefined;
 }
 
@@ -88,11 +90,9 @@ export function buildRoster(player: PlayerResponse, db: GameDatabase): RosterEnt
       mythicShards,
       factionId: unit?.faction ?? definition?.factionId ?? 'Unknown',
       rarity: unit ? progressionByIndex.get(unit.progressionIndex)?.rarity : undefined,
-      // The displayed star count is not progressionIndex: an ascension advances
-      // the index without adding a star, so 9 steps is 6 stars.
-      starLevel: unit
-        ? progressionByIndex.get(unit.progressionIndex)?.starLevel
-        : undefined,
+      // Neither progressionIndex nor the cumulative star count: the character
+      // screen counts stars within the current rarity, so index 11 reads 3.
+      starLevel: unit ? computeTierStarLevel(unit.progressionIndex, db) : undefined,
     });
   }
 

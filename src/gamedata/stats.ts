@@ -27,22 +27,53 @@ export const RARITY_ABILITY_STAT_BONUS = 0.2;
 /** Aggregated equipment stats, keyed by stat name (`critChance`, `blockDmg`, …). */
 export type ItemBonuses = Record<string, number>;
 
+/** Flat stat added by the rank upgrades a unit has applied. */
+export interface RankUpgradeBonuses {
+  health: number;
+  damage: number;
+  armour: number;
+}
+
 export interface ComputedUnitStats {
   rank: number;
-  /** Star count, which drives the base-stat multiplier. */
+  /**
+   * Cumulative star count, which drives the base-stat multiplier.
+   *
+   * This is not what the character screen shows — see
+   * {@link ComputedUnitStats.tierStarLevel}.
+   */
   starLevel: number | undefined;
+  /**
+   * Stars shown on the character screen, counted within the current rarity.
+   *
+   * Verified for Epic: progression index 9 displays 1 star and index 11
+   * displays 3, while the cumulative counts are 6 and 8.
+   */
+  tierStarLevel: number | undefined;
   rarity: Rarity | undefined;
   /** Unmodified values for the unit's rank, straight from the database. */
   base: { health: number; damage: number; armour: number };
   /** `1 + STAR_BASE_STAT_BONUS * starLevel`. */
   starMultiplier: number;
-  /** Base values scaled by {@link ComputedUnitStats.starMultiplier}. */
+  /** Flat additions from applied rank upgrades, before which nothing is scaled. */
+  rankUpgrades: RankUpgradeBonuses;
+  /** How many of the rank's upgrade slots are filled. */
+  rankUpgradesApplied: number;
+  rankUpgradesAvailable: number;
+  /** Final displayed values: `floor(base * multiplier) + rankUpgrades`. */
   health: number;
   damage: number;
   armour: number;
   /** Summed stats of everything equipped. */
   itemBonuses: ItemBonuses;
 }
+
+/** Map a source `statType` onto the stat it increases. */
+const UPGRADE_STAT_TARGET: Record<string, keyof RankUpgradeBonuses> = {
+  hp: 'health',
+  dmg: 'damage',
+  fixedArmor: 'armour',
+};
 
 /**
  * Normalise an equipment stat key.
@@ -76,12 +107,13 @@ export function computeItemBonuses(items: readonly UnitItem[], db: GameDatabase)
 /**
  * Compute a unit's displayed stats.
  *
+ * `floor(base * starMultiplier) + appliedRankUpgrades`, verified against two
+ * character screens: Gulgortz at Stone I with 6 stars and no upgrades applied
+ * (100/26/26 x1.6 -> 160/41/41), and Haarken at Iron II with 8 stars and five
+ * upgrades applied (floor(234 x 1.8) + 58 -> 479 health).
+ *
  * Returns `undefined` when the database has no stat block for the unit's rank,
  * rather than extrapolating one.
- *
- * Verified against the game for Gulgortz at Stone I with 6 stars: base
- * 100/26/26 x1.6 gives 160/41/41, matching the character screen exactly
- * (41.6 truncates to 41).
  */
 export function computeUnitStats(unit: Unit, db: GameDatabase): ComputedUnitStats | undefined {
   const definition = db.units[unit.id];
@@ -94,20 +126,68 @@ export function computeUnitStats(unit: Unit, db: GameDatabase): ComputedUnitStat
   const starLevel = progression?.starLevel;
   const starMultiplier = 1 + STAR_BASE_STAT_BONUS * (starLevel ?? 0);
 
-  // The game truncates rather than rounds: 26 x 1.6 = 41.6 displays as 41.
-  const scale = (value: number) => Math.floor(value * starMultiplier);
+  // `unit.upgrades` holds indices into the rank's upgrade list.
+  const rankUpgrades: RankUpgradeBonuses = { health: 0, damage: 0, armour: 0 };
+  let applied = 0;
+  for (const index of unit.upgrades) {
+    const upgrade = rankStats.upgrades[index];
+    if (!upgrade) continue;
+    applied += 1;
+    const target = upgrade.statType ? UPGRADE_STAT_TARGET[upgrade.statType] : undefined;
+    if (target) rankUpgrades[target] += upgrade.statIncrease ?? 0;
+  }
+
+  // The game truncates rather than rounds, and adds rank upgrades *after*
+  // scaling: Haarken at 8 stars is floor(234 x 1.8) + 58 = 479, where scaling
+  // the sum would give 525.
+  const scale = (value: number, flat: number) => Math.floor(value * starMultiplier) + flat;
 
   return {
     rank: unit.rank,
     starLevel,
+    tierStarLevel: computeTierStarLevel(unit.progressionIndex, db, progression?.rarity),
     rarity: progression?.rarity,
     base: { health: rankStats.health, damage: rankStats.damage, armour: rankStats.armour },
     starMultiplier,
-    health: scale(rankStats.health),
-    damage: scale(rankStats.damage),
-    armour: scale(rankStats.armour),
+    rankUpgrades,
+    rankUpgradesApplied: applied,
+    rankUpgradesAvailable: rankStats.upgrades.length,
+    health: scale(rankStats.health, rankUpgrades.health),
+    damage: scale(rankStats.damage, rankUpgrades.damage),
+    armour: scale(rankStats.armour, rankUpgrades.armour),
     itemBonuses: computeItemBonuses(unit.items, db),
   };
+}
+
+/**
+ * Stars as the character screen counts them: within the current rarity rather
+ * than cumulatively.
+ *
+ * Entering a rarity by ascending counts as that tier's first star, so Epic's
+ * three steps read 1, 2, 3. Common is the exception — a unit is unlocked into it
+ * rather than ascending, so its first step is zero stars, which is what the
+ * game's progression panel shows.
+ *
+ * Only the Epic band is confirmed against the game; the rest follows the same
+ * rule.
+ */
+export function computeTierStarLevel(
+  progressionIndex: number,
+  db: GameDatabase,
+  rarityHint?: Rarity,
+): number | undefined {
+  const rarity =
+    rarityHint ??
+    db.progressionRequirements.find((r) => r.progressionIndex === progressionIndex)?.rarity;
+  if (rarity === undefined) return undefined;
+  const first = db.progressionRequirements
+    .filter((r) => r.rarity === rarity)
+    .reduce<number | undefined>(
+      (min, r) => (min === undefined ? r.progressionIndex : Math.min(min, r.progressionIndex)),
+      undefined,
+    );
+  if (first === undefined) return undefined;
+  return progressionIndex - first + (rarity === Rarity.Common ? 0 : 1);
 }
 
 /**
