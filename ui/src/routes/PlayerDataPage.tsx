@@ -122,20 +122,25 @@ export function PlayerDataPage({
 
           <h3 style={{ marginTop: 20 }}>Relay URL</h3>
           <p className="small muted" style={{ marginTop: 0 }}>
-            The game API sends no CORS headers and refuses a browser preflight, so a page
-            cannot call it directly — not here, not anywhere. Deploy the worker in{' '}
-            <code className="inline">relay/</code> and paste its URL. It stores nothing;
-            your key passes through on each request.
+            CORS is a rule browsers apply to pages, not a limit on your machine — your
+            machine can call the API fine, a page cannot read the reply. So run the relay
+            on your machine and point this at it:
           </p>
+          <pre className="cmd">node relay/local-relay.mjs</pre>
           <input
             className="search"
             style={{ width: '100%' }}
             autoComplete="off"
             spellCheck={false}
-            placeholder="https://tacticus-relay.your-name.workers.dev"
+            placeholder="http://localhost:8787"
             value={relayUrl}
             onChange={(e) => setRelayUrl(e.target.value)}
           />
+          <p className="small muted" style={{ marginBottom: 0 }}>
+            It listens on loopback only and stores nothing — your key goes from this page
+            to your own machine and out to the API. A hosted worker is in{' '}
+            <code className="inline">relay/</code> if you would rather not run anything.
+          </p>
 
           <div className="row" style={{ marginTop: 16 }}>
             <button

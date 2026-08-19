@@ -18,7 +18,32 @@ preflight, and the preflight is refused for every origin tested — including
 `tacticuscodex.com`, which is why that site proxies the call through a backend of
 its own. No browser page can read the response, on GitHub Pages or anywhere else.
 
-## Deploy it
+CORS is a rule browsers apply to **pages**, not a restriction on your machine.
+`curl` on your laptop reaches the API perfectly well. What cannot happen is a web
+page reading the reply. So the fix is to have something on your machine make the
+call — that is all this is.
+
+## Option 1 — run it locally (nothing to deploy)
+
+```bash
+node relay/local-relay.mjs        # or: npm run relay
+```
+
+It listens on `127.0.0.1:8787`, loopback only, and stores nothing: your key goes
+from the page to your own machine and out to the API. Set `http://localhost:8787`
+as the relay URL on the **Player data** page.
+
+Verified end to end — browser to local relay to the live API, roster rendered.
+
+One caveat for the **deployed** GitHub Pages site. A page on a public origin
+reaching a loopback address triggers Chrome's Private Network Access check; the
+relay answers it (`Access-Control-Allow-Private-Network: true`) and `localhost`
+counts as a secure origin, so an HTTPS page is allowed to reach it. Browser
+behaviour here has shifted between versions, though. If your browser refuses,
+run the UI locally too — `npm run ui:dev` — where both sides are local and the
+question does not arise.
+
+## Option 2 — deploy the worker
 
 ```bash
 npm create cloudflare@latest -- tacticus-relay
@@ -27,9 +52,11 @@ npx wrangler deploy
 ```
 
 Edit `ALLOWED_ORIGINS` first so only your page can use it. The free tier is far
-more than enough — this is a few requests a day.
+more than enough — this is a few requests a day. Then paste the Worker URL into
+the **Player data** page.
 
-Then paste the Worker URL into the app's **Player data** page alongside your key.
+Use this if you want the deployed page to work without starting anything, and
+accept that the key transits a service you host.
 
 ## What it can and cannot see
 

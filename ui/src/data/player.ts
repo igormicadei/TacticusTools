@@ -160,9 +160,10 @@ export async function fetchPlayer(credentials: Credentials): Promise<PlayerRespo
   } catch {
     throw new PlayerFetchError(
       direct
-        ? 'The browser blocked the request. The game API sends no CORS headers, so a page ' +
-          'cannot call it directly — deploy the relay in relay/ and set its URL above.'
-        : `Could not reach the relay at ${base}. Check the URL and that it is deployed.`,
+        ? 'The browser blocked the request. This is a browser rule, not a limit on your ' +
+          'machine — the API sends no CORS headers, so a page cannot read its reply. Run ' +
+          '`node relay/local-relay.mjs` and set http://localhost:8787 as the relay URL.'
+        : `Could not reach the relay at ${base}. Check the URL, and that the relay is running.`,
     );
   }
 

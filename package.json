@@ -27,7 +27,8 @@
     "validate:stats": "node test/validate-stats.mjs",
     "ui:deploy": "scripts/deploy-pages.sh",
     "validate:plan": "node test/validate-plan.mjs",
-    "validate:requirements": "node test/validate-requirements.mjs"
+    "validate:requirements": "node test/validate-requirements.mjs",
+    "relay": "node relay/local-relay.mjs"
   },
   "engines": {
     "node": ">=18"
