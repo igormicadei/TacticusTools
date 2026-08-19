@@ -11,6 +11,8 @@ import {
   buildGameDatabase,
   loadGameDatabase,
   resolvePlan,
+  markProgress,
+  currentState,
   maxRankForRarity,
   maxLevelForRarity,
 } from '../dist/gamedata/index.js';
@@ -109,6 +111,35 @@ for (const unit of player.units) {
   }
 }
 console.log(`audited ${plans} plans across ${player.units.length} units, ${steps} steps total`);
+
+/* ---- progress against a recorded starting point -----------------------------
+ * A plan resolved from where it started must keep the steps the unit has since
+ * walked past, marked done, and must leave exactly the same work outstanding as
+ * one resolved from where the unit stands now.
+ */
+for (const unit of player.units) {
+  if (unit.rank < 2) continue;
+  const target = { rank: Math.min(unit.rank + 2, 19) };
+  // Pretend the plan was made two ranks back.
+  const origin = { ...currentState(unit, db), rank: unit.rank - 2 };
+  const full = markProgress(resolvePlan(unit, target, db, origin), currentState(unit, db));
+  const fresh = resolvePlan(unit, target, db);
+
+  const done = full.steps.filter((s) => s.done);
+  const left = full.steps.filter((s) => !s.done);
+  if (done.length === 0) note(`${unit.name}: no step marked done despite two ranks of progress`);
+  if (done.some((s) => s.kind === 'rank' && s.to > unit.rank)) {
+    note(`${unit.name}: a rank above the unit's own was marked done`);
+  }
+  if (left.length !== fresh.steps.length) {
+    note(`${unit.name}: ${left.length} steps left but planning fresh gives ${fresh.steps.length}`);
+  }
+  if (left.map((s) => s.label).join('|') !== fresh.steps.map((s) => s.label).join('|')) {
+    note(`${unit.name}: remaining steps disagree with a fresh plan`);
+  }
+  if (full.current.rank !== unit.rank) note(`${unit.name}: progress did not re-anchor on the live state`);
+}
+console.log('progress marking: checked against fresh plans  ✓');
 
 // A worked example, printed so a human can sanity-check the ordering.
 const certus = player.units.find((u) => u.name === 'Certus');

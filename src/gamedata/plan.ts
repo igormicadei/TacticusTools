@@ -115,6 +115,11 @@ export interface PlanStep {
   reason?: string;
   /** State after the step completes. */
   after: UnitState;
+  /**
+   * Already achieved. Set by {@link markProgress} when a plan is resolved from
+   * where it started rather than from where the unit is now.
+   */
+  done?: boolean;
 }
 
 export interface EvolutionPlan {
@@ -237,8 +242,14 @@ export function resolvePlan(
   unit: Unit,
   target: EvolutionTarget,
   db: GameDatabase,
+  /**
+   * Plan from here instead of from the unit's present state. Used to lay out
+   * the whole route a plan set out to walk, so the parts already behind the
+   * unit stay visible rather than silently disappearing as it progresses.
+   */
+  from?: UnitState,
 ): EvolutionPlan {
-  const current = currentState(unit, db);
+  const current = from ?? currentState(unit, db);
   const notes: string[] = [];
   const { resolved, blocked, reasons } = resolveTarget(target, current, db);
   if (blocked) {
@@ -386,6 +397,39 @@ export function resolvePlan(
   if (steps.length === 0) notes.push('This unit already meets the target.');
 
   return { unitId: unit.id, current, target, resolved, steps, final: { ...state }, notes };
+}
+
+/**
+ * Flag the steps a unit has already walked past, and re-anchor the plan on
+ * where it stands now.
+ *
+ * Progress is judged per attribute rather than by position, so a unit that
+ * advanced out of order — ascending before finishing a rank, say — still has
+ * every step it actually completed marked.
+ */
+export function markProgress(plan: EvolutionPlan, live: UnitState): EvolutionPlan {
+  const done = (step: PlanStep): boolean => {
+    switch (step.kind) {
+      case 'rank':
+        return live.rank >= step.to;
+      case 'level':
+        return live.xpLevel >= step.to;
+      case 'ability':
+        return (
+          (step.ability === 'passive' ? live.passiveAbilityLevel : live.activeAbilityLevel) >=
+          step.to
+        );
+      case 'promotion':
+      case 'ascension':
+        return live.progressionIndex >= step.to;
+    }
+  };
+
+  return {
+    ...plan,
+    current: live,
+    steps: plan.steps.map((step) => (done(step) ? { ...step, done: true } : step)),
+  };
 }
 
 /**

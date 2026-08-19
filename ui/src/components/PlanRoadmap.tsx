@@ -107,18 +107,33 @@ export function PlanRoadmap({ steps }: { steps: PlanStep[] }) {
                 style={{ cursor: 'default' }}
               >
                 {/* 2px surface gap keeps adjacent marks from merging */}
+                {/* A finished step keeps its place but drops to an outline, so
+                    the route still reads left to right while what is left to do
+                    stays the thing that carries colour. */}
                 <rect
                   x={x} y={y} width={colW - 12} height={34} rx={4}
-                  fill={LANES[lane]!.color}
+                  fill={step.done ? 'transparent' : LANES[lane]!.color}
                   opacity={active ? 1 : 0.9}
-                  stroke={active ? '#e6edf3' : 'transparent'}
+                  stroke={
+                    active ? '#e6edf3' : step.done ? LANES[lane]!.color : 'transparent'
+                  }
                   strokeWidth={2}
+                  strokeDasharray={step.done ? '4 3' : undefined}
                 />
-                <text x={x + 10} y={y + 22} className="roadmap-mark-label">
+                <text
+                  x={x + 10}
+                  y={y + 22}
+                  className={`roadmap-mark-label${step.done ? ' done' : ''}`}
+                >
                   {markLabel(step)}
                 </text>
-                <text x={x + colW - 18} y={y + 22} className="roadmap-order" textAnchor="end">
-                  {step.order}
+                <text
+                  x={x + colW - 18}
+                  y={y + 22}
+                  className={`roadmap-order${step.done ? ' done' : ''}`}
+                  textAnchor="end"
+                >
+                  {step.done ? '✓' : step.order}
                 </text>
               </g>
             );

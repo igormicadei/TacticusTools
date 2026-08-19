@@ -6,7 +6,7 @@
  * rather than freezing a stale route.
  */
 
-import type { EvolutionTarget } from '@lib/gamedata/plan.js';
+import type { EvolutionTarget, UnitState } from '@lib/gamedata/plan.js';
 
 const STORAGE_KEY = 'tacticus-tools:plans';
 
@@ -16,6 +16,16 @@ export interface StoredPlan {
   /** Optional label; the unit name is used when absent. Cleared by setting undefined. */
   name?: string | undefined;
   target: EvolutionTarget;
+  /**
+   * The unit's state when the plan was made.
+   *
+   * Steps are recomputed from the live roster on every view, so without this
+   * a step would simply vanish the moment it was finished. Anchoring the route
+   * here keeps completed steps on the page, marked done. Plans saved before
+   * this existed pick it up the first time they are opened, so they track
+   * progress from that point rather than from their creation.
+   */
+  origin?: UnitState;
   createdAt: number;
 }
 

@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
 import { rankName, rarityName } from '@lib/gamedata/enums.js';
-import { projectedStats, resolvePlan } from '@lib/gamedata/plan.js';
+import { currentState, markProgress, projectedStats, resolvePlan } from '@lib/gamedata/plan.js';
 import { computeUnitStats } from '@lib/gamedata/stats.js';
 import type { GameDatabase } from '@lib/gamedata/types.js';
 import type { PlayerResponse } from '@lib/types/player.js';
@@ -26,6 +26,15 @@ export function PlanDetailPage({ db, player }: { db: GameDatabase; player: Playe
     ? player.player.units.find((u) => u.id === stored.unitId)
     : undefined;
 
+  // Plans saved before origins existed have no starting point to measure
+  // against, so they adopt one the first time they are opened and track
+  // progress from there.
+  useEffect(() => {
+    if (!stored || !unit || stored.origin) return;
+    plansStore.update(stored.id, { origin: currentState(unit, db) });
+    setRevision((v) => v + 1);
+  }, [stored, unit, db]);
+
   if (!stored || !unit) {
     return (
       <>
@@ -37,7 +46,11 @@ export function PlanDetailPage({ db, player }: { db: GameDatabase; player: Playe
     );
   }
 
-  const plan = resolvePlan(unit, stored.target, db);
+  const live = currentState(unit, db);
+  // Resolving from where the plan started keeps finished steps on the page,
+  // marked done, instead of letting them disappear as the unit advances.
+  const plan = markProgress(resolvePlan(unit, stored.target, db, stored.origin), live);
+  const left = plan.steps.filter((s) => !s.done).length;
   const now = computeUnitStats(unit, db);
   const then = projectedStats(unit, plan, db);
 
@@ -57,7 +70,7 @@ export function PlanDetailPage({ db, player }: { db: GameDatabase; player: Playe
             View unit
           </Link>
           <span className="chip">
-            {plan.steps.length === 0 ? 'Complete' : `${plan.steps.length} steps`}
+            {left === 0 ? 'Complete' : `${left} of ${plan.steps.length} steps left`}
           </span>
           <button className="small" onClick={() => setEditing((v) => !v)}>
             {editing ? 'Cancel' : 'Edit plan'}
@@ -132,8 +145,8 @@ export function PlanDetailPage({ db, player }: { db: GameDatabase; player: Playe
             </thead>
             <tbody>
               {plan.steps.map((s) => (
-                <tr key={s.order}>
-                  <td className="muted">{s.order}</td>
+                <tr key={s.order} className={s.done ? 'done' : ''}>
+                  <td className="muted">{s.done ? '✓' : s.order}</td>
                   <td>{s.label}</td>
                   <td className="muted">
                     {s.from} → {s.to}

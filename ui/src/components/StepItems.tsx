@@ -37,10 +37,13 @@ export function StepItems({
   const [open, setOpen] = useState<string>();
 
   const { steps, totals, gold } = useMemo(() => {
-    const costs = planCosts(unit, plan, db);
+    // Finished steps cost nothing more, and pricing them against the unit's
+    // present state would invent needs it has already met.
+    const remaining = { ...plan, steps: plan.steps.filter((step) => !step.done) };
+    const costs = planCosts(unit, remaining, db);
     const owned = ownedByKey(player, db);
     return {
-      steps: allocateHoldings(costs, owned, db),
+      steps: new Map(allocateHoldings(costs, owned, db).map((s) => [s.step.order, s])),
       totals: aggregate(costs, owned, db),
       gold: costs.reduce((sum, c) => sum + c.gold, 0),
     };
@@ -77,7 +80,24 @@ export function StepItems({
       </p>
 
       {view === 'steps'
-        ? steps.map(({ step, items }) => (
+        ? plan.steps.map((step) => {
+            // A finished step stays on the page, collapsed: the plan is a route,
+            // and a route that erases what you have walked is hard to read.
+            if (step.done) {
+              return (
+                <div className="step-block done" key={step.order}>
+                  <div className="step-block-head">
+                    <span className="step-num">✓</span>
+                    {step.label}
+                    <span className="chip ok-chip" style={{ marginLeft: 8 }}>
+                      Done
+                    </span>
+                  </div>
+                </div>
+              );
+            }
+            const items = steps.get(step.order)?.items ?? [];
+            return (
             <div className="step-block" key={step.order}>
               <div className="step-block-head">
                 <span className="step-num">{step.order}</span>
@@ -103,7 +123,8 @@ export function StepItems({
                 </ul>
               )}
             </div>
-          ))
+            );
+          })
         : (
             <ul className="item-list">
               {totals.map((item) => (

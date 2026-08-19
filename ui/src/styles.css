@@ -237,6 +237,10 @@ table.steps tr:last-child td { border-bottom: none; }
 .item-list.nested .source-note { padding-left: 30px; }
 .warn-text { color: #e8a06a; }
 .ok { color: var(--status-owned); }
+.step-block.done .step-block-head { color: var(--text-dim); }
+.step-block.done .step-num { color: var(--status-owned); border-color: color-mix(in srgb, var(--status-owned) 45%, transparent); }
+table.steps tr.done td { color: var(--text-dim); }
+.roadmap-mark-label.done, .roadmap-order.done { fill: var(--text-dim); }
 .source-note { padding: 4px 0 12px 46px; }
 table.nodes { border-collapse: collapse; font-size: 13px; }
 table.nodes td { padding: 3px 14px 3px 0; }

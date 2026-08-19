@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
 import { rankName, rarityName, Rarity } from '@lib/gamedata/enums.js';
-import { resolvePlan } from '@lib/gamedata/plan.js';
+import { currentState, markProgress, resolvePlan } from '@lib/gamedata/plan.js';
 import type { GameDatabase } from '@lib/gamedata/types.js';
 import type { PlayerResponse } from '@lib/types/player.js';
 
@@ -54,8 +54,12 @@ export function PlansPage({ db, player }: { db: GameDatabase; player: PlayerResp
         {plans.map((stored) => {
           const unit = owned.find((u) => u.id === stored.unitId);
           if (!unit) return null;
-          const plan = resolvePlan(unit, stored.target, db);
-          const done = plan.steps.length === 0;
+          const plan = markProgress(
+            resolvePlan(unit, stored.target, db, stored.origin),
+            currentState(unit, db),
+          );
+          const left = plan.steps.filter((s) => !s.done).length;
+          const done = left === 0;
           return (
             <div className="card" key={stored.id} style={{ '--status': done ? 'var(--status-owned)' : 'var(--status-unlockable)' } as React.CSSProperties}>
               <Link to={`/plans/${stored.id}`}>
@@ -63,7 +67,7 @@ export function PlansPage({ db, player }: { db: GameDatabase; player: PlayerResp
                 <div className="sub">{describeTarget(stored.target)}</div>
                 <div className="meta">
                   <span className="chip">
-                    {done ? 'Complete' : `${plan.steps.length} steps`}
+                    {done ? 'Complete' : `${left} of ${plan.steps.length} steps left`}
                   </span>
                   {plan.blocked && <span className="chip">Blocked</span>}
                 </div>
@@ -258,7 +262,14 @@ export function PlanForm({
             plansStore.update(existing.id, fields);
             onSaved(existing.id);
           } else {
-            onSaved(plansStore.create({ unitId, target, ...(trimmed ? { name: trimmed } : {}) }).id);
+            onSaved(
+              plansStore.create({
+                unitId,
+                target,
+                ...(unit ? { origin: currentState(unit, db) } : {}),
+                ...(trimmed ? { name: trimmed } : {}),
+              }).id,
+            );
           }
         }}
       >
