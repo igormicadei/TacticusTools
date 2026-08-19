@@ -1,28 +1,104 @@
 /**
- * Player data storage.
+ * Player data: credentials, storage and fetching.
  *
- * The Tacticus API sends no CORS headers — a preflight from a browser origin is
- * answered `403 Invalid CORS request` — so a static page cannot fetch a roster
- * directly. The user supplies their `/api/v1/player` response instead and it is
- * kept in `localStorage`.
+ * The app keeps the API key in the browser and fetches the roster itself. It
+ * cannot call the game API directly, though — measured against the live service,
+ * a preflight from any origin is answered `403 Invalid CORS request`, no
+ * `access-control-allow-origin` is sent, and the key is accepted only as the
+ * `X-API-KEY` header, which is what forces the preflight. A relay under the
+ * user's control closes that gap; see `relay/` in the repository.
  *
- * {@link PlayerSource} keeps that decision in one place: if the roster ever
- * becomes reachable from a browser (an API change, or a proxy the user runs),
- * an HTTP-backed source slots in without touching the views.
+ * Everything is stored in `localStorage`: the key, the relay URL, and the last
+ * roster fetched, so the app works offline and across reloads.
  */
 
 import type { PlayerResponse } from '@lib/types/player.js';
 
-const STORAGE_KEY = 'tacticus-tools:player';
+const KEYS = {
+  player: 'tacticus-tools:player',
+  apiKey: 'tacticus-tools:apiKey',
+  relay: 'tacticus-tools:relay',
+  fetchedAt: 'tacticus-tools:fetchedAt',
+} as const;
 
-export interface PlayerSource {
-  read(): PlayerResponse | undefined;
-  write(response: PlayerResponse): void;
-  clear(): void;
+/** Path of the roster endpoint, appended to the relay's base URL. */
+export const PLAYER_PATH = '/api/v1/player';
+
+/** Direct API origin. Reachable from Node or a relay, never from a browser page. */
+export const TACTICUS_API_ORIGIN = 'https://api.tacticusgame.com';
+
+export interface Credentials {
+  apiKey: string | undefined;
+  /** Base URL of a relay, e.g. `https://tacticus-relay.someone.workers.dev`. */
+  relayUrl: string | undefined;
 }
 
-/** Thrown when imported text is not a usable player payload. */
+/** Thrown when imported or fetched data is not a usable player payload. */
 export class InvalidPlayerDataError extends Error {}
+
+/** Thrown when a fetch fails, with a message aimed at the person reading it. */
+export class PlayerFetchError extends Error {
+  readonly status: number | undefined;
+  constructor(message: string, status?: number) {
+    super(message);
+    this.name = 'PlayerFetchError';
+    this.status = status;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Storage                                                                    */
+/* -------------------------------------------------------------------------- */
+
+const read = (key: string): string | undefined => localStorage.getItem(key) ?? undefined;
+
+const write = (key: string, value: string | undefined): void => {
+  if (value === undefined || value === '') localStorage.removeItem(key);
+  else localStorage.setItem(key, value);
+};
+
+export const storage = {
+  readCredentials(): Credentials {
+    return { apiKey: read(KEYS.apiKey), relayUrl: read(KEYS.relay) };
+  },
+  writeCredentials({ apiKey, relayUrl }: Credentials): void {
+    write(KEYS.apiKey, apiKey?.trim());
+    // Trailing slashes would double up against PLAYER_PATH.
+    write(KEYS.relay, relayUrl?.trim().replace(/\/+$/, ''));
+  },
+  clearCredentials(): void {
+    write(KEYS.apiKey, undefined);
+    write(KEYS.relay, undefined);
+  },
+  readPlayer(): PlayerResponse | undefined {
+    const raw = read(KEYS.player);
+    if (!raw) return undefined;
+    try {
+      return JSON.parse(raw) as PlayerResponse;
+    } catch {
+      // A corrupt entry should read as "nothing stored", not crash the app.
+      write(KEYS.player, undefined);
+      return undefined;
+    }
+  },
+  writePlayer(response: PlayerResponse): void {
+    write(KEYS.player, JSON.stringify(response));
+    write(KEYS.fetchedAt, String(Date.now()));
+  },
+  clearPlayer(): void {
+    write(KEYS.player, undefined);
+    write(KEYS.fetchedAt, undefined);
+  },
+  readFetchedAt(): number | undefined {
+    const raw = read(KEYS.fetchedAt);
+    const value = raw === undefined ? Number.NaN : Number(raw);
+    return Number.isFinite(value) ? value : undefined;
+  },
+};
+
+/* -------------------------------------------------------------------------- */
+/* Parsing                                                                    */
+/* -------------------------------------------------------------------------- */
 
 /**
  * Validate the parts the views rely on.
@@ -37,12 +113,15 @@ export function parsePlayerResponse(text: string): PlayerResponse {
   } catch {
     throw new InvalidPlayerDataError('That is not valid JSON.');
   }
+  return assertPlayerResponse(parsed);
+}
 
-  const body = parsed as Partial<PlayerResponse>;
+export function assertPlayerResponse(value: unknown): PlayerResponse {
+  const body = value as Partial<PlayerResponse>;
   const player = body?.player;
   if (!player || typeof player !== 'object') {
     throw new InvalidPlayerDataError(
-      'No "player" object found. Paste the whole response from /api/v1/player.',
+      'No "player" object found — expected the response from /api/v1/player.',
     );
   }
   if (!Array.isArray(player.units)) {
@@ -54,22 +133,54 @@ export function parsePlayerResponse(text: string): PlayerResponse {
   return body as PlayerResponse;
 }
 
-export const localPlayerSource: PlayerSource = {
-  read() {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return undefined;
-    try {
-      return JSON.parse(raw) as PlayerResponse;
-    } catch {
-      // A corrupt entry should behave as "not imported yet", not crash the app.
-      localStorage.removeItem(STORAGE_KEY);
-      return undefined;
+/* -------------------------------------------------------------------------- */
+/* Fetching                                                                   */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Fetch the roster using the stored key.
+ *
+ * With no relay configured this calls the API directly, which a browser will
+ * block; the failure is reported with the reason rather than a bare network
+ * error. It is still attempted so the app starts working on its own if the API
+ * ever begins sending CORS headers.
+ */
+export async function fetchPlayer(credentials: Credentials): Promise<PlayerResponse> {
+  const apiKey = credentials.apiKey?.trim();
+  if (!apiKey) throw new PlayerFetchError('No API key saved.');
+
+  const base = credentials.relayUrl?.trim().replace(/\/+$/, '') || TACTICUS_API_ORIGIN;
+  const direct = base === TACTICUS_API_ORIGIN;
+
+  let response: Response;
+  try {
+    response = await fetch(`${base}${PLAYER_PATH}`, {
+      headers: { 'X-API-KEY': apiKey, Accept: 'application/json' },
+    });
+  } catch {
+    throw new PlayerFetchError(
+      direct
+        ? 'The browser blocked the request. The game API sends no CORS headers, so a page ' +
+          'cannot call it directly — deploy the relay in relay/ and set its URL above.'
+        : `Could not reach the relay at ${base}. Check the URL and that it is deployed.`,
+    );
+  }
+
+  if (!response.ok) {
+    const body = (await response.json().catch(() => undefined)) as
+      | { type?: string }
+      | undefined;
+    if (response.status === 403) {
+      throw new PlayerFetchError(
+        'The API rejected that key (403). Check it, and that it has the Player scope.',
+        403,
+      );
     }
-  },
-  write(response) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(response));
-  },
-  clear() {
-    localStorage.removeItem(STORAGE_KEY);
-  },
-};
+    throw new PlayerFetchError(
+      `Request failed: HTTP ${response.status}${body?.type ? ` (${body.type})` : ''}.`,
+      response.status,
+    );
+  }
+
+  return assertPlayerResponse(await response.json());
+}

@@ -1,40 +1,52 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { NavLink, Navigate, Route, Routes } from 'react-router-dom';
 
 import { loadGameData } from './data/gamedata.ts';
-import { localPlayerSource } from './data/player.ts';
-import { ImportPage } from './routes/ImportPage.tsx';
+import { fetchPlayer, storage } from './data/player.ts';
+import { PlayerDataPage } from './routes/PlayerDataPage.tsx';
 import { UnitDetailPage } from './routes/UnitDetailPage.tsx';
 import { UnitsPage } from './routes/UnitsPage.tsx';
 
 import type { GameDatabase } from '@lib/gamedata/types.js';
 import type { PlayerResponse } from '@lib/types/player.js';
 
-export interface AppData {
-  db: GameDatabase;
-  player: PlayerResponse;
-}
+/** Refresh in the background if the stored roster is older than this. */
+const STALE_AFTER_MS = 60 * 60 * 1000;
 
 export function App() {
   const [db, setDb] = useState<GameDatabase>();
-  const [player, setPlayer] = useState<PlayerResponse | undefined>(() =>
-    localPlayerSource.read(),
-  );
+  const [player, setPlayer] = useState<PlayerResponse | undefined>(() => storage.readPlayer());
+  const [fetchedAt, setFetchedAt] = useState<number | undefined>(() => storage.readFetchedAt());
   const [error, setError] = useState<string>();
+  const refreshed = useRef(false);
 
   useEffect(() => {
     loadGameData().then(setDb, (e: unknown) => setError(String(e)));
   }, []);
 
-  const handleImport = useCallback((response: PlayerResponse) => {
-    localPlayerSource.write(response);
+  const handleLoaded = useCallback((response: PlayerResponse) => {
+    storage.writePlayer(response);
     setPlayer(response);
+    setFetchedAt(storage.readFetchedAt());
   }, []);
 
   const handleClear = useCallback(() => {
-    localPlayerSource.clear();
+    storage.clearPlayer();
     setPlayer(undefined);
+    setFetchedAt(undefined);
   }, []);
+
+  // With a key saved, keep the roster current without the user asking. Failures
+  // are silent here: the Player data page is where problems get reported.
+  useEffect(() => {
+    if (refreshed.current) return;
+    refreshed.current = true;
+    const credentials = storage.readCredentials();
+    if (!credentials.apiKey) return;
+    const age = Date.now() - (storage.readFetchedAt() ?? 0);
+    if (player && age < STALE_AFTER_MS) return;
+    fetchPlayer(credentials).then(handleLoaded, () => undefined);
+  }, [player, handleLoaded]);
 
   return (
     <div className="app">
@@ -44,7 +56,7 @@ export function App() {
           <NavLink to="/units" className={({ isActive }) => (isActive ? 'active' : '')}>
             Units
           </NavLink>
-          <NavLink to="/import" className={({ isActive }) => (isActive ? 'active' : '')}>
+          <NavLink to="/player" className={({ isActive }) => (isActive ? 'active' : '')}>
             Player data
           </NavLink>
         </nav>
@@ -66,11 +78,7 @@ export function App() {
             <Route
               path="/units"
               element={
-                player ? (
-                  <UnitsPage db={db} player={player} />
-                ) : (
-                  <Navigate to="/import" replace />
-                )
+                player ? <UnitsPage db={db} player={player} /> : <Navigate to="/player" replace />
               }
             />
             <Route
@@ -79,17 +87,18 @@ export function App() {
                 player ? (
                   <UnitDetailPage db={db} player={player} />
                 ) : (
-                  <Navigate to="/import" replace />
+                  <Navigate to="/player" replace />
                 )
               }
             />
             <Route
-              path="/import"
+              path="/player"
               element={
-                <ImportPage
+                <PlayerDataPage
                   db={db}
                   player={player}
-                  onImport={handleImport}
+                  fetchedAt={fetchedAt}
+                  onLoaded={handleLoaded}
                   onClear={handleClear}
                 />
               }

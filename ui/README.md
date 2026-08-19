@@ -9,26 +9,34 @@ npm run ui:dev              # http://localhost:5173
 npm run ui:build            # -> ui/dist
 ```
 
-## Why player data is imported by hand
+## Player data
 
-The Tacticus API sends no CORS headers. A browser preflight is answered:
+Enter your API key on the **Player data** page and the app fetches your roster
+itself. The key lives in `localStorage` alongside the roster, so it survives
+reloads and the app works offline; a stored roster older than an hour is
+refreshed in the background on load.
 
-```
-HTTP/2 403
-Invalid CORS request
-```
+One piece cannot be avoided: **the app cannot call the game API directly.**
+Measured against the live service:
 
-and a plain `GET` carries no `access-control-allow-origin`. No static page can
-read a roster from it, wherever it is hosted — which is why community sites that
-show your roster proxy the call through a backend of their own.
+| Check | Result |
+| --- | --- |
+| `OPTIONS` preflight, four different origins | `403 Invalid CORS request` for all |
+| `access-control-allow-origin` on a plain `GET` | absent |
+| Key as a query parameter (5 spellings) | `403` — header only |
 
-So the app does not ask for your API key. You fetch the roster once yourself and
-paste or drop the JSON into the **Player data** page; it is stored in
-`localStorage` and never leaves the browser.
+The key is accepted only as the `X-API-KEY` header. A custom header forces a
+preflight, and the preflight is refused for every origin — including
+`tacticuscodex.com`, which is why that site proxies through a backend of its own.
 
-`src/data/player.ts` keeps this behind a `PlayerSource` interface. If the roster
-ever becomes reachable from a browser — an API change, or a proxy you run — an
-HTTP-backed source drops in without touching the views.
+So point the app at a relay you control: deploy the worker in [`relay/`](../relay)
+and paste its URL next to your key. It stores nothing and only forwards the three
+Tacticus endpoints. Without one, the app still tries the API directly and reports
+exactly why the browser refused — so it will start working on its own if the API
+ever sends CORS headers.
+
+Loading a `player.json` by file or paste still works, for anyone who would rather
+not run a relay.
 
 ## Where the data comes from
 
