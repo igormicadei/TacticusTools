@@ -28,6 +28,7 @@
     "ui:deploy": "scripts/deploy-pages.sh",
     "validate:plan": "node test/validate-plan.mjs",
     "validate:requirements": "node test/validate-requirements.mjs",
+    "validate:timeline": "node test/validate-timeline.mjs",
     "relay": "node relay/local-relay.mjs"
   },
   "engines": {

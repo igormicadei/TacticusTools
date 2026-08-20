@@ -5,6 +5,7 @@ import { loadGameData } from './data/gamedata.ts';
 import { fetchPlayer, storage } from './data/player.ts';
 import { PlanDetailPage } from './routes/PlanDetailPage.tsx';
 import { PlansPage } from './routes/PlansPage.tsx';
+import { TimelinePage } from './routes/TimelinePage.tsx';
 import { PlayerDataPage } from './routes/PlayerDataPage.tsx';
 import { UnitDetailPage } from './routes/UnitDetailPage.tsx';
 import { UnitsPage } from './routes/UnitsPage.tsx';
@@ -165,6 +166,17 @@ export function App() {
               path="/plans"
               element={
                 player ? <PlansPage db={db} player={player} /> : <Navigate to="/player" replace />
+              }
+            />
+            {/* Before the :planId route, or "timeline" is read as a plan id. */}
+            <Route
+              path="/plans/timeline"
+              element={
+                player ? (
+                  <TimelinePage db={db} player={player} />
+                ) : (
+                  <Navigate to="/player" replace />
+                )
               }
             />
             <Route

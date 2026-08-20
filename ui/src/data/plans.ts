@@ -7,6 +7,7 @@
  */
 
 import type { EvolutionTarget, UnitState } from '@lib/gamedata/plan.js';
+import type { StatPriority } from '@lib/gamedata/timeline.js';
 
 const STORAGE_KEY = 'tacticus-tools:plans';
 
@@ -26,6 +27,13 @@ export interface StoredPlan {
    * progress from that point rather than from their creation.
    */
   origin?: UnitState;
+  /**
+   * Which attribute to favour for this unit when spending energy.
+   *
+   * Health, damage and armour are not comparable — there is no published power
+   * formula to convert between them — so the choice is the player's, per unit.
+   */
+  priority?: StatPriority | undefined;
   createdAt: number;
 }
 

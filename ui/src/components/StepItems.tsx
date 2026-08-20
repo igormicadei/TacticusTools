@@ -22,6 +22,18 @@ import type { PlayerResponse, Unit } from '@lib/types/player.js';
 
 type View = 'steps' | 'total';
 
+/**
+ * Toggle one id in a set of open rows.
+ *
+ * A set rather than a single id because a recipe row is rendered inside its
+ * item's expansion: opening the ingredient must not close the parent drawing it.
+ */
+export function toggleOpen(current: ReadonlySet<string>, id: string): Set<string> {
+  const next = new Set(current);
+  if (!next.delete(id)) next.add(id);
+  return next;
+}
+
 export function StepItems({
   unit,
   plan,
@@ -54,12 +66,7 @@ export function StepItems({
 
   if (plan.steps.length === 0) return null;
 
-  const toggle = (id: string) =>
-    setOpen((current) => {
-      const next = new Set(current);
-      if (!next.delete(id)) next.add(id);
-      return next;
-    });
+  const toggle = (id: string) => setOpen((current) => toggleOpen(current, id));
 
   return (
     <section className="panel">
@@ -169,7 +176,7 @@ export function StepItems({
   );
 }
 
-function ItemRow({
+export function ItemRow({
   id,
   item,
   db,

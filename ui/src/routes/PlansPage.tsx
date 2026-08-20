@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 
 import { rankName, rarityName, Rarity } from '@lib/gamedata/enums.js';
 import { currentState, markProgress, resolvePlan } from '@lib/gamedata/plan.js';
+import { buildTimeline, type StatPriority } from '@lib/gamedata/timeline.js';
 import type { GameDatabase } from '@lib/gamedata/types.js';
 import type { PlayerResponse } from '@lib/types/player.js';
 
@@ -19,6 +20,26 @@ export function PlansPage({ db, player }: { db: GameDatabase; player: PlayerResp
     [player],
   );
 
+  // Built once for the whole page: scored plan by plan, two units wanting the
+  // same material would both claim it, and the cards would not add up against
+  // the timeline.
+  const summaries = useMemo(() => {
+    const entries = [];
+    for (const saved of plans) {
+      const unit = owned.find((u) => u.id === saved.unitId);
+      if (!unit) continue;
+      entries.push({
+        id: saved.id,
+        unit,
+        plan: markProgress(
+          resolvePlan(unit, saved.target, db, saved.origin),
+          currentState(unit, db),
+        ),
+      });
+    }
+    return buildTimeline(entries, player, db).byPlan;
+  }, [plans, owned, player, db]);
+
   const remove = (id: string) => {
     plansStore.remove(id);
     setPlans(plansStore.list());
@@ -29,6 +50,11 @@ export function PlansPage({ db, player }: { db: GameDatabase; player: PlayerResp
       <div className="toolbar">
         <h2 style={{ margin: 0, fontSize: 18 }}>Evolution plans</h2>
         <span style={{ flex: 1 }} />
+        {plans.length > 0 && (
+          <Link className="chip" to="/plans/timeline">
+            Everything in order
+          </Link>
+        )}
         <button
           className="primary"
           onClick={() => {
@@ -60,6 +86,7 @@ export function PlansPage({ db, player }: { db: GameDatabase; player: PlayerResp
           );
           const left = plan.steps.filter((s) => !s.done).length;
           const done = left === 0;
+          const summary = summaries.get(stored.id);
           return (
             <div className="card" key={stored.id} style={{ '--status': done ? 'var(--status-owned)' : 'var(--status-unlockable)' } as React.CSSProperties}>
               <Link to={`/plans/${stored.id}`}>
@@ -69,6 +96,12 @@ export function PlansPage({ db, player }: { db: GameDatabase; player: PlayerResp
                   <span className="chip">
                     {done ? 'Complete' : `${left} of ${plan.steps.length} steps left`}
                   </span>
+                  {summary && summary.missing > 0 && (
+                    <span className="chip">{summary.missing} items missing</span>
+                  )}
+                  {summary && summary.unreachable > 0 && (
+                    <span className="chip warn">{summary.unreachable} unreachable</span>
+                  )}
                   {plan.blocked && <span className="chip">Blocked</span>}
                 </div>
               </Link>
@@ -147,6 +180,7 @@ export function PlanForm({
   const [xpLevel, setXpLevel] = useState(field(existing?.target.xpLevel));
   const [active, setActive] = useState(field(existing?.target.activeAbilityLevel));
   const [passive, setPassive] = useState(field(existing?.target.passiveAbilityLevel));
+  const [priority, setPriority] = useState<StatPriority | ''>(existing?.priority ?? '');
 
   const num = (v: string) => (v === '' ? undefined : Number(v));
   const target = {
@@ -191,6 +225,20 @@ export function PlanForm({
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
+        </label>
+
+        <label>
+          <span>Favour</span>
+          <select
+            value={priority}
+            onChange={(e) => setPriority(e.target.value as StatPriority | '')}
+            title="Which attribute to favour for this unit when spending energy"
+          >
+            <option value="">No preference</option>
+            <option value="health">Health</option>
+            <option value="damage">Damage</option>
+            <option value="armour">Armour</option>
+          </select>
         </label>
 
         <label>
@@ -257,7 +305,12 @@ export function PlanForm({
         disabled={!unitId || empty}
         onClick={() => {
           const trimmed = name.trim();
-          const fields = { unitId, target, ...(trimmed ? { name: trimmed } : { name: undefined }) };
+          const fields = {
+            unitId,
+            target,
+            priority: priority === '' ? undefined : priority,
+            ...(trimmed ? { name: trimmed } : { name: undefined }),
+          };
           if (existing) {
             plansStore.update(existing.id, fields);
             onSaved(existing.id);
@@ -267,6 +320,7 @@ export function PlanForm({
                 unitId,
                 target,
                 ...(unit ? { origin: currentState(unit, db) } : {}),
+                ...(priority ? { priority } : {}),
                 ...(trimmed ? { name: trimmed } : {}),
               }).id,
             );

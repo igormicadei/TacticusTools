@@ -381,6 +381,51 @@ read at and skips if the unit has since advanced, because ranking up consumes
 the upgrades and moves every figure with them — the numbers only mean anything
 against the screen they came from.
 
+## One order across every plan
+
+`buildTimeline(plans, player, db)` merges every plan into a single running
+order, and spreads held stock across it.
+
+Steps are grouped into **bundles that each end at a rank-up**, carrying whatever
+stands in the way — an ascension or a level-up before a rank belongs to that
+rank's bundle. Bundles are ordered by the rank they reach, then by effort. Rank
+is the axis worth levelling a roster on: it is what you farm for, and it is
+comparable between units in a way a mixed bag of ability levels and ascensions
+is not. A unit needing an ascension to reach a rank lands behind units that can
+reach it without one — because its bundle costs more, not because of a rule
+about ascensions.
+
+Effort weights each missing copy: 1 for a material with an unlocked node, 5 for
+one with none, 5 for badges and orbs, which no campaign node yields at all, and
+0 for experience, which never discriminates between two steps. A crafted item is
+worth its recipe, recursively. The weight is measured against the whole
+inventory independent of the other plans — it has to be, since the order it
+produces is what decides the real allocation. Reported counts come from that
+allocation, never from the estimate.
+
+The allocation is the point. Scored plan by plan, a roster of 23 two-rank plans
+claims 26,146 copies it does not have, across 45 distinct items, because every
+plan counts the same stock as its own. Through one shared pool drawn in
+timeline order, that is zero.
+
+## Spending energy
+
+`energyCandidates` prices the slots each unit can fill **at the rank it is on
+now** — an upgrade for a later rank raises nothing until you get there — and
+`planEnergy` picks greedily by stat gained per energy.
+
+A slot is all or nothing: three of four copies raises nothing, so the whole
+remaining quantity is priced as one choice. Greedy rather than exact on purpose,
+since the prices are expected values over published drop rates and a solver's
+extra precision would be false. What it does guarantee is that nothing above the
+cut is skipped for something below it.
+
+Health, damage and armour are not comparable and there is no published formula
+to convert between them, so the attribute to favour is the player's choice —
+page-wide, or per unit on the plan.
+
+The player's energy balance is not in the API, so it is typed in.
+
 ### Power Score is not computed
 
 The formula is unpublished. The [community wiki](https://tacticus.wiki.gg/wiki/Power_Score)

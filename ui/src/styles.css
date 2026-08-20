@@ -242,6 +242,22 @@ table.steps tr:last-child td { border-bottom: none; }
 .step-block.done .step-num { color: var(--status-owned); border-color: color-mix(in srgb, var(--status-owned) 45%, transparent); }
 table.steps tr.done td { color: var(--text-dim); }
 .roadmap-mark-label.done, .roadmap-order.done { fill: var(--text-dim); }
+.tier-head {
+  margin: 18px 0 8px; font-size: 12px; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--text-dim);
+  border-bottom: 1px solid var(--border); padding-bottom: 6px;
+}
+.tier-head:first-child { margin-top: 0; }
+.bundle-head {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  background: none; border: none; padding: 8px 6px; text-align: left;
+  color: inherit; font: inherit; cursor: pointer;
+}
+.bundle-head:hover { background: var(--bg-hover); }
+.bundle-unit { font-weight: 600; }
+.item-row.dim { opacity: .55; }
+.inline-field { display: flex; align-items: center; gap: 8px; }
+.inline-field > span { color: var(--text-dim); font-size: 13px; }
 .source-note { padding: 4px 0 12px 46px; }
 table.nodes { border-collapse: collapse; font-size: 13px; }
 table.nodes td { padding: 3px 14px 3px 0; }
