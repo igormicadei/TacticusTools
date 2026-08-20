@@ -149,6 +149,23 @@ loader is cache-first (`.cache/gamedata.json`, 7-day TTL) and Codex failures are
 non-fatal — the database still builds from `gameInfo.json` alone, minus the
 Codex-sourced sections. `db.sources.codex` reports which of them made it in.
 
+### The snapshot is versioned in its URL
+
+`gamedata.json` carries no content hash in its name, so a browser will serve the
+copy it cached from an earlier deploy against freshly deployed code. When the
+schema has moved on, that pairing crashes wherever the new code reads a section
+the old snapshot lacks — a blank page, and a message pointing at the wrong
+thing.
+
+The schema version therefore rides in the query string, so the URL changes
+whenever the shape does, and it is checked again on arrival so a mismatch that
+slips past the cache is reported plainly instead of surfacing as
+`undefined is not an object` inside a component.
+
+Bump `GAME_DATABASE_SCHEMA_VERSION` whenever a field is added, not only when one
+is removed — a snapshot missing a field the code now reads is just as broken as
+one shaped differently.
+
 ## Caching
 
 The loader is cache-first (`.cache/gamedata.json`, 7-day TTL, ~3.7 MB). A cached
