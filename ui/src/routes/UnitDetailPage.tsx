@@ -203,9 +203,17 @@ const ITEM_STAT_LABELS: Record<string, string> = {
   critDmg: 'Crit damage',
   blockChance: 'Block chance',
   blockDmg: 'Block damage',
+  hp: 'Health',
+  fixedArmor: 'Armour',
 };
 
 const PERCENT_STATS = new Set(['critChance', 'blockChance']);
+
+/**
+ * Equipment stats the game folds into the headline figures rather than showing
+ * on their own; the crit and block stats are the ones it lists separately.
+ */
+const FOLDED_INTO_ATTRIBUTES = new Set(['hp', 'fixedArmor']);
 
 function Attributes({ unit, db }: { unit: Unit; db: GameDatabase }) {
   const definition = db.units[unit.id];
@@ -240,6 +248,18 @@ function Attributes({ unit, db }: { unit: Unit; db: GameDatabase }) {
                 {stats.rankUpgradesAvailable} rank upgrades
               </>
             )}
+            {(stats.equipment.health > 0 || stats.equipment.armour > 0) && (
+              <>
+                , plus{' '}
+                {[
+                  stats.equipment.health > 0 ? `+${stats.equipment.health} health` : undefined,
+                  stats.equipment.armour > 0 ? `+${stats.equipment.armour} armour` : undefined,
+                ]
+                  .filter(Boolean)
+                  .join(' and ')}{' '}
+                from equipment, which lands outside the multiplier
+              </>
+            )}
             .
           </p>
         </>
@@ -259,6 +279,9 @@ function Attributes({ unit, db }: { unit: Unit; db: GameDatabase }) {
                 <dd>
                   +{value}
                   {PERCENT_STATS.has(key) ? '%' : ''}
+                  {FOLDED_INTO_ATTRIBUTES.has(key) && (
+                    <span className="muted small"> · counted above</span>
+                  )}
                 </dd>
               </Fragment>
             ))}

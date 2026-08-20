@@ -55,6 +55,18 @@ const CASES = [
     },
   },
   {
+    unitId: 'ultraTigurius',
+    label: 'Tigurius — Epic, Bronze II, four upgrades and armour from equipment',
+    state: { rank: 7, progressionIndex: 9, upgrades: 4 },
+    expect: {
+      health: 530,
+      damage: 248,
+      // floor(68 x 1.6) + 17 upgrades + 87 from Adorned Plated Greaves.
+      armour: 212,
+      itemBonuses: { critChance: 39, critDmg: 322 },
+    },
+  },
+  {
     unitId: 'blackHaarken',
     label: 'Haarken — Epic, Iron II, five of six rank upgrades applied',
     state: { rank: 4, progressionIndex: 11, upgrades: 5 },
@@ -114,7 +126,9 @@ for (const testCase of CASES) {
   check('damage', stats.damage, testCase.expect.damage);
   check('armour', stats.armour, testCase.expect.armour);
   if (testCase.expect.tierStarLevel !== undefined) {
+    if (testCase.expect.tierStarLevel !== undefined) {
     check('stars shown', stats.tierStarLevel, testCase.expect.tierStarLevel);
+  }
   }
   for (const [key, value] of Object.entries(testCase.expect.itemBonuses)) {
     check(key, stats.itemBonuses[key], value);

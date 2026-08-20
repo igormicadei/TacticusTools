@@ -60,7 +60,15 @@ export interface ComputedUnitStats {
   /** How many of the rank's upgrade slots are filled. */
   rankUpgradesApplied: number;
   rankUpgradesAvailable: number;
-  /** Final displayed values: `floor(base * multiplier) + rankUpgrades`. */
+  /**
+   * Flat health and armour granted by equipment, already included in the
+   * figures below. Equipment is added after scaling, not multiplied by it.
+   */
+  equipment: { health: number; armour: number };
+  /**
+   * Final displayed values:
+   * `floor(base * multiplier) + rankUpgrades + equipment`.
+   */
   health: number;
   damage: number;
   armour: number;
@@ -107,10 +115,15 @@ export function computeItemBonuses(items: readonly UnitItem[], db: GameDatabase)
 /**
  * Compute a unit's displayed stats.
  *
- * `floor(base * starMultiplier) + appliedRankUpgrades`, verified against two
- * character screens: Gulgortz at Stone I with 6 stars and no upgrades applied
- * (100/26/26 x1.6 -> 160/41/41), and Haarken at Iron II with 8 stars and five
- * upgrades applied (floor(234 x 1.8) + 58 -> 479 health).
+ * `floor(base * starMultiplier) + appliedRankUpgrades + equipment`, verified
+ * against three character screens: Gulgortz at Stone I with 6 stars and no
+ * upgrades applied (100/26/26 x1.6 -> 160/41/41), Haarken at Iron II with 8
+ * stars and five upgrades applied (floor(234 x 1.8) + 58 -> 479 health), and
+ * Tigurius at Bronze II with 6 stars, four upgrades and Adorned Plated Greaves
+ * (floor(68 x 1.6) + 17 + 87 -> 212 armour).
+ *
+ * Equipment lands outside the star multiplier: Tigurius's 87 armour arrives
+ * whole, and scaling it would give 351 rather than the 212 the game shows.
  *
  * Returns `undefined` when the database has no stat block for the unit's rank,
  * rather than extrapolating one.
@@ -142,6 +155,13 @@ export function computeUnitStats(unit: Unit, db: GameDatabase): ComputedUnitStat
   // the sum would give 525.
   const scale = (value: number, flat: number) => Math.floor(value * starMultiplier) + flat;
 
+  // Equipment grants flat health and armour, which the game folds into the
+  // headline figures rather than listing separately — the crit and block stats
+  // are what it shows on their own. Only these two stats appear on equipment;
+  // nothing grants damage.
+  const itemBonuses = computeItemBonuses(unit.items, db);
+  const equipment = { health: itemBonuses.hp ?? 0, armour: itemBonuses.fixedArmor ?? 0 };
+
   return {
     rank: unit.rank,
     starLevel,
@@ -152,10 +172,11 @@ export function computeUnitStats(unit: Unit, db: GameDatabase): ComputedUnitStat
     rankUpgrades,
     rankUpgradesApplied: applied,
     rankUpgradesAvailable: rankStats.upgrades.length,
-    health: scale(rankStats.health, rankUpgrades.health),
+    equipment,
+    health: scale(rankStats.health, rankUpgrades.health) + equipment.health,
     damage: scale(rankStats.damage, rankUpgrades.damage),
-    armour: scale(rankStats.armour, rankUpgrades.armour),
-    itemBonuses: computeItemBonuses(unit.items, db),
+    armour: scale(rankStats.armour, rankUpgrades.armour) + equipment.armour,
+    itemBonuses,
   };
 }
 

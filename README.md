@@ -337,11 +337,11 @@ row from Codex's identically-named field.
 screen:
 
 ```
-stat = floor(base_for_rank × starMultiplier) + appliedRankUpgrades
+stat = floor(base_for_rank × starMultiplier) + appliedRankUpgrades + equipment
 starMultiplier = 1 + 0.10 × cumulativeStars
 ```
 
-Three details, each established by matching the game rather than assumed:
+Four details, each established by matching the game rather than assumed:
 
 - **Stars drive it, not rarity.** At progression index 9 both readings give
   ×1.60, so that unit cannot tell them apart. Index 11 can: the game needs
@@ -349,23 +349,37 @@ Three details, each established by matching the game rather than assumed:
   ×1.60.
 - **Rank upgrades are added after scaling.** Haarken is
   `floor(234 × 1.8) + 58 = 479`; scaling the sum instead gives 525.
+- **Equipment lands outside the multiplier too.** Tigurius is
+  `floor(68 × 1.6) + 17 + 87 = 212` armour; scaling the Greaves' 87 would give
+  351.
 - **The game truncates, not rounds.** 26 × 1.6 = 41.6 displays as 41.
+
+The wiki's [HDTW Progression](https://tacticus.fandom.com/wiki/HDTW_Progression)
+page confirms the shape independently: stars add 10% to *base* stats, and an
+upgrade applied at the current rank is added to the displayed figure flat, only
+folding into base — and so under the multiplier — once the rank completes. That
+is what `base_for_rank` already carries.
 
 Equipment stats are summed, with booster items merged onto the stat they boost —
 a Force Field at 30% plus an Amplifier at 4% is one 34% figure — so `*Bonus` keys
-fold onto their base key.
+fold onto their base key. Only `hp` and `fixedArmor` appear on equipment among
+the three headline stats, and the game folds both into the figures it displays
+rather than listing them separately; nothing grants damage.
 
 `starLevel` is the cumulative count that drives the multiplier; `tierStarLevel`
 is what the character screen displays, counted within the current rarity, so
 index 11 reads 3 stars while the multiplier uses 8.
 
 Ability stats are not computed: rarity adds +20% per tier to them, but their base
-values are unresolved placeholders in the source data.
+values are unresolved placeholders in the source data. The two multipliers are
+independent and apply to different things — stars scale unit stats, rarity
+scales ability variables — so rarity never moves Health, Damage or Armour.
 
 `npm run validate:stats -- player.json` checks the output against values
-transcribed from in-game character screens. Two units currently pass on all 16
-figures: Gulgortz (Stone I, no upgrades applied) and Haarken (Iron II, five of
-six upgrades applied).
+transcribed from in-game character screens. Each case records the state it was
+read at and skips if the unit has since advanced, because ranking up consumes
+the upgrades and moves every figure with them — the numbers only mean anything
+against the screen they came from.
 
 ### Power Score is not computed
 
