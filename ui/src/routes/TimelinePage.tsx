@@ -129,12 +129,33 @@ function OrderOfWork({
     return <div className="empty">Every plan is complete.</div>;
   }
 
+  // The heading names the rank a group sorts on, not whatever the group's first
+  // bundle happens to target. A group can hold both — a rank-up to Bronze II and
+  // a level-up by a unit already sitting at Bronze II sort together — and reading
+  // the label off the first bundle showed "the rest" for a group that plainly was
+  // reaching a rank, and showed it twice running for two different ranks.
+  const headings = new Map<number, string>();
+  for (const bundle of bundles) {
+    const reaches = bundle.targetRank !== undefined;
+    if (reaches || !headings.has(bundle.sortRank)) {
+      headings.set(
+        bundle.sortRank,
+        reaches
+          ? `Reaching ${rankName(bundle.sortRank)}`
+          : // Nothing here moves the rank: this is level and ability work by
+            // units already standing at it.
+            `Already at ${rankName(bundle.sortRank)}`,
+      );
+    }
+  }
+
   let tier: number | undefined;
   return (
     <section className="panel">
       <p className="small muted" style={{ marginTop: 0 }}>
-        Grouped by the rank each step reaches, so the roster comes up together, and
-        within a rank the cheapest first. A unit needing an ascension to reach a rank
+        Grouped by rank, so the roster comes up together, and within a rank the
+        cheapest first. A group named “already at” is work that does not move the
+        rank — levels and abilities for units standing there already. A unit needing an ascension to reach a rank
         sorts behind units that can reach it without one — its bundle costs more.
         Held stock is spread across this order, so two units wanting the same material
         no longer both count it as theirs.
@@ -147,10 +168,8 @@ function OrderOfWork({
           <div key={id}>
             {heading && (
               <h3 className="tier-head row">
-                {bundle.targetRank !== undefined && (
-                  <Icon src={rankIcon(bundle.targetRank)} size={20} />
-                )}
-                Reaching {bundle.targetRank !== undefined ? rankName(bundle.targetRank) : 'the rest'}
+                <Icon src={rankIcon(bundle.sortRank)} size={20} reserve />
+                {headings.get(bundle.sortRank)}
               </h3>
             )}
             <div className="step-block">
