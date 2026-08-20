@@ -168,6 +168,10 @@ export default {
     const upstream = await fetch(`${API_ORIGIN}${url.pathname}`, {
       method: 'GET',
       headers: { 'X-API-KEY': apiKey, Accept: 'application/json' },
+      // The response below says no-store, but that governs the caller's cache,
+      // not Cloudflare's own edge cache in front of this subrequest. Without
+      // this a refresh can be answered with a roster minutes old.
+      cf: { cacheTtl: 0, cacheEverything: false },
     });
 
     const body = await upstream.text();
