@@ -22,6 +22,7 @@
     "validate": "node test/validate-response.mjs",
     "validate:gamedata": "node test/validate-gamedata.mjs",
     "gamedata:snapshot": "npm run build && node scripts/snapshot-gamedata.mjs",
+    "icons:snapshot": "npm run build && node scripts/snapshot-icons.mjs",
     "ui:dev": "npm --prefix ui run dev",
     "ui:build": "npm --prefix ui run build",
     "validate:stats": "node test/validate-stats.mjs",

@@ -617,6 +617,40 @@ against that worked example, that no item is ever allocated beyond what is held
 or beyond what a step needs, that totals agree with the steps, and that every
 blocked flag is genuine.
 
+## Icons
+
+`npm run icons:snapshot` resolves our ids against Codex's asset bundle and
+writes `ui/public/icons.json` — a 65 KB map of id to filename, not the images
+themselves.
+
+The artwork is **referenced, not copied**. Codex serves it with
+`Access-Control-Allow-Origin: *` and no referer check, so a browser can load it
+straight from them. Rehosting the full set would put ~150 MB of Games Workshop
+artwork in this repository and on the Pages branch, which the map avoids
+entirely; it also keeps the icons current without a re-download.
+
+The cost is a dependency: if Codex goes down or renames its assets, icons break.
+The filenames carry webpack content hashes, so a Codex rebuild invalidates the
+map — re-run the snapshot when icons start 404ing.
+
+Coverage against the current bundle (2,462 assets):
+
+| | resolved |
+| --- | --- |
+| units | 126/127 |
+| unit ability art | 121/127 |
+| equipment | 194/195 |
+| materials | 504/558 |
+| orbs | 15 (3 alliances x Uncommon-Mythic) |
+| ability badges | 18 (3 alliances x Common-Mythic) |
+| ranks | 14/20 |
+| stars, shards | 3 and 2, complete |
+
+The gaps are Codex's, not the matcher's: it carries no Stone or Bronze rank art,
+and none of the 54 faction Symbol materials — there is no asset with "symbol" in
+its name at all. Names are matched with diacritics folded, since the game writes
+Khârn and Ûthar where Codex files kharn and uthar.
+
 ## Shelved ideas
 
 Investigations that concluded "not worth building" are written up in `docs/`, so
