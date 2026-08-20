@@ -392,9 +392,20 @@ The gating rules, and how each was established:
 | Level ≤ rarity's cap (8 / 17 / 26 / 35 / 50) | published, via `rarityCaps` |
 | Ability level ≤ character level | observed — no ability exceeds its unit's level across a 29-unit roster, and 12 sit exactly on it |
 | Rank ≤ `3 × (rarity + 1)` | **derived** — no unit exceeds it, two sit exactly on it, and it explains the "MAX. RANK: I" badge the game shows for Common and Uncommon, each being the first rank of a tier |
+| Leaving a rank needs a character level (Stone I 3, then 3 per rank to Diamond II 50) | published on the wiki's [Unit Progression](https://tacticus.fandom.com/wiki/Unit_Progression) page, absent from every machine-readable source |
 
-The rank rule is the one to revisit if a plan looks wrong; `maxRankForRarity` in
-`src/gamedata/plan.ts` is the single place to change it.
+A rank's six upgrades sit in two rows; the second row is level-gated per
+upgrade, and the table records the highest of the three — what completing the
+rank costs. Two checks support it: four units in the roster sit exactly on a
+threshold and none violates one, and each tier's last rank costs exactly that
+tier's rarity level cap (Common 8 / Stone III, Uncommon 17 / Iron III, Rare 26 /
+Bronze III, Epic 35 / Silver III), so two tables from different sources agree on
+every boundary. Diamond III and the Mythic ranks have no published value — the
+table predates them — and are treated as ungated rather than guessed at.
+
+The rank rule is the one to revisit if a plan looks wrong; `maxRankForRarity`
+and `LEVEL_TO_COMPLETE_RANK` in `src/gamedata/plan.ts` are the single places to
+change them.
 
 Steps are emitted greedily in the order that unblocks progress — push rank and
 level as far as the current rarity allows, raise abilities as far as the level

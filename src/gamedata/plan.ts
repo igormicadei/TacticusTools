@@ -32,6 +32,59 @@ export function maxRankForRarity(rarity: Rarity): Rank {
 }
 
 /**
+ * Character level needed to apply every upgrade of a rank — and so to leave it.
+ *
+ * A rank's six upgrades sit in two rows. The first row can be applied at any
+ * level; each upgrade in the second row has its own level threshold, and the
+ * value here is the highest of them, which is what completing the rank costs.
+ *
+ * Published on the Tacticus wiki's Unit Progression page, and not present in
+ * any machine-readable source — neither `gameInfo` nor Codex models it, so it
+ * is transcribed here rather than loaded.
+ *
+ * Two independent checks support it. Four units in a 29-unit roster sit exactly
+ * on a threshold and none violates one (Azrael reached Stone III at exactly 5,
+ * Calandis Iron I at exactly 8, Bellator and Vindicta Bronze I at exactly 17).
+ * And each tier's last rank costs exactly that tier's rarity level cap — Common
+ * caps at 8 and Stone III costs 8, Uncommon at 17 and Iron III costs 17, Rare
+ * at 26 and Bronze III costs 26, Epic at 35 and Silver III costs 35 — so the
+ * two tables, from different sources, agree on every boundary.
+ *
+ * Indexed by {@link Rank}. Diamond III and the Mythic ranks are absent: the
+ * table was written when Diamond III was the ceiling, so no value is published
+ * for them and none is invented here.
+ */
+const LEVEL_TO_COMPLETE_RANK: readonly (number | undefined)[] = [
+  3, // Stone I
+  5, // Stone II
+  8, // Stone III
+  11, // Iron I
+  14, // Iron II
+  17, // Iron III
+  20, // Bronze I
+  23, // Bronze II
+  26, // Bronze III
+  29, // Silver I
+  32, // Silver II
+  35, // Silver III
+  38, // Gold I
+  41, // Gold II
+  44, // Gold III
+  47, // Diamond I
+  50, // Diamond II
+];
+
+/**
+ * Character level needed to finish `rank`'s upgrades and move off it.
+ *
+ * `undefined` where the game publishes no threshold, in which case the level is
+ * treated as no obstacle rather than guessed at.
+ */
+export function levelToCompleteRank(rank: Rank): number | undefined {
+  return LEVEL_TO_COMPLETE_RANK[rank];
+}
+
+/**
  * Highest character level reachable at a given rarity.
  *
  * Published, via the level ceilings in {@link GameDatabase.rarityCaps}
@@ -182,13 +235,20 @@ function resolveTarget(
     target.activeAbilityLevel ?? 0,
     target.passiveAbilityLevel ?? 0,
   );
+  const rank = Math.max(target.rank ?? 0, current.rank) as Rank;
+
   let level = Math.max(target.xpLevel ?? 0, current.xpLevel);
   if (abilityMax > level) {
     level = abilityMax;
     reasons.set('level', `ability level ${abilityMax} requires character level ${abilityMax}`);
   }
-
-  const rank = Math.max(target.rank ?? 0, current.rank) as Rank;
+  // A rank is left by applying its upgrades, and those are level-gated, so a
+  // rank target drags the character level up with it.
+  const rankLevel = rank > current.rank ? levelToCompleteRank((rank - 1) as Rank) : undefined;
+  if (rankLevel !== undefined && rankLevel > level) {
+    level = rankLevel;
+    reasons.set('level', `rank ${rankName(rank)} requires character level ${rankLevel}`);
+  }
 
   const neededForLevel = rarityForLevel(level, db);
   const neededForRank = rarityForRank(rank);
@@ -281,17 +341,44 @@ export function resolvePlan(
       // needed now and which belong to a rank days away.
       const from = state.rank;
       const to = (from + 1) as Rank;
-      state.rank = to;
-      push({
-        kind: 'rank',
-        label: `Rank up to ${rankName(to)}`,
-        from,
-        to,
-        ...(to === rankCap && to < wantRank
-          ? { reason: `capped by ${rarityName(rarity)} until ascension` }
-          : {}),
-      });
-      continue;
+      const gate = levelToCompleteRank(from);
+      // The upgrades that leave a rank cannot be applied below a certain level,
+      // so the level comes first — farming the materials early would only leave
+      // them sitting unusable.
+      const tooLow = gate !== undefined && state.xpLevel < gate;
+
+      if (tooLow && state.xpLevel < levelCap) {
+        const reached = Math.min(gate!, levelCap);
+        const fromLevel = state.xpLevel;
+        state.xpLevel = reached;
+        push({
+          kind: 'level',
+          label: `Level to ${reached}`,
+          from: fromLevel,
+          to: reached,
+          reason:
+            reached >= gate!
+              ? `${rankName(from)}'s upgrades need character level ${gate} to apply`
+              : `capped by ${rarityName(rarity)} until ascension`,
+        });
+        continue;
+      }
+
+      if (!tooLow) {
+        state.rank = to;
+        push({
+          kind: 'rank',
+          label: `Rank up to ${rankName(to)}`,
+          from,
+          to,
+          ...(to === rankCap && to < wantRank
+            ? { reason: `capped by ${rarityName(rarity)} until ascension` }
+            : {}),
+        });
+        continue;
+      }
+      // Short of the gate with the level itself capped: only an ascension lifts
+      // it, so fall through to the rarity branch below.
     }
 
     if (state.xpLevel < wantLevel && state.xpLevel < levelCap) {

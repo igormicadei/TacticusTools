@@ -12,6 +12,7 @@ import {
   loadGameDatabase,
   resolvePlan,
   markProgress,
+  levelToCompleteRank,
   currentState,
   maxRankForRarity,
   maxLevelForRarity,
@@ -112,6 +113,25 @@ for (const unit of player.units) {
 }
 console.log(`audited ${plans} plans across ${player.units.length} units, ${steps} steps total`);
 
+/* ---- the level gate on rank upgrades ----------------------------------------
+ * A rank is left by applying its six upgrades, and those need a character
+ * level. The roster is the check on the table: every unit had to clear the
+ * threshold of the rank below to have reached the one it sits on.
+ */
+{
+  let tight = 0;
+  for (const unit of player.units) {
+    if (unit.rank === 0) continue;
+    const gate = levelToCompleteRank(unit.rank - 1);
+    if (gate === undefined) continue;
+    if (unit.xpLevel < gate) {
+      note(`${unit.name}: rank ${unit.rank} at level ${unit.xpLevel}, below the gate of ${gate}`);
+    }
+    if (unit.xpLevel === gate) tight += 1;
+  }
+  console.log(`level gate: roster consistent, ${tight} unit(s) sitting exactly on a threshold  ✓`);
+}
+
 /* ---- progress against a recorded starting point -----------------------------
  * A plan resolved from where it started must keep the steps the unit has since
  * walked past, marked done, and must leave exactly the same work outstanding as
@@ -140,6 +160,22 @@ for (const unit of player.units) {
   if (full.current.rank !== unit.rank) note(`${unit.name}: progress did not re-anchor on the live state`);
 }
 console.log('progress marking: checked against fresh plans  ✓');
+
+/* ---- no rank step outruns its level gate ----------------------------------- */
+for (const unit of player.units) {
+  for (const target of [{ rank: 12 }, { rank: 19 }, { rarity: 5 }]) {
+    for (const step of resolvePlan(unit, target, db).steps) {
+      if (step.kind !== 'rank') continue;
+      const gate = levelToCompleteRank(step.from);
+      if (gate !== undefined && step.after.xpLevel < gate) {
+        note(
+          `${unit.name}: ranks off ${step.from} at level ${step.after.xpLevel}, gate is ${gate}`,
+        );
+      }
+    }
+  }
+}
+console.log('level gate: no plan ranks up below the threshold  ✓');
 
 // A worked example, printed so a human can sanity-check the ordering.
 const certus = player.units.find((u) => u.name === 'Certus');
