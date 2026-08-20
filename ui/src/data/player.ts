@@ -181,6 +181,9 @@ export async function fetchPlayer(credentials: Credentials): Promise<PlayerRespo
   let response: Response;
   try {
     response = await fetch(`${base}${PLAYER_PATH}`, {
+      // The whole point of a refresh is to reach the game, so no cache — the
+      // browser's, a proxy's, or a service worker's — may answer for it.
+      cache: 'no-store',
       headers: {
         'X-API-KEY': apiKey,
         Accept: 'application/json',

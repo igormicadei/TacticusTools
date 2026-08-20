@@ -34,13 +34,18 @@ const player = read(playerPath).player;
 
 /**
  * Ground truth transcribed from in-game character screens.
- * `expect` holds what the game displays; `state` records the conditions so a
- * mismatch is diagnosable.
+ *
+ * `expect` is what the game displayed; `state` is the unit as it stood when the
+ * screen was read. The figures only mean anything in that state — ranking up
+ * consumes the upgrades and moves every stat with them — so a case whose unit
+ * has since advanced is skipped rather than failed. Re-transcribe from a fresh
+ * screen to re-arm it.
  */
 const CASES = [
   {
     unitId: 'orksWarboss',
     label: 'Gulgortz — Epic, Stone I, no rank upgrades applied',
+    state: { rank: 0, progressionIndex: 9, upgrades: 0 },
     expect: {
       health: 160,
       damage: 41,
@@ -52,6 +57,7 @@ const CASES = [
   {
     unitId: 'blackHaarken',
     label: 'Haarken — Epic, Iron II, five of six rank upgrades applied',
+    state: { rank: 4, progressionIndex: 11, upgrades: 5 },
     expect: {
       health: 479,
       damage: 55,
@@ -63,6 +69,7 @@ const CASES = [
 ];
 
 let failures = 0;
+let skipped = 0;
 const check = (label, actual, expected) => {
   const ok = actual === expected;
   if (!ok) failures += 1;
@@ -74,6 +81,21 @@ for (const testCase of CASES) {
   console.log(`\n${testCase.label}`);
   if (!unit) {
     console.log('    SKIP — not in this player payload');
+    continue;
+  }
+  const was = testCase.state;
+  if (
+    was &&
+    (unit.rank !== was.rank ||
+      unit.progressionIndex !== was.progressionIndex ||
+      unit.upgrades.length !== was.upgrades)
+  ) {
+    console.log(
+      `    SKIP — the unit has moved on: recorded at rank ${was.rank}, ` +
+        `${was.upgrades}/6 applied, ${was.progressionIndex} progression; ` +
+        `now rank ${unit.rank}, ${unit.upgrades.length}/6, ${unit.progressionIndex}`,
+    );
+    skipped += 1;
     continue;
   }
   const stats = computeUnitStats(unit, db);
@@ -99,9 +121,10 @@ for (const testCase of CASES) {
   }
 }
 
+const note = skipped > 0 ? ` (${skipped} case(s) skipped — the unit has moved on)` : '';
 console.log(
   failures === 0
-    ? '\n✓ derived stats match the game'
-    : `\n✗ ${failures} mismatch(es) against the game`,
+    ? `\n✓ derived stats match the game${note}`
+    : `\n✗ ${failures} mismatch(es) against the game${note}`,
 );
 process.exit(failures === 0 ? 0 : 1);

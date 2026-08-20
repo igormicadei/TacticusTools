@@ -34,7 +34,9 @@ export function StepItems({
   player: PlayerResponse;
 }) {
   const [view, setView] = useState<View>('steps');
-  const [open, setOpen] = useState<string>();
+  // A set, not a single id: a recipe row lives inside its item's expansion, so
+  // opening it must not close the parent that renders it.
+  const [open, setOpen] = useState<ReadonlySet<string>>(() => new Set());
 
   const { steps, totals, gold } = useMemo(() => {
     // Finished steps cost nothing more, and pricing them against the unit's
@@ -51,7 +53,12 @@ export function StepItems({
 
   if (plan.steps.length === 0) return null;
 
-  const toggle = (id: string) => setOpen((current) => (current === id ? undefined : id));
+  const toggle = (id: string) =>
+    setOpen((current) => {
+      const next = new Set(current);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
 
   return (
     <section className="panel">
@@ -158,7 +165,7 @@ function ItemRow({
   item: AllocatedItem | AggregatedItem;
   db: GameDatabase;
   player: PlayerResponse;
-  open: string | undefined;
+  open: ReadonlySet<string>;
   onToggle: (id: string) => void;
   /** Set in the aggregate view, where a row stands for several steps. */
   totals?: AggregatedItem;
@@ -168,7 +175,7 @@ function ItemRow({
   // carefully, since there is nowhere to farm more.
   const finite = !blocked && item.covered > 0 && isUnobtainable(item, db, player);
   const complete = item.missing === 0;
-  const expanded = open === id;
+  const expanded = open.has(id);
   const forge = forgeState(item, db);
 
   // Fitted materials have nowhere to go and nothing to find, so they do not
@@ -243,7 +250,7 @@ function ItemSources({
   db: GameDatabase;
   player: PlayerResponse;
   idPrefix: string;
-  open: string | undefined;
+  open: ReadonlySet<string>;
   onToggle: (id: string) => void;
 }) {
   const source = itemSource(item, db);
@@ -303,7 +310,7 @@ function ComponentRow({
   component: AllocatedComponent;
   db: GameDatabase;
   player: PlayerResponse;
-  open: string | undefined;
+  open: ReadonlySet<string>;
   onToggle: (id: string) => void;
 }) {
   const item = { kind: 'upgrade' as const, ...component };
@@ -311,7 +318,7 @@ function ComponentRow({
   const blocked = isUnfarmable(item, db, player);
   const finite = !blocked && component.covered > 0 && isUnobtainable(item, db, player);
   const complete = component.missing === 0;
-  const expanded = open === id;
+  const expanded = open.has(id);
   const forge = forgeState(component, db);
 
   return (

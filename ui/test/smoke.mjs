@@ -54,6 +54,51 @@ const panels = await p.locator('.panel h3').allTextContents();
 console.log('DETAIL for', unitName, '-> panels:', panels.join(' | '));
 await p.screenshot({ path: `${S}/ui-detail.png`, fullPage: true });
 
+// A plan's item list: rows open independently, including the recipe rows nested
+// inside an item's own expansion. These once shared a single "which row is
+// open" slot, so opening an ingredient closed the item that rendered it and the
+// click looked like it did nothing.
+const planned = JSON.parse(player).player.units.find((u) => u.rank > 0 && u.rank < 18);
+if (planned) {
+  await p.evaluate(
+    ([id, target]) =>
+      localStorage.setItem(
+        'tacticus-tools:plans',
+        JSON.stringify([{ id: 'smoke', unitId: id, target, createdAt: Date.now() }]),
+      ),
+    [planned.id, { rank: Math.min(planned.rank + 2, 19) }],
+  );
+  await p.goto('http://localhost:4173/#/plans/smoke', { waitUntil: 'networkidle' });
+  await p.waitForSelector('.item-row', { timeout: 15000 });
+
+  const rows = p.locator('.step-block').last().locator('> ul > .item-row > button');
+  const openable = await rows.count();
+  if (openable >= 2) {
+    await rows.nth(0).click();
+    await rows.nth(1).click();
+    await p.waitForTimeout(200);
+    const open = await p
+      .locator('.step-block')
+      .last()
+      .locator('> ul > .item-row > button[aria-expanded=true]')
+      .count();
+    console.log(`PLAN ITEMS: opened 2 of ${openable} rows, ${open} stayed open`);
+    if (open !== 2) errors.push(`PLAN: opening a second row closed the first (${open} open)`);
+  }
+
+  // Drill into a recipe: the ingredient must open while its item stays open.
+  const craft = p.locator('.item-list.nested > .item-row > button').first();
+  if ((await craft.count()) > 0) {
+    const before = await p.locator('.item-list.nested').count();
+    await craft.click();
+    await p.waitForTimeout(200);
+    const still = await p.locator('.item-list.nested').count();
+    console.log(`PLAN RECIPE: ingredient opened, ${still} nested list(s) still mounted`);
+    if (still < before) errors.push('PLAN: opening an ingredient collapsed its parent item');
+  }
+  await p.screenshot({ path: `${S}/ui-plan.png`, fullPage: true });
+}
+
 console.log('\nconsole errors:', errors.length ? errors.slice(0, 6) : 'none');
 if (errors.length) process.exitCode = 1;
 await b.close();

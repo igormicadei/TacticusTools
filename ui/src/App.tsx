@@ -27,7 +27,11 @@ export function App() {
   const [fetchedAt, setFetchedAt] = useState<number | undefined>(() => storage.readFetchedAt());
   const [error, setError] = useState<string>();
   const [refreshing, setRefreshing] = useState(false);
+  const [refreshError, setRefreshError] = useState<string>();
   const inFlight = useRef(false);
+  // Shown whenever a key is stored, not only once a roster has loaded: a failed
+  // first fetch would otherwise leave no way to retry from here.
+  const hasKey = Boolean(storage.readCredentials().apiKey);
 
   useEffect(() => {
     loadGameData().then(setDb, (e: unknown) => setError(String(e)));
@@ -61,8 +65,13 @@ export function App() {
       setRefreshing(true);
       try {
         handleLoaded(await fetchPlayer(credentials));
-      } catch {
-        // Reported on the Player data page, where the settings that fix it live.
+        setRefreshError(undefined);
+      } catch (e: unknown) {
+        // A refresh that quietly does nothing is indistinguishable from one
+        // that found no changes, so say so here rather than only on the Player
+        // data page — that is where the settings to fix it live, but the person
+        // pressing the button is looking at this bar.
+        setRefreshError(e instanceof Error ? e.message : String(e));
       } finally {
         inFlight.current = false;
         setRefreshing(false);
@@ -102,17 +111,26 @@ export function App() {
           </NavLink>
         </nav>
         <span className="spacer" />
-        {player && (
+        {hasKey && (
           <span className="row small muted" style={{ gap: 8 }}>
-            <span>
-              {player.player.details.name} · power {player.player.details.powerLevel}
-            </span>
-            <span title={syncedAtTitle(player, fetchedAt)}>{age(player, fetchedAt)}</span>
+            {player && (
+              <>
+                <span>
+                  {player.player.details.name} · power {player.player.details.powerLevel}
+                </span>
+                <span title={syncedAtTitle(player, fetchedAt)}>{age(player, fetchedAt)}</span>
+              </>
+            )}
+            {refreshError && (
+              <NavLink to="/player" className="chip warn" title={refreshError}>
+                Refresh failed
+              </NavLink>
+            )}
             <button
               className="small"
               onClick={() => void refresh(true)}
               disabled={refreshing}
-              title="Fetch the roster again now"
+              title="Fetch the roster from the API now, ignoring the stored copy"
             >
               {refreshing ? 'Refreshing…' : 'Refresh'}
             </button>

@@ -3,7 +3,7 @@
  * already held cover the plan.
  */
 
-import { Rarity, parseRarity } from './enums.js';
+import { CAMPAIGN_TYPE_NAMES, Rarity, parseRarity } from './enums.js';
 import type { BattleRef, UnitId } from './ids.js';
 import { battleKey } from './ids.js';
 import type { EvolutionPlan, PlanStep } from './plan.js';
@@ -470,6 +470,23 @@ export function itemSources(
   return source.kind === 'farm' ? source.nodes : undefined;
 }
 
+/**
+ * Campaign names that more than one campaign answers to.
+ *
+ * Each of the six event campaigns runs a Standard and an Extremis track under
+ * one name, so "Adeptus Mechanicus node 3" alone names two different battles.
+ */
+function ambiguousCampaignNames(db: GameDatabase): Set<string> {
+  const seen = new Set<string>();
+  const shared = new Set<string>();
+  for (const { name } of Object.values(db.campaigns)) {
+    if (name === undefined) continue;
+    if (seen.has(name)) shared.add(name);
+    seen.add(name);
+  }
+  return shared;
+}
+
 /** Annotate nodes with whether the player can run them, and how often today. */
 export function nodeStatuses(
   refs: readonly BattleRef[],
@@ -477,6 +494,7 @@ export function nodeStatuses(
   db: GameDatabase,
 ): NodeStatus[] {
   const progress = unlockedNodes(player);
+  const ambiguous = ambiguousCampaignNames(db);
   // Sources can list the same node twice; collapse them so the list is honest.
   const unique = new Map<string, BattleRef>();
   for (const ref of refs) unique.set(`${ref.campaignId}#${ref.battleIndex}`, ref);
@@ -484,12 +502,24 @@ export function nodeStatuses(
   return [...unique.values()]
     .map((ref) => {
       const hit = progress.get(`${ref.campaignId}#${ref.battleIndex}`);
+      const campaign = db.campaigns[ref.campaignId];
+      // Only the ambiguous ones take the suffix: several campaigns already
+      // carry their type in the name, and "Indomitus Mirror Mirror" helps
+      // nobody.
+      const track =
+        campaign?.type !== undefined ? CAMPAIGN_TYPE_NAMES[campaign.type] : undefined;
+      const campaignName =
+        campaign?.name === undefined
+          ? ref.campaignId
+          : ambiguous.has(campaign.name) && track !== undefined
+            ? `${campaign.name} ${track}`
+            : campaign.name;
       return {
         ...ref,
         unlocked: hit !== undefined,
         attemptsLeft: hit?.attemptsLeft ?? 0,
         attemptsUsed: hit?.attemptsUsed ?? 0,
-        campaignName: db.campaigns[ref.campaignId]?.name ?? ref.campaignId,
+        campaignName,
       };
     })
     .sort(
