@@ -37,11 +37,14 @@ import type {
 import type {
   RawGameInfo,
   RawGameInfoHero,
+  RawGameInfoWeapon,
   RawGameInfoStatRow,
 } from './sources/gameinfo.js';
 import { GAME_DATABASE_SCHEMA_VERSION } from './types.js';
 import type {
   AbilityDefinition,
+  TraitDefinition,
+  WeaponProfile,
   AbilityUpgradeCost,
   BattleDefinition,
   BattleEnemy,
@@ -150,9 +153,34 @@ function normalizeUnit(hero: RawGameInfoHero, isMachineOfWar: boolean): UnitDefi
     activeAbilityId: str(hero.activeAbility),
     passiveAbilityId: str(hero.passiveAbility),
     mythicAbilityIds: hero.mythicAbilities ?? [],
+    meleeWeapon: normalizeWeapon(hero.meleeWeapon),
+    rangeWeapon: normalizeWeapon(hero.rangeWeapon),
     ranks,
     isMachineOfWar,
   });
+}
+
+/**
+ * A unit's normal attack.
+ *
+ * `piercingRatio` arrives as a percent; it is stored as a fraction so it can be
+ * multiplied straight into a damage figure. A weapon with no damage profile is
+ * not a weapon, so it reads as absent rather than as an empty one.
+ */
+function normalizeWeapon(raw: RawGameInfoWeapon | null | undefined): WeaponProfile | undefined {
+  const damageProfile = str(raw?.damageProfile);
+  if (!raw || !damageProfile) return undefined;
+  const pierce = nn(raw.piercingRatio);
+  const range = nn(raw.range);
+  const pierceDescription = str(raw.pierceDescription);
+  return {
+    hits: nn(raw.hits) ?? 1,
+    damageProfile,
+    ...(range !== undefined ? { range } : {}),
+    pierceRatio: pierce === undefined ? 0 : pierce / 100,
+    ...(pierceDescription !== undefined ? { pierceDescription } : {}),
+    traits: raw.traits ?? [],
+  };
 }
 
 /* -------------------------------------------------------------------------- */
@@ -473,11 +501,60 @@ export function normalize(input: NormalizeInput): GameDatabase {
   /* ---- abilities ------------------------------------------------------ */
   const abilities: Record<string, AbilityDefinition> = {};
   for (const [key, raw] of Object.entries(gameInfo.abilities ?? {})) {
-    abilities[key] = compact({
+    const variables: Record<string, number[]> = {};
+    const textVariables: Record<string, string[]> = {};
+    for (const [name, values] of Object.entries(raw.variables ?? {})) {
+      const series = values ?? [];
+      if (series.length === 0) continue;
+      // Values arrive as strings, and not all are a single number: some give
+      // one figure per target, like `36,28,20`. Those are kept as written
+      // rather than coerced to NaN, since they still fill a description in.
+      const parsed = series.map((value) => Number(value));
+      if (parsed.every((n) => Number.isFinite(n))) variables[name] = parsed;
+      else textVariables[name] = series;
+    }
+    const rangeType = str(raw.attackRangeType);
+    const description = str(raw.description);
+    abilities[key] = {
       id: str(raw.gameId) ?? key,
       name: raw.name,
-      description: str(raw.description),
-    });
+      ...(description !== undefined ? { description } : {}),
+      ...(Object.keys(variables).length > 0 ? { variables } : {}),
+      ...(Object.keys(textVariables).length > 0 ? { textVariables } : {}),
+      ...(raw.constants ? { constants: raw.constants } : {}),
+      ...(raw.variablesAffectedByRarityBonus
+        ? { variablesAffectedByRarityBonus: raw.variablesAffectedByRarityBonus }
+        : {}),
+      ...(rangeType === 'Melee' || rangeType === 'Ranged' || rangeType === 'Normal'
+        ? { attackRangeType: rangeType }
+        : {}),
+    };
+  }
+
+  /* ---- traits --------------------------------------------------------- */
+  const traits: Record<string, TraitDefinition> = {};
+  for (const [key, raw] of Object.entries(gameInfo.traits ?? {})) {
+    const simpleName = str(raw.simpleName);
+    const traitDescription = str(raw.description);
+    traits[key] = {
+      id: str(raw.id) ?? key,
+      name: raw.name,
+      ...(simpleName !== undefined ? { simpleName } : {}),
+      ...(traitDescription !== undefined ? { description: traitDescription } : {}),
+      ...(raw.hero !== null && raw.hero !== undefined ? { hero: raw.hero } : {}),
+    };
+  }
+
+  /* ---- pierce per damage type ----------------------------------------- */
+  // Read off the weapons rather than transcribed: every hero weapon names both
+  // its damage profile and its pierce ratio, and across the roster each type
+  // gives exactly one value. Abilities name only the profile, so this is how
+  // theirs is resolved.
+  const pierceByDamageProfile: Record<string, number> = {};
+  for (const unit of Object.values(units)) {
+    for (const weapon of [unit.meleeWeapon, unit.rangeWeapon]) {
+      if (weapon) pierceByDamageProfile[weapon.damageProfile] = weapon.pierceRatio;
+    }
   }
 
   /* ---- progression ---------------------------------------------------- */
@@ -632,6 +709,8 @@ export function normalize(input: NormalizeInput): GameDatabase {
     upgrades,
     items,
     abilities,
+    traits,
+    pierceByDamageProfile,
     npcs,
     campaigns,
     shardSources,

@@ -47,6 +47,25 @@ export interface UnitRankUpgrade {
   statType?: string;
 }
 
+/**
+ * A unit's normal attack.
+ *
+ * Every unit has a melee attack; not all have a ranged one. `pierceRatio` is
+ * the fraction of damage armour cannot stop — the game's own figure, per
+ * weapon, rather than a damage-type table transcribed from elsewhere.
+ */
+export interface WeaponProfile {
+  hits: number;
+  damageProfile: string;
+  /** Hexes. Absent for melee. */
+  range?: number;
+  /** 0-1. `Physical` is 0.01, `Psychic` 1. */
+  pierceRatio: number;
+  /** The game's own wording, which notes special cases. */
+  pierceDescription?: string;
+  traits: string[];
+}
+
 export interface UnitDefinition {
   id: UnitId;
   name: string;
@@ -61,6 +80,8 @@ export interface UnitDefinition {
   activeAbilityId?: AbilityId;
   passiveAbilityId?: AbilityId;
   mythicAbilityIds: AbilityId[];
+  meleeWeapon?: WeaponProfile;
+  rangeWeapon?: WeaponProfile;
   /** Per-rank stats and rank-up materials, indexed by {@link Rank}. */
   ranks: UnitRankStats[];
   /** True when this unit is a Machine of War rather than a character. */
@@ -112,8 +133,53 @@ export interface ItemDefinition {
 export interface AbilityDefinition {
   id: AbilityId;
   name: string;
-  /** Source description. May contain HTML markup from the game client. */
+  /**
+   * Source description. Carries the game client's markup and `{[name]}`
+   * placeholders that {@link variables} and {@link constants} fill in.
+   */
   description?: string;
+  /**
+   * Per-level values, indexed from ability level 1. Numbers where they parsed.
+   */
+  variables?: Record<string, number[]>;
+  /**
+   * Per-level values that are not a single number, kept verbatim.
+   *
+   * Some abilities give one figure per target rather than one figure: Swooping
+   * Hawk's damage reads `36,28,20`. They fill a description in as written, but
+   * the rarity bonus cannot be applied to them, so they are held apart from
+   * {@link variables} rather than coerced.
+   */
+  textVariables?: Record<string, string[]>;
+  /** Values that do not change with level, e.g. `nrOfHits`, `damageProfile`. */
+  constants?: Record<string, string>;
+  /**
+   * Which of {@link variables} gain +20% per rarity tier.
+   *
+   * Ascension raises ability values, not unit stats — the two multipliers are
+   * separate, and this names what the ability one applies to.
+   */
+  variablesAffectedByRarityBonus?: string[];
+  /** Set when the ability is itself an attack of that range. */
+  attackRangeType?: 'Melee' | 'Ranged' | 'Normal';
+}
+
+/**
+ * A trait's display text.
+ *
+ * Traits are prose, not parameters — the game ships them as marked-up strings
+ * with no structured effect — so they are carried as written and never folded
+ * into a calculation.
+ */
+export interface TraitDefinition {
+  id: string;
+  /** Marked-up name from the client. */
+  name: string;
+  /** Plain name, when the client supplies one. */
+  simpleName?: string;
+  description?: string;
+  /** True for traits that appear on characters rather than only on enemies. */
+  hero?: boolean;
 }
 
 /** Cost to raise an ability from `level` to `level + 1`. */
@@ -407,7 +473,7 @@ export interface GameDatabaseStats {
  * stored version differs, so an older cache is refetched rather than served
  * with fields the current code expects but the file never had.
  */
-export const GAME_DATABASE_SCHEMA_VERSION = 7;
+export const GAME_DATABASE_SCHEMA_VERSION = 9;
 
 export interface GameDatabase {
   /** Value of {@link GAME_DATABASE_SCHEMA_VERSION} when this was assembled. */
@@ -419,6 +485,16 @@ export interface GameDatabase {
   upgrades: Record<UpgradeId, UpgradeDefinition>;
   items: Record<ItemId, ItemDefinition>;
   abilities: Record<AbilityId, AbilityDefinition>;
+  traits: Record<string, TraitDefinition>;
+  /**
+   * Pierce ratio per damage type, 0-1.
+   *
+   * Derived from the weapons themselves: every hero weapon names its damage
+   * profile and its pierce ratio, and across the whole roster each type gives
+   * exactly one value. Abilities name only the profile, so this is how their
+   * pierce is resolved.
+   */
+  pierceByDamageProfile: Record<string, number>;
   npcs: Record<NpcId, NpcDefinition>;
   campaigns: Record<CampaignId, CampaignDefinition>;
   /**

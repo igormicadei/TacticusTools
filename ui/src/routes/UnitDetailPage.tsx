@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 
 import { rankName, rarityName } from '@lib/gamedata/enums.js';
 import { computeTierStarLevel, computeUnitStats } from '@lib/gamedata/stats.js';
+import { resolveAbility, unitCombat } from '@lib/gamedata/combat.js';
 import type { GameDatabase } from '@lib/gamedata/types.js';
 import type { PlayerResponse, Unit } from '@lib/types/player.js';
 
@@ -98,11 +99,14 @@ export function UnitDetailPage({
         <div className="panels">
           <Progress unit={unit} db={db} />
           <Attributes unit={unit} db={db} />
+          <Attacks unit={unit} db={db} />
           <Abilities unit={unit} db={db} />
           <Equipment unit={unit} db={db} />
           <Shards unit={unit} entry={entry} db={db} />
           <Badges unit={unit} player={player} />
-          {definition && definition.traits.length > 0 && <Traits definition={definition} />}
+          {definition && definition.traits.length > 0 && (
+            <Traits unit={unit} db={db} />
+          )}
         </div>
       )}
     </>
@@ -262,6 +266,12 @@ function Attributes({ unit, db }: { unit: Unit; db: GameDatabase }) {
             )}
             .
           </p>
+          <p className="small muted" style={{ marginTop: 0, marginBottom: 0 }}>
+            Armour subtracts from each incoming hit one for one, but never below that
+            hit's pierce floor — so against a 100% pierce attack, Psychic or Direct, it
+            does nothing at all. How much it is worth depends entirely on what is
+            shooting at you.
+          </p>
         </>
       ) : (
         <p className="muted small" style={{ margin: 0 }}>
@@ -314,7 +324,13 @@ function Abilities({ unit, db }: { unit: Unit; db: GameDatabase }) {
       {unit.abilities.length === 0 && <p className="muted small">None.</p>}
       {unit.abilities.map((ability) => {
         const def = db.abilities[ability.id];
-        const cost = db.abilityUpgradeCosts.find((c) => c.level === ability.level + 1);
+        // A row is the cost of leaving its level, not of reaching it.
+        const cost = db.abilityUpgradeCosts.find((c) => c.level === ability.level);
+        // Values filled in at this level and rarity, so the text reads as the
+        // game shows it rather than as "{[dmg]}".
+        const resolved = def
+          ? resolveAbility(def, ability.level, computeUnitStats(unit, db)?.rarity, db)
+          : undefined;
         return (
           <div className="list-item" key={ability.id}>
             <div className="title">
@@ -322,9 +338,14 @@ function Abilities({ unit, db }: { unit: Unit; db: GameDatabase }) {
               <span className="chip">
                 {ability.level === 0 ? 'Locked' : `Level ${ability.level}`}
               </span>
+              {resolved?.attack && (
+                <span className="chip ok-chip">
+                  {resolved.attack.hits}× {resolved.attack.perHit.mid} {resolved.attack.damageProfile}
+                </span>
+              )}
             </div>
-            {def?.description && (
-              <div className="desc">{truncate(plain(def.description), 260)}</div>
+            {resolved?.description && (
+              <div className="desc">{truncate(plain(resolved.description), 320)}</div>
             )}
             {cost && (
               <div className="desc">
@@ -457,19 +478,139 @@ function Badges({ unit, player }: { unit: Unit; player: PlayerResponse }) {
   );
 }
 
-function Traits({ definition }: { definition: NonNullable<GameDatabase['units'][string]> }) {
+function Traits({ unit, db }: { unit: Unit; db: GameDatabase }) {
+  const stats = computeUnitStats(unit, db);
+  const { traits } = unitCombat(unit, stats?.damage ?? 0, stats?.rarity, db);
   return (
     <section className="panel">
       <h3>Traits</h3>
-      <div className="row wrap">
-        {definition.traits.map((trait) => (
-          <span className="chip" key={trait}>
-            {trait.replace(/([a-z0-9])([A-Z])/g, '$1 $2')}
-          </span>
-        ))}
-      </div>
+      <p className="small muted" style={{ marginTop: 0 }}>
+        Traits are conditional — most apply only in a particular situation — so none
+        of them is folded into the figures above.
+      </p>
+      {traits.map((trait) => (
+        <div className="list-item" key={trait.id}>
+          <div className="title">
+            <strong>{trait.name}</strong>
+          </div>
+          {trait.description && <div className="desc">{trait.description}</div>}
+        </div>
+      ))}
     </section>
   );
+}
+
+/**
+ * What the unit does when it attacks.
+ *
+ * The game shows damage per hit; the numbers that decide a fight are that times
+ * the hit count, and the part of it armour cannot stop.
+ */
+function Attacks({ unit, db }: { unit: Unit; db: GameDatabase }) {
+  const stats = computeUnitStats(unit, db);
+  if (!stats) return null;
+  const combat = unitCombat(unit, stats.damage, stats.rarity, db, stats.itemBonuses.critChance);
+  const rows = [
+    ...(combat.melee ? [combat.melee] : []),
+    ...(combat.ranged ? [combat.ranged] : []),
+    ...combat.abilityAttacks,
+  ];
+  if (rows.length === 0) return null;
+
+  return (
+    <section className="panel">
+      <h3>Attacks</h3>
+      {rows.map((attack, index) => (
+        <div className="attack-row" key={`${attack.source}:${attack.label}:${index}`}>
+          <div className="attack-head">
+            <strong>
+              {attack.source === 'melee'
+                ? 'Melee'
+                : attack.source === 'ranged'
+                  ? 'Ranged'
+                  : attack.label}
+            </strong>
+            <span className="muted small">
+              {attack.hits}× {humaniseStat(attack.damageProfile)}
+              {attack.pierceRatio !== undefined && (
+                <span title={attack.pierceDescription}>
+                  {' '}
+                  · {(attack.pierceRatio * 100).toFixed(0)}% pierce
+                </span>
+              )}
+              {attack.range !== undefined && ` · range ${attack.range}`}
+              {attack.source === 'ability' &&
+                ` · ${attack.attackRangeType?.toLowerCase() ?? 'ability'}`}
+            </span>
+          </div>
+          <div className="attack-figures">
+            <Figure label="per hit" value={attack.perHit} />
+            <Figure label="total" value={attack.total} strong />
+            {attack.effective ? (
+              <Figure label="effective" value={attack.effective} />
+            ) : (
+              <span className="attack-figure">
+                <em>effective</em> <span className="muted">not published</span>
+              </span>
+            )}
+          </div>
+        </div>
+      ))}
+
+      <p className="small muted">
+        <strong>Total</strong> is damage × hits, against no armour.{' '}
+        <strong>Effective</strong> is total × pierce — the floor armour can never take
+        away, not a prediction: against a lightly armoured target an attack lands for
+        more. Each hit deals <code>max(damage − armour, damage × pierce)</code>, so
+        armour stops mattering once it passes{' '}
+        {rows[0]?.armourFloorAt !== undefined
+          ? `damage × (1 − pierce)`
+          : 'damage × (1 − pierce)'}{' '}
+        — {armourNote(rows)}. Every attack rolls ±20% on its damage before armour, which
+        is the ± shown on each figure.
+      </p>
+
+      {combat.critChain && (
+        <p className="small muted" style={{ marginBottom: 0 }}>
+          Crits chain: each hit is rolled separately and the chain stops at the first
+          failure, so at {combat.critChain.chance}% crit chance the odds of{' '}
+          {combat.critChain.perAttack
+            .map((p, i) => `${i + 1} crit${i === 0 ? '' : 's'} ${(p * 100).toFixed(1)}%`)
+            .join(', ')}
+          . Crit chance is worth far more on a one-hit weapon than a multi-hit one.
+        </p>
+      )}
+    </section>
+  );
+}
+
+function Figure({
+  label,
+  value,
+  strong,
+}: {
+  label: string;
+  value: { mid: number; low: number; high: number };
+  strong?: boolean;
+}) {
+  const swing = value.high - value.mid;
+  return (
+    <span className="attack-figure">
+      <em>{label}</em>{' '}
+      {strong ? <strong>{value.mid.toLocaleString()}</strong> : value.mid.toLocaleString()}
+      {swing > 0 && <span className="muted"> ±{swing}</span>}
+    </span>
+  );
+}
+
+/** A concrete reading of the armour floor for this unit's own attacks. */
+function armourNote(rows: { label: string; source: string; armourFloorAt?: number; pierceRatio?: number }[]): string {
+  const ranged = rows.find((r) => r.source === 'ranged') ?? rows[0];
+  if (!ranged || ranged.armourFloorAt === undefined) return 'the ratio varies by damage type';
+  if (ranged.pierceRatio === 1) {
+    return `this unit's ${ranged.source} attack ignores armour entirely`;
+  }
+  return `for the ${ranged.source} attack that is ${ranged.armourFloorAt} armour`;
 }
 
 function starsLabel(stars: number | undefined): string {

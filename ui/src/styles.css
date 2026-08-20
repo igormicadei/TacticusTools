@@ -258,6 +258,16 @@ table.steps tr.done td { color: var(--text-dim); }
 .item-row.dim { opacity: .55; }
 .inline-field { display: flex; align-items: center; gap: 8px; }
 .inline-field > span { color: var(--text-dim); font-size: 13px; }
+.attack-row { padding: 9px 0; border-bottom: 1px solid var(--border); }
+.attack-row:last-of-type { border-bottom: none; }
+.attack-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.attack-figures {
+  display: flex; flex-wrap: wrap; gap: 6px 20px; margin-top: 5px; font-size: 13px;
+}
+.attack-figure em {
+  font-style: normal; color: var(--text-dim); font-size: 11px;
+  letter-spacing: .06em; text-transform: uppercase; margin-right: 4px;
+}
 .source-note { padding: 4px 0 12px 46px; }
 table.nodes { border-collapse: collapse; font-size: 13px; }
 table.nodes td { padding: 3px 14px 3px 0; }

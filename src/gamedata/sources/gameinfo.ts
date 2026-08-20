@@ -36,6 +36,18 @@ export interface RawGameInfoHeroRank {
   basicUpgrades?: RawGameInfoRankUpgrade[] | null;
 }
 
+/** A unit's normal attack, as `gameInfo` describes it. */
+export interface RawGameInfoWeapon {
+  hits?: number | null;
+  damageProfile?: string | null;
+  /** Hexes; null for melee. */
+  range?: number | null;
+  /** Percent, e.g. 25 for a 25% pierce ratio. */
+  piercingRatio?: number | null;
+  pierceDescription?: string | null;
+  traits?: string[] | null;
+}
+
 export interface RawGameInfoHero {
   id: string;
   /** The Tacticus API's unit id. The object key is a display slug instead. */
@@ -51,6 +63,9 @@ export interface RawGameInfoHero {
   activeAbility?: string | null;
   passiveAbility?: string | null;
   mythicAbilities?: string[] | null;
+  meleeWeapon?: RawGameInfoWeapon | null;
+  rangeWeapon?: RawGameInfoWeapon | null;
+  damageProfiles?: string[] | null;
   ranks?: RawGameInfoHeroRank[] | null;
 }
 
@@ -87,6 +102,23 @@ export interface RawGameInfoAbility {
   gameId: string;
   name: string;
   description?: string | null;
+  /** Per-level values, indexed from ability level 1. Values arrive as strings. */
+  variables?: Record<string, string[] | null> | null;
+  /** Values that do not change with level, e.g. `nrOfHits`, `damageProfile`. */
+  constants?: Record<string, string> | null;
+  /** Which of `variables` gain +20% per rarity tier. */
+  variablesAffectedByRarityBonus?: string[] | null;
+  /** `Melee`, `Ranged` or `Normal` when the ability is itself an attack. */
+  attackRangeType?: string | null;
+}
+
+/** A trait's display text. The markup is the game client's own. */
+export interface RawGameInfoTrait {
+  id: string;
+  name: string;
+  description?: string | null;
+  simpleName?: string | null;
+  hero?: boolean | null;
 }
 
 export interface RawGameInfoNpc {
@@ -120,6 +152,7 @@ export interface RawGameInfo {
   upgrades?: Record<string, RawGameInfoUpgrade> | null;
   items?: Record<string, RawGameInfoItem> | null;
   abilities?: Record<string, RawGameInfoAbility> | null;
+  traits?: Record<string, RawGameInfoTrait> | null;
   npcs?: Record<string, RawGameInfoNpc> | null;
   /** Cumulative XP thresholds; index `n` is the total for level `n + 2`. */
   xpLevels?: number[] | null;

@@ -370,10 +370,9 @@ rather than listing them separately; nothing grants damage.
 is what the character screen displays, counted within the current rarity, so
 index 11 reads 3 stars while the multiplier uses 8.
 
-Ability stats are not computed: rarity adds +20% per tier to them, but their base
-values are unresolved placeholders in the source data. The two multipliers are
-independent and apply to different things — stars scale unit stats, rarity
-scales ability variables — so rarity never moves Health, Damage or Armour.
+The two multipliers are independent and apply to different things — stars scale
+unit stats, rarity scales ability variables — so rarity never moves Health,
+Damage or Armour, and stars never move an ability.
 
 `npm run validate:stats -- player.json` checks the output against values
 transcribed from in-game character screens. Each case records the state it was
@@ -425,6 +424,63 @@ to convert between them, so the attribute to favour is the player's choice —
 page-wide, or per unit on the plan.
 
 The player's energy balance is not in the API, so it is typed in.
+
+## Attacks, abilities and traits
+
+`unitCombat(unit, damage, rarity, db)` resolves what a unit does when it
+attacks. The game shows one damage figure, which is damage *per hit* before
+armour; the numbers that decide a fight are that times the hit count, and the
+part of it armour cannot stop.
+
+```
+total     = damage × hits            against no armour
+effective = total × pierceRatio      the floor armour can never take away
+```
+
+Each hit deals `max(damage − armour, damage × pierce)`, so armour bites one for
+one until it passes `damage × (1 − pierce)` and does nothing beyond. Against a
+100% pierce attack — Psychic or Direct — armour is worth nothing at all. That
+is why "effective" is a floor rather than a prediction: against a lightly
+armoured target the attack lands for more.
+
+Pierce ratios are **derived from the weapons themselves**, not transcribed:
+every hero weapon names its damage profile and its pierce ratio, and across the
+whole roster each of the twenty types gives exactly one value. `validate:combat`
+checks the derived map against the wiki's independently-written table; the two
+agree on all twenty, plus Direct, which no weapon carries.
+
+Every attack rolls ±20% on its damage, applied per hit before armour and before
+the pierce floor, so total and effective swing by the same proportion. Each
+figure carries its own band.
+
+Crits chain: hits are rolled one at a time and the chain stops at the first
+failure, so the chance of `n` crits in a row is `critChance ^ n`. A one-hit
+weapon converts crit chance far more readily than a four-hit one.
+
+### Abilities resolve to real numbers
+
+`gameInfo` ships each ability's values as a 65-entry array indexed by ability
+level, with the hit count and damage type as constants and a list naming which
+values gain the rarity bonus. `resolveAbility` fills a description in at a given
+level and rarity, so it reads as the game shows it.
+
+Confirmed against a character screen: Vindicta's Fire of Absolution at ability
+level 11 is 64 in the table, and she is Uncommon, so 64 × 1.2 = 76.8 — displayed
+as 77, which is what the game shows. Note that this rounds where unit stats
+truncate; one screen cannot separate rounding from ceiling.
+
+Some values are a list rather than a number — Swooping Hawk's damage reads
+`36,28,20`, one figure per target, addressed as `dmg[0]`, `dmg[1]`, `dmg[2]`.
+Those are carried verbatim, since the rarity bonus has no single figure to
+multiply. One placeholder in the whole set, `nrOfUnits`, has no published value
+and is left as written.
+
+### Traits are shown, never counted
+
+All 66 traits carry their description. They are prose with no structured effect
+and almost all of them are conditional — "if it has not moved this turn", "for
+each unit defeated in melee" — so they are displayed beside the figures and
+never folded into them.
 
 ### Power Score is not computed
 

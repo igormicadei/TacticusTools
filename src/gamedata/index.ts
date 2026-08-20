@@ -3,6 +3,7 @@ export * from './ids.js';
 export * from './corrections.js';
 export * from './types.js';
 export * from './stats.js';
+export * from './combat.js';
 export * from './plan.js';
 export * from './requirements.js';
 export * from './timeline.js';
