@@ -617,6 +617,16 @@ against that worked example, that no item is ever allocated beyond what is held
 or beyond what a step needs, that totals agree with the steps, and that every
 blocked flag is genuine.
 
+## Shelved ideas
+
+Investigations that concluded "not worth building" are written up in `docs/`, so
+the reasoning survives and the question does not get reopened from cold:
+
+- [Hex diagrams of a unit's attacks](docs/shelved-hex-attack-diagrams.md) —
+  targeting shape is prose, not data. Two of 90 ability constant keys touch
+  targeting and both are counts; 49 of 196 damaging abilities fit no shape
+  vocabulary at all and 62 are conditional on battlefield state.
+
 ## Known gaps
 
 - `eventCampaign6` appears in player progress but not in Codex battle data, so
