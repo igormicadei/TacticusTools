@@ -38,7 +38,7 @@ export function StepItems({
   // opening it must not close the parent that renders it.
   const [open, setOpen] = useState<ReadonlySet<string>>(() => new Set());
 
-  const { steps, totals, gold } = useMemo(() => {
+  const { steps, totals, gold, goldByStep } = useMemo(() => {
     // Finished steps cost nothing more, and pricing them against the unit's
     // present state would invent needs it has already met.
     const remaining = { ...plan, steps: plan.steps.filter((step) => !step.done) };
@@ -46,6 +46,7 @@ export function StepItems({
     const owned = ownedByKey(player, db);
     return {
       steps: new Map(allocateHoldings(costs, owned, db).map((s) => [s.step.order, s])),
+      goldByStep: new Map(costs.map((c) => [c.step.order, c.gold])),
       totals: aggregate(costs, owned, db),
       gold: costs.reduce((sum, c) => sum + c.gold, 0),
     };
@@ -82,8 +83,8 @@ export function StepItems({
         cannot be moved elsewhere. An item you hold but cannot farm is marked stock only:
         spending it elsewhere cannot be undone. Forged items have no farmable form, so they
         read as ready to forge or parts missing rather than as a count. Click an item for
-        where to get it.
-        {gold > 0 && ` Gold across the plan: ${gold.toLocaleString()}.`}
+        where to get it. Gold is shown where it is spent; the API does not report the
+        balance, so there is nothing to check it against.
       </p>
 
       {view === 'steps'
@@ -104,11 +105,17 @@ export function StepItems({
               );
             }
             const items = steps.get(step.order)?.items ?? [];
+            const stepGold = goldByStep.get(step.order) ?? 0;
             return (
             <div className="step-block" key={step.order}>
               <div className="step-block-head">
                 <span className="step-num">{step.order}</span>
                 {step.label}
+                {stepGold > 0 && (
+                  <span className="chip gold" style={{ marginLeft: 8 }}>
+                    {stepGold.toLocaleString()} gold
+                  </span>
+                )}
               </div>
               {items.length === 0 ? (
                 <p className="muted small" style={{ margin: '4px 0 0 30px' }}>
@@ -134,6 +141,16 @@ export function StepItems({
           })
         : (
             <ul className="item-list">
+              {gold > 0 && (
+                <li className="item-row">
+                  <div className="item-head static">
+                    <span className="chevron" />
+                    <span className="count">{gold.toLocaleString()}</span>
+                    <span className="item-name">Gold</span>
+                    <span className="muted small">across the plan</span>
+                  </div>
+                </li>
+              )}
               {totals.map((item) => (
                 <ItemRow
                   key={`${item.key}:${item.applied ? 'a' : 'n'}`}

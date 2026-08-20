@@ -102,8 +102,11 @@ export function planCosts(unit: Unit, plan: EvolutionPlan, db: GameDatabase): St
     }
 
     if (step.kind === 'ability') {
-      // Level 0 is "locked", so the entry for level N is the cost of reaching N.
-      for (let level = step.from + 1; level <= step.to; level += 1) {
+      // A row is the cost of *leaving* its level, not of reaching it: the game
+      // asks 1250 gold and 3 Uncommon badges to take an ability from 14 to 15,
+      // which is the row at level 14. Reading it as the cost of reaching 15
+      // charged the next rung up — 1500 gold and 4 badges.
+      for (let level = step.from; level < step.to; level += 1) {
         const cost = db.abilityUpgradeCosts.find((c) => c.level === level);
         if (!cost) continue;
         gold += cost.gold;

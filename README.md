@@ -433,6 +433,11 @@ and the plan must actually arrive at the resolved target.
 
 ## Item requirements
 
+Ability upgrade rows are the cost of *leaving* a level, not of reaching it:
+taking an ability from 14 to 15 asks the row at level 14 — 1250 gold and 3
+Uncommon badges — as the game does. A span sums the rows it crosses, so 13 to
+15 is rows 13 and 14 together.
+
 `planCosts(unit, plan, db)` gives what each step consumes, and
 `allocateHoldings` spreads what the player already holds across the steps that
 need it — **earliest first, never averaged**. Fifteen of an item split over three

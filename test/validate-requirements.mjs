@@ -103,6 +103,42 @@ const note = (m) => problems.push(m);
   console.log('forge readiness: 5 cases  ✓');
 }
 
+/* ---- ability upgrade costs --------------------------------------------------
+ * A row is the cost of leaving its level, not of reaching it. Ground truth from
+ * the game: taking an ability from 14 to 15 asks 1250 gold and 3 Uncommon
+ * badges, which is the row at level 14 — reading it as the cost of reaching 15
+ * charged 1500 gold and 4 badges.
+ */
+{
+  const step = { order: 1, kind: 'ability', ability: 'active', label: '', from: 14, to: 15, after: {} };
+  const [cost] = planCosts(
+    { id: 'x', name: 'x', rank: 0, xpLevel: 1, progressionIndex: 0, grandAlliance: 'Chaos', upgrades: [], abilities: [], items: [], shards: 0, mythicShards: 0 },
+    { steps: [step] },
+    db,
+  );
+  const badges = cost.items.find((i) => i.kind === 'badge');
+  if (cost.gold !== 1250) note(`ability 14->15: expected 1250 gold, got ${cost.gold}`);
+  if (badges?.amount !== 3) note(`ability 14->15: expected 3 badges, got ${badges?.amount}`);
+  if (badges?.rarity !== 1) note(`ability 14->15: expected Uncommon badges, got rarity ${badges?.rarity}`);
+
+  // And a span must be the sum of the rows it crosses, not an offset window.
+  const span = { ...step, from: 13, to: 15 };
+  const [wide] = planCosts(
+    { id: 'x', name: 'x', rank: 0, xpLevel: 1, progressionIndex: 0, grandAlliance: 'Chaos', upgrades: [], abilities: [], items: [], shards: 0, mythicShards: 0 },
+    { steps: [span] },
+    db,
+  );
+  const rows = db.abilityUpgradeCosts.filter((c) => c.level >= 13 && c.level <= 14);
+  const goldSum = rows.reduce((n, c) => n + c.gold, 0);
+  const badgeSum = rows.reduce((n, c) => n + c.amount, 0);
+  if (wide.gold !== goldSum) note(`ability 13->15: expected ${goldSum} gold, got ${wide.gold}`);
+  const wideBadges = wide.items.find((i) => i.kind === 'badge');
+  if (wideBadges?.amount !== badgeSum) {
+    note(`ability 13->15: expected ${badgeSum} badges, got ${wideBadges?.amount}`);
+  }
+  console.log(`ability costs: 14->15 is ${cost.gold} gold + ${badges?.amount} badges, 13->15 is ${wide.gold} + ${wideBadges?.amount}  ✓`);
+}
+
 /* ---- against the real roster ---------------------------------------------- */
 const TARGETS = [{ rank: 12, activeAbilityLevel: 30 }, { rarity: 4 }, { xpLevel: 35 }];
 let checked = 0;
