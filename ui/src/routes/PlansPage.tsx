@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 
 import { rankName, rarityName, Rarity } from '@lib/gamedata/enums.js';
 import { currentState, markProgress, resolvePlan } from '@lib/gamedata/plan.js';
+import { computeUnitStats } from '@lib/gamedata/stats.js';
 import { buildTimeline, type StatPriority } from '@lib/gamedata/timeline.js';
 import type { GameDatabase } from '@lib/gamedata/types.js';
 import type { PlayerResponse } from '@lib/types/player.js';
@@ -195,6 +196,43 @@ export function PlanForm({
   const preview = unit && !empty ? resolvePlan(unit, target, db) : undefined;
 
   const maxLevel = Math.max(...db.rarityCaps.map((c) => c.maxLevel), 50);
+  // Where the unit stands now. Only what lies ahead of it is offerable — a
+  // target it already meets is not a plan.
+  const now = unit ? currentState(unit, db) : undefined;
+  const held = unit ? computeUnitStats(unit, db)?.rarity : undefined;
+
+  /**
+   * Values a field may take: everything above where the unit is now.
+   *
+   * A stored target the unit has since passed stays in its own list, so opening
+   * an old plan shows what it says rather than silently reading as something
+   * else.
+   */
+  const above = (from: number | undefined, to: number, selected: string): number[] => {
+    const start = (from ?? 0) + 1;
+    const options = [];
+    for (let value = start; value <= to; value += 1) options.push(value);
+    const chosen = selected === '' ? undefined : Number(selected);
+    if (chosen !== undefined && !options.includes(chosen)) options.unshift(chosen);
+    return options;
+  };
+
+  const rarityOptions = above(held, Rarity.Mythic, rarity);
+  const rankOptions = above(now?.rank, 19, rank);
+  const levelOptions = above(now?.xpLevel, maxLevel, xpLevel);
+  const activeOptions = above(now?.activeAbilityLevel, maxLevel, active);
+  const passiveOptions = above(now?.passiveAbilityLevel, maxLevel, passive);
+
+  // Switching units can leave a value the new one already has; clearing it is
+  // less surprising than saving a target that is met the moment it is created.
+  const onUnit = (next: string) => {
+    setUnitId(next);
+    setRarity('');
+    setRank('');
+    setXpLevel('');
+    setActive('');
+    setPassive('');
+  };
 
   return (
     <section className="panel" style={{ marginBottom: 24 }}>
@@ -202,13 +240,14 @@ export function PlanForm({
       <p className="small muted" style={{ marginTop: 0 }}>
         Set only what you care about. Anything else it depends on is worked out and added
         for you — an ability target pulls the character level with it, and level or rank
-        targets pull rarity.
+        targets pull rarity. Each field offers only what lies ahead of the unit, since a
+        target it already meets is not a plan.
       </p>
 
       <div className="form-grid">
         <label>
           <span>Unit</span>
-          <select value={unitId} onChange={(e) => setUnitId(e.target.value)}>
+          <select value={unitId} onChange={(e) => onUnit(e.target.value)}>
             {units.map((u) => (
               <option value={u.id} key={u.id}>
                 {u.name ?? u.id}
@@ -243,9 +282,9 @@ export function PlanForm({
 
         <label>
           <span>Rarity</span>
-          <select value={rarity} onChange={(e) => setRarity(e.target.value)}>
-            <option value="">—</option>
-            {[0, 1, 2, 3, 4, 5].map((r) => (
+          <select value={rarity} onChange={(e) => setRarity(e.target.value)} disabled={rarityOptions.length === 0}>
+            <option value="">{rarityOptions.length === 0 ? 'already at the top' : '—'}</option>
+            {rarityOptions.map((r) => (
               <option value={r} key={r}>
                 {rarityName(r)}
               </option>
@@ -255,11 +294,11 @@ export function PlanForm({
 
         <label>
           <span>Rank</span>
-          <select value={rank} onChange={(e) => setRank(e.target.value)}>
-            <option value="">—</option>
-            {Array.from({ length: 20 }, (_, i) => (
-              <option value={i} key={i}>
-                {rankName(i)}
+          <select value={rank} onChange={(e) => setRank(e.target.value)} disabled={rankOptions.length === 0}>
+            <option value="">{rankOptions.length === 0 ? 'already at the top' : '—'}</option>
+            {rankOptions.map((r) => (
+              <option value={r} key={r}>
+                {rankName(r)}
               </option>
             ))}
           </select>
@@ -267,26 +306,38 @@ export function PlanForm({
 
         <label>
           <span>Level</span>
-          <input
-            type="number" min={1} max={maxLevel} placeholder="—"
-            value={xpLevel} onChange={(e) => setXpLevel(e.target.value)}
-          />
+          <select value={xpLevel} onChange={(e) => setXpLevel(e.target.value)} disabled={levelOptions.length === 0}>
+            <option value="">{levelOptions.length === 0 ? 'already at the cap' : '—'}</option>
+            {levelOptions.map((n) => (
+              <option value={n} key={n}>
+                {n}
+              </option>
+            ))}
+          </select>
         </label>
 
         <label>
           <span>Active ability</span>
-          <input
-            type="number" min={1} max={maxLevel} placeholder="—"
-            value={active} onChange={(e) => setActive(e.target.value)}
-          />
+          <select value={active} onChange={(e) => setActive(e.target.value)} disabled={activeOptions.length === 0}>
+            <option value="">{activeOptions.length === 0 ? 'already at the cap' : '—'}</option>
+            {activeOptions.map((n) => (
+              <option value={n} key={n}>
+                {n}
+              </option>
+            ))}
+          </select>
         </label>
 
         <label>
           <span>Passive ability</span>
-          <input
-            type="number" min={1} max={maxLevel} placeholder="—"
-            value={passive} onChange={(e) => setPassive(e.target.value)}
-          />
+          <select value={passive} onChange={(e) => setPassive(e.target.value)} disabled={passiveOptions.length === 0}>
+            <option value="">{passiveOptions.length === 0 ? 'already at the cap' : '—'}</option>
+            {passiveOptions.map((n) => (
+              <option value={n} key={n}>
+                {n}
+              </option>
+            ))}
+          </select>
         </label>
       </div>
 
