@@ -531,7 +531,10 @@ function Attacks({ unit, db }: { unit: Unit; db: GameDatabase }) {
                   : attack.label}
             </strong>
             <span className="muted small">
-              {attack.hits}× {humaniseStat(attack.damageProfile)}
+              {attack.hits}× {attack.perHit.mid.toLocaleString()}
+              {attack.perHit.high > attack.perHit.mid && ` ±${attack.perHit.high - attack.perHit.mid}`}
+              {' '}
+              {humaniseStat(attack.damageProfile)}
               {attack.pierceRatio !== undefined && (
                 <span title={attack.pierceDescription}>
                   {' '}
@@ -544,30 +547,26 @@ function Attacks({ unit, db }: { unit: Unit; db: GameDatabase }) {
             </span>
           </div>
           <div className="attack-figures">
-            <Figure label="per hit" value={attack.perHit} />
-            <Figure label="total" value={attack.total} strong />
             {attack.effective ? (
-              <Figure label="effective" value={attack.effective} />
+              <Figure label="min" value={attack.effective} note="through any armour" />
             ) : (
               <span className="attack-figure">
-                <em>effective</em> <span className="muted">not published</span>
+                <em>min</em> <span className="muted">pierce not published</span>
               </span>
             )}
+            <Figure label="max" value={attack.total} strong note="against no armour" />
           </div>
         </div>
       ))}
 
       <p className="small muted">
-        <strong>Total</strong> is damage × hits, against no armour.{' '}
-        <strong>Effective</strong> is total × pierce — the floor armour can never take
-        away, not a prediction: against a lightly armoured target an attack lands for
-        more. Each hit deals <code>max(damage − armour, damage × pierce)</code>, so
-        armour stops mattering once it passes{' '}
-        {rows[0]?.armourFloorAt !== undefined
-          ? `damage × (1 − pierce)`
-          : 'damage × (1 − pierce)'}{' '}
-        — {armourNote(rows)}. Every attack rolls ±20% on its damage before armour, which
-        is the ± shown on each figure.
+        <strong>Min</strong> and <strong>max</strong> bracket the target's armour, not
+        the roll: each hit deals <code>max(damage − armour, damage × pierce)</code>, so
+        the pierce share always lands however heavily armoured the target is, and
+        against no armour the whole of damage × hits does. Armour subtracts one for one
+        in between and stops mattering once it passes damage × (1 − pierce) —{' '}
+        {armourNote(rows)}. Above the max still sits the ±20% every attack rolls, shown
+        on each figure, and crits and terrain on top of that.
       </p>
 
       {combat.critChain && (
@@ -588,10 +587,12 @@ function Figure({
   label,
   value,
   strong,
+  note,
 }: {
   label: string;
   value: { mid: number; low: number; high: number };
   strong?: boolean;
+  note?: string;
 }) {
   const swing = value.high - value.mid;
   return (
@@ -599,6 +600,7 @@ function Figure({
       <em>{label}</em>{' '}
       {strong ? <strong>{value.mid.toLocaleString()}</strong> : value.mid.toLocaleString()}
       {swing > 0 && <span className="muted"> ±{swing}</span>}
+      {note && <span className="muted attack-note"> {note}</span>}
     </span>
   );
 }

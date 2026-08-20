@@ -264,6 +264,7 @@ table.steps tr.done td { color: var(--text-dim); }
 .attack-figures {
   display: flex; flex-wrap: wrap; gap: 6px 20px; margin-top: 5px; font-size: 13px;
 }
+.attack-note { font-size: 11px; }
 .attack-figure em {
   font-style: normal; color: var(--text-dim); font-size: 11px;
   letter-spacing: .06em; text-transform: uppercase; margin-right: 4px;
