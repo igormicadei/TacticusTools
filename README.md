@@ -620,7 +620,7 @@ blocked flag is genuine.
 ## Icons
 
 `npm run icons:snapshot` resolves our ids against Codex's asset bundle and
-writes `ui/public/icons.json` — a 65 KB map of id to filename, not the images
+writes `ui/public/icons.json` — a map of id to filename, not the images
 themselves.
 
 The artwork is **referenced, not copied**. Codex serves it with
@@ -631,25 +631,72 @@ entirely; it also keeps the icons current without a re-download.
 
 The cost is a dependency: if Codex goes down or renames its assets, icons break.
 The filenames carry webpack content hashes, so a Codex rebuild invalidates the
-map — re-run the snapshot when icons start 404ing.
+map — re-run the snapshot when icons start 404ing. Nothing in the app depends on
+it: every resolver returns `undefined` on a miss and `<Icon>` renders nothing,
+so a stale or unreachable manifest costs pictures, never text.
 
-Coverage against the current bundle (2,462 assets):
+### Resolved through webpack, not by matching names
+
+The bundle is read the way webpack wrote it. Each `require.context` leaves a map
+of source path to module id — `{"./ranks/iron1.png": 85324, …}` — and each of
+those modules exports either an emitted file name or, for small images, an
+inline data URI. Following that chain recovers the original folder and file
+name, which matters twice over: three unrelated assets are called `epic.png`,
+and the six Stone and Bronze rank pips have **no emitted file at all**. Those
+arrive as data URIs and ride along in the manifest, which is most of why it is
+332 KB rather than 65 KB.
+
+Coverage against the current bundle (4,839 resolved assets, 25 of them inline):
 
 | | resolved |
 | --- | --- |
 | units | 126/127 |
-| unit ability art | 121/127 |
-| equipment | 194/195 |
-| materials | 504/558 |
+| unit ability art | 121/127 (active, passive and mythic slots) |
+| equipment | 193/195 |
+| materials | 507/558 |
+| ranks | 20/20 |
+| rarity frames | 6/6 |
 | orbs | 15 (3 alliances x Uncommon-Mythic) |
 | ability badges | 18 (3 alliances x Common-Mythic) |
-| ranks | 14/20 |
-| stars, shards | 3 and 2, complete |
+| factions | 22 |
+| damage types | 18/20 |
+| campaigns | 12 |
+| stars, shards, chrome glyphs | 4, 2 and 14, complete |
 
-The gaps are Codex's, not the matcher's: it carries no Stone or Bronze rank art,
-and none of the 54 faction Symbol materials — there is no asset with "symbol" in
-its name at all. Names are matched with diacritics folded, since the game writes
-Khârn and Ûthar where Codex files kharn and uthar.
+The remaining gaps are Codex's, not the matcher's: none of the 54 faction Symbol
+materials is there — no asset has "symbol" in its name at all — and Melta and
+Pulse have no damage-type art. Names are matched with diacritics folded, since
+the game writes Khârn and Ûthar where Codex files kharn and uthar.
+
+Star pips are the one place the art is deliberately *not* used in full. Codex
+ships white, blue, red and mythic variants and chooses between them from a table
+of its own, which disagrees with our progression indices at 17 of its 19 rows.
+Rather than draw the wrong colour the app uses the plain pip throughout;
+settling the ladder against a real character screen is what would fix it.
+
+## Design
+
+The interface follows a design system authored in Claude Design and pulled into
+the repo, so it works with no network and no design authorization:
+
+- `ui/src/design/tokens.css` and `ui/src/design/tokens/` — the tokens the app
+  actually consumes. `ui/src/styles.css` imports them and states no colour of
+  its own — every hue, radius, easing and duration in it is a token. Raw pixel
+  values survive only where the scale does not apply: grid track minimums, an
+  icon's box, a progress bar's height.
+- `.claude/skills/tacticus-tools-design/` — the conventions those tokens encode,
+  as a project skill. Read it before changing anything visual.
+
+The short version: deep navy surfaces stand in for the game's starfield and
+console panels, a single gold accent carries currency, primary actions and
+ornament, and a six-step rarity ladder colours every unit, item and badge. A
+condensed display face (Oswald) is used for banners, the nav brand and big
+figures; body copy is a plain humanist sans. Ornament belongs to the chrome —
+the banner, the emphasised panel — never to the data, which stays flat and
+dense. Depth comes from surface-tone steps, not from shadow.
+
+To re-sync from the upstream project, or to fetch its component sources, use the
+`DesignSync` tool against project `1e6536db-a74e-448e-84f0-f687745ec253`.
 
 ## Shelved ideas
 

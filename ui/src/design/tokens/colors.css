@@ -1,0 +1,25 @@
+:root{
+/* base neutrals — deep void/navy, matching the game's starfield & command-console panels (not the tool's flat gray) */
+--n-0:#050a14;--n-1:#0a1220;--n-2:#0e1b2e;--n-3:#122238;--n-4:#182c47;--n-5:#24406a;--n-6:#33578c;--n-7:#5b7aa8;--n-8:#8fa3c2;--n-9:#c3d0e2;--n-10:#e7edf6;--n-11:#f7f9fc;
+/* gold — the brand accent: ornate borders, banners, currency, rarity ceiling */
+--gold-1:#3a2f14;--gold-2:#6a5424;--gold-3:#8a6a2a;--gold-4:#b3893a;--gold-5:#d4a34a;--gold-6:#e8c15f;--gold-7:#f0d488;--gold-8:#f8e7bb;
+/* faction identity colors, drawn from the crests (Ultramarines/Necrons/Orks/etc) */
+--faction-ultramarines:#3987e5;--faction-necrons:#3fae7a;--faction-orks:#c9a227;--faction-blood-angels:#c0392b;--faction-tau:#3aa6a0;--faction-chaos:#8b3a8b;--faction-tyranids:#7a3fae;--faction-astra-militarum:#8a6a3a;
+/* rarity ladder — common to mythic */
+--rarity-0:#9aa4ae;--rarity-1:#4caf6d;--rarity-2:#4a90d9;--rarity-3:#a06fd0;--rarity-4:#d9a441;--rarity-5:#d95f5f;
+/* ownership / progress status */
+--status-owned:#4caf6d;--status-unlockable:#d9a441;--status-locked:#5b7aa8;
+/* ability-slot identity */
+--slot-active:#7fb2e5;--slot-passive:#b79ae0;--slot-mythic:#e8c15f;
+/* semantic surface & text aliases — deep navy shell with gold ornament, per the in-game UI */
+--bg-app:var(--n-1);--bg-raised:var(--n-3);--bg-hover:var(--n-4);--bg-sunken:var(--n-0);
+--border-default:var(--n-5);--border-strong:var(--n-6);--border-accent:var(--gold-4);
+--text-primary:var(--n-10);--text-secondary:var(--n-8);--text-inverse:#1a1200;
+--accent:var(--gold-5);--accent-hover:var(--gold-6);--accent-dim:var(--gold-3);
+--danger:#e88;--danger-strong:#ffb4b4;--danger-bg:#2a1616;--danger-border:#6b2b2b;
+--warn:#e8a06a;--caution:#d8c46a;
+/* ornate surface gradients, matching the game's banner headers & portrait frames */
+--gradient-banner:linear-gradient(180deg, var(--n-4) 0%, var(--n-2) 100%); /* @kind other */
+--gradient-gold-rule:linear-gradient(90deg, transparent, var(--gold-5), transparent); /* @kind other */
+--gradient-frame:radial-gradient(circle at 50% 30%, var(--n-4), var(--n-1) 80%); /* @kind other */
+}

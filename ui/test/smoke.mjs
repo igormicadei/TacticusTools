@@ -29,7 +29,10 @@ const errors = [];
 p.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
 p.on('pageerror', e => errors.push('PAGEERROR: ' + e.message));
 
-await p.goto('http://localhost:4173/#/units', { waitUntil: 'networkidle' });
+// Not `networkidle`: the roster loads a few hundred icons from Codex, so the
+// network is never quiet, and none of the assertions below depend on artwork.
+// The selector waits that follow are what actually gate them.
+await p.goto('http://localhost:4173/#/units', { waitUntil: 'domcontentloaded' });
 await p.waitForSelector('.card', { timeout: 30000 });
 const groups = await p.locator('.group-head h2').allTextContents();
 const cards = await p.locator('.card').count();
@@ -68,7 +71,7 @@ if (planned) {
       ),
     [planned.id, { rank: Math.min(planned.rank + 2, 19) }],
   );
-  await p.goto('http://localhost:4173/#/plans/smoke', { waitUntil: 'networkidle' });
+  await p.goto('http://localhost:4173/#/plans/smoke', { waitUntil: 'domcontentloaded' });
   await p.waitForSelector('.item-row', { timeout: 15000 });
 
   const rows = p.locator('.step-block').last().locator('> ul > .item-row > button');

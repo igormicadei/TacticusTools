@@ -9,8 +9,11 @@ import type { GameDatabase } from '@lib/gamedata/types.js';
 import type { PlayerResponse } from '@lib/types/player.js';
 
 import { plansStore, type StoredPlan } from '../data/plans.ts';
+import { unitIcon } from '../data/icons.ts';
+import { Icon, useIcons } from '../components/Icon.tsx';
 
 export function PlansPage({ db, player }: { db: GameDatabase; player: PlayerResponse }) {
+  useIcons();
   const navigate = useNavigate();
   const [plans, setPlans] = useState(() => plansStore.list());
   const [creating, setCreating] = useState(false);
@@ -91,8 +94,13 @@ export function PlansPage({ db, player }: { db: GameDatabase; player: PlayerResp
           return (
             <div className="card" key={stored.id} style={{ '--status': done ? 'var(--status-owned)' : 'var(--status-unlockable)' } as React.CSSProperties}>
               <Link to={`/plans/${stored.id}`}>
-                <div className="name">{stored.name || unit.name || unit.id}</div>
-                <div className="sub">{describeTarget(stored.target)}</div>
+                <div className="card-head">
+                  <Icon src={unitIcon(unit.id)} alt="" size={40} className="portrait" />
+                  <div className="card-title">
+                    <div className="name">{stored.name || unit.name || unit.id}</div>
+                    <div className="sub">{describeTarget(stored.target)}</div>
+                  </div>
+                </div>
                 <div className="meta">
                   <span className="chip">
                     {done ? 'Complete' : `${left} of ${plan.steps.length} steps left`}
@@ -342,7 +350,7 @@ export function PlanForm({
       </div>
 
       {preview && (
-        <p className="small" style={{ color: preview.blocked ? '#ffb4b4' : 'var(--text-dim)' }}>
+        <p className="small" style={{ color: preview.blocked ? 'var(--danger-strong)' : 'var(--text-secondary)' }}>
           {preview.blocked
             ? preview.blocked
             : preview.steps.length === 0

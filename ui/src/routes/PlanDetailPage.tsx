@@ -10,9 +10,12 @@ import type { PlayerResponse } from '@lib/types/player.js';
 import { PlanRoadmap } from '../components/PlanRoadmap.tsx';
 import { StepItems } from '../components/StepItems.tsx';
 import { plansStore } from '../data/plans.ts';
+import { unitIcon } from '../data/icons.ts';
+import { Icon, useIcons } from '../components/Icon.tsx';
 import { describeTarget, PlanForm } from './PlansPage.tsx';
 
 export function PlanDetailPage({ db, player }: { db: GameDatabase; player: PlayerResponse }) {
+  useIcons();
   const { planId = '' } = useParams();
   const [editing, setEditing] = useState(false);
   // Bumped on save so the stored plan is re-read after an edit.
@@ -61,6 +64,7 @@ export function PlanDetailPage({ db, player }: { db: GameDatabase; player: Playe
       </Link>
 
       <div className="detail-head">
+        <Icon src={unitIcon(unit.id)} alt="" size={72} className="portrait ornate" />
         <div>
           <h1>{stored.name || unit.name || unit.id}</h1>
           <div className="muted">Target: {describeTarget(stored.target)}</div>

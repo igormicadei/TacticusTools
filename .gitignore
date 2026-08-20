@@ -8,3 +8,8 @@ dist/
 ui/node_modules/
 ui/dist/
 public/cloudflare-worker.js
+# A fetched roster is personal account data, and every test takes one as an
+# argument rather than reading a committed copy.
+player.json
+# Screenshots the UI smoke test writes beside itself.
+ui-*.png

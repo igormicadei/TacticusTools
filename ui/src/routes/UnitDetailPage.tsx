@@ -1,13 +1,25 @@
 import { Fragment, useMemo } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
-import { rankName, rarityName } from '@lib/gamedata/enums.js';
+import { parseRarity, rankName, rarityName } from '@lib/gamedata/enums.js';
 import { computeTierStarLevel, computeUnitStats } from '@lib/gamedata/stats.js';
 import { resolveAbility, unitCombat } from '@lib/gamedata/combat.js';
 import type { GameDatabase } from '@lib/gamedata/types.js';
 import type { PlayerResponse, Unit } from '@lib/types/player.js';
 
 import { buildRoster, humaniseFaction, rarityLabel } from '../data/roster.ts';
+import {
+  abilityIcon,
+  attackIcon,
+  damageIcon,
+  factionIcon,
+  rankIcon,
+  rarityIcon,
+  requirementIcon,
+  uiIcon,
+  unitIcon,
+} from '../data/icons.ts';
+import { Icon, useIcons } from '../components/Icon.tsx';
 
 /**
  * Make game-config text readable.
@@ -38,6 +50,7 @@ export function UnitDetailPage({
   db: GameDatabase;
   player: PlayerResponse;
 }) {
+  useIcons();
   const { unitId = '' } = useParams();
   const entry = useMemo(
     () => buildRoster(player, db).find((e) => e.id === decodeURIComponent(unitId)),
@@ -64,12 +77,14 @@ export function UnitDetailPage({
       </Link>
 
       <div className="detail-head">
+        <Icon src={unitIcon(entry.id)} alt="" size={72} className="portrait ornate" />
         <div>
           <h1>{entry.name}</h1>
-          <div className="muted">
+          <div className="muted row">
             {definition?.fullName && definition.fullName !== entry.name
               ? `${definition.fullName} · `
               : ''}
+            <Icon src={factionIcon(entry.factionId)} size={16} className="crest" />
             {humaniseFaction(entry.factionId)}
             {definition?.isMachineOfWar ? ' · Machine of War' : ''}
           </div>
@@ -80,6 +95,7 @@ export function UnitDetailPage({
               className="chip rarity"
               style={{ '--rarity': `var(--rarity-${entry.rarity})` } as React.CSSProperties}
             >
+              <Icon src={rarityIcon(entry.rarity)} size={14} />
               {rarityLabel(entry.rarity)}
             </span>
           )}
@@ -171,7 +187,8 @@ function Progress({ unit, db }: { unit: Unit; db: GameDatabase }) {
         </div>
         <div className="stat">
           <div className="label">Rank</div>
-          <div className="value" style={{ fontSize: 15 }}>
+          <div className="value row" style={{ fontSize: 15 }}>
+            <Icon src={rankIcon(unit.rank)} size={22} />
             {rankName(unit.rank)}
           </div>
         </div>
@@ -241,15 +258,21 @@ function Attributes({ unit, db }: { unit: Unit; db: GameDatabase }) {
         <>
           <div className="stat-grid">
             <div className="stat">
-              <div className="label">Health</div>
+              <div className="label">
+                <Icon src={uiIcon('health')} size={12} /> Health
+              </div>
               <div className="value">{stats.health.toLocaleString()}</div>
             </div>
             <div className="stat">
-              <div className="label">Damage</div>
+              <div className="label">
+                <Icon src={uiIcon('damage')} size={12} /> Damage
+              </div>
               <div className="value">{stats.damage.toLocaleString()}</div>
             </div>
             <div className="stat">
-              <div className="label">Armour</div>
+              <div className="label">
+                <Icon src={uiIcon('armour')} size={12} /> Armour
+              </div>
               <div className="value">{stats.armour.toLocaleString()}</div>
             </div>
           </div>
@@ -330,6 +353,18 @@ function Attributes({ unit, db }: { unit: Unit; db: GameDatabase }) {
 }
 
 function Abilities({ unit, db }: { unit: Unit; db: GameDatabase }) {
+  useIcons();
+  const definition = db.units[unit.id];
+  // Art is filed per unit and slot rather than per ability, so the slot has to
+  // be worked back out from which of the unit's two ability ids this is.
+  const slotOf = (id: string): 'active' | 'passive' | 'mythic' | undefined =>
+    id === definition?.activeAbilityId
+      ? 'active'
+      : id === definition?.passiveAbilityId
+        ? 'passive'
+        : definition?.mythicAbilityIds.includes(id)
+          ? 'mythic'
+          : undefined;
   return (
     <section className="panel">
       <h3>Abilities</h3>
@@ -346,7 +381,17 @@ function Abilities({ unit, db }: { unit: Unit; db: GameDatabase }) {
         return (
           <div className="list-item" key={ability.id}>
             <div className="title">
-              <strong>{def?.name ?? ability.id}</strong>
+              <strong className="row">
+                <Icon
+                  src={(() => {
+                    const slot = slotOf(ability.id);
+                    return slot ? abilityIcon(unit.id, slot) : undefined;
+                  })()}
+                  size={28}
+                  className="portrait"
+                />
+                {def?.name ?? ability.id}
+              </strong>
               <span className="chip">
                 {ability.level === 0 ? 'Locked' : `Level ${ability.level}`}
               </span>
@@ -373,6 +418,7 @@ function Abilities({ unit, db }: { unit: Unit; db: GameDatabase }) {
 }
 
 function Equipment({ unit, db }: { unit: Unit; db: GameDatabase }) {
+  useIcons();
   const definition = db.units[unit.id];
   return (
     <section className="panel">
@@ -384,7 +430,10 @@ function Equipment({ unit, db }: { unit: Unit; db: GameDatabase }) {
         return (
           <div className="list-item" key={item.slotId}>
             <div className="title">
-              <strong>{item.name ?? def?.name ?? item.id}</strong>
+              <strong className="row">
+                <Icon src={requirementIcon(`upgrade:${item.id}`)} size={28} className="portrait" />
+                {item.name ?? def?.name ?? item.id}
+              </strong>
               <span className="chip">
                 {item.slotId} · Lv {item.level}
                 {def ? ` / ${def.levels.length}` : ''}
@@ -422,6 +471,7 @@ function Shards({
   entry: ReturnType<typeof buildRoster>[number];
   db: GameDatabase;
 }) {
+  useIcons();
   const next = db.progressionRequirements.find(
     (r) => r.progressionIndex === unit.progressionIndex + 1,
   );
@@ -432,9 +482,15 @@ function Shards({
     <section className="panel">
       <h3>Shards</h3>
       <dl className="kv">
-        <dt>Shards</dt>
+        <dt className="row">
+          <Icon src={requirementIcon(`shard:${unit.id}`)} size={20} className="portrait" />
+          Shards
+        </dt>
         <dd>{unit.shards.toLocaleString()}</dd>
-        <dt>Mythic shards</dt>
+        <dt className="row">
+          <Icon src={requirementIcon(`shard:${unit.id}:mythic`)} size={20} className="portrait" />
+          Mythic shards
+        </dt>
         <dd>{unit.mythicShards.toLocaleString()}</dd>
         <dt>Star level</dt>
         <dd>
@@ -464,6 +520,7 @@ function Shards({
 }
 
 function Badges({ unit, player }: { unit: Unit; player: PlayerResponse }) {
+  useIcons();
   const alliance = unit.grandAlliance;
   const badges = alliance ? player.player.inventory.abilityBadges[alliance] : undefined;
   return (
@@ -477,7 +534,14 @@ function Badges({ unit, player }: { unit: Unit; player: PlayerResponse }) {
         <dl className="kv">
           {badges.map((badge) => (
             <Fragment key={`${badge.rarity}-${badge.name ?? ''}`}>
-              <dt>{badge.name ?? badge.rarity}</dt>
+              <dt className="row">
+                <Icon
+                  src={requirementIcon(`badge:${alliance}:${parseRarity(badge.rarity)}`)}
+                  size={20}
+                  className="portrait"
+                />
+                {badge.name ?? badge.rarity}
+              </dt>
               <dd>{badge.amount.toLocaleString()}</dd>
             </Fragment>
           ))}
@@ -519,6 +583,7 @@ function Traits({ unit, db }: { unit: Unit; db: GameDatabase }) {
  * the hit count, and the part of it armour cannot stop.
  */
 function Attacks({ unit, db }: { unit: Unit; db: GameDatabase }) {
+  useIcons();
   const stats = computeUnitStats(unit, db);
   if (!stats) return null;
   const combat = unitCombat(unit, stats.damage, stats.rarity, db, stats.itemBonuses.critChance);
@@ -535,7 +600,15 @@ function Attacks({ unit, db }: { unit: Unit; db: GameDatabase }) {
       {rows.map((attack, index) => (
         <div className="attack-row" key={`${attack.source}:${attack.label}:${index}`}>
           <div className="attack-head">
-            <strong>
+            <strong className="row">
+              <Icon
+                src={
+                  attack.source === 'ability'
+                    ? damageIcon(attack.damageProfile)
+                    : (attackIcon(attack.source) ?? damageIcon(attack.damageProfile))
+                }
+                size={20}
+              />
               {attack.source === 'melee'
                 ? 'Melee'
                 : attack.source === 'ranged'

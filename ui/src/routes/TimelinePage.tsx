@@ -17,6 +17,8 @@ import type { PlayerResponse } from '@lib/types/player.js';
 
 import { ItemRow, toggleOpen } from '../components/StepItems.tsx';
 import { plansStore } from '../data/plans.ts';
+import { rankIcon, unitIcon } from '../data/icons.ts';
+import { Icon, useIcons } from '../components/Icon.tsx';
 
 type Mode = 'order' | 'energy';
 
@@ -122,6 +124,7 @@ function OrderOfWork({
   open: ReadonlySet<string>;
   onToggle: (id: string) => void;
 }) {
+  useIcons();
   if (bundles.length === 0) {
     return <div className="empty">Every plan is complete.</div>;
   }
@@ -143,7 +146,10 @@ function OrderOfWork({
         return (
           <div key={id}>
             {heading && (
-              <h3 className="tier-head">
+              <h3 className="tier-head row">
+                {bundle.targetRank !== undefined && (
+                  <Icon src={rankIcon(bundle.targetRank)} size={20} />
+                )}
                 Reaching {bundle.targetRank !== undefined ? rankName(bundle.targetRank) : 'the rest'}
               </h3>
             )}
@@ -154,6 +160,7 @@ function OrderOfWork({
                 aria-expanded={open.has(id)}
               >
                 <span className="chevron">{open.has(id) ? '▾' : '▸'}</span>
+                <Icon src={unitIcon(bundle.unitId)} alt="" size={28} className="portrait" reserve />
                 <Link
                   to={`/plans/${bundle.planId}`}
                   className="bundle-unit"

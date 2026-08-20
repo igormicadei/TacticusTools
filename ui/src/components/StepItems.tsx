@@ -20,6 +20,9 @@ import type { EvolutionPlan } from '@lib/gamedata/plan.js';
 import type { GameDatabase } from '@lib/gamedata/types.js';
 import type { PlayerResponse, Unit } from '@lib/types/player.js';
 
+import { campaignIcon, requirementIcon, uiIcon } from '../data/icons.ts';
+import { Icon, useIcons } from './Icon.tsx';
+
 type View = 'steps' | 'total';
 
 /**
@@ -194,6 +197,7 @@ export function ItemRow({
   /** Set in the aggregate view, where a row stands for several steps. */
   totals?: AggregatedItem;
 }) {
+  useIcons();
   const blocked = isUnfarmable(item, db, player);
   // Covered by stock, but with no source to replace it: worth spending
   // carefully, since there is nowhere to farm more.
@@ -210,6 +214,7 @@ export function ItemRow({
         <div className="item-head static">
           <span className="chevron" />
           <span className="count">{item.amount}×</span>
+          <Icon src={requirementIcon(item.key)} size={22} className="portrait" reserve />
           <span className="item-name">
             {item.name}
             {item.rarity !== undefined && (
@@ -227,6 +232,7 @@ export function ItemRow({
       <button className="item-head" onClick={() => onToggle(id)} aria-expanded={expanded}>
         <span className="chevron">{expanded ? '▾' : '▸'}</span>
         <Count covered={item.covered} amount={item.amount} forged={forge !== undefined} />
+        <Icon src={requirementIcon(item.key)} size={22} className="portrait" reserve />
         <span className="item-name">
           {item.name}
           {item.rarity !== undefined && (
@@ -344,6 +350,7 @@ function ComponentRow({
   open: ReadonlySet<string>;
   onToggle: (id: string) => void;
 }) {
+  useIcons();
   const item = { kind: 'upgrade' as const, ...component };
   const source = itemSource(item, db);
   const blocked = isUnfarmable(item, db, player);
@@ -361,6 +368,7 @@ function ComponentRow({
           amount={component.amount}
           forged={forge !== undefined}
         />
+        <Icon src={requirementIcon(item.key)} size={22} className="portrait" reserve />
         <span className="item-name">
           {component.name}
           {component.rarity !== undefined && (
@@ -473,6 +481,7 @@ function ForgeChip({ ready }: { ready: boolean }) {
 }
 
 function NodeTable({ nodes }: { nodes: ReturnType<typeof nodeStatuses> }) {
+  useIcons();
   if (nodes.length === 0) {
     return <p className="source-note muted small">No campaign node drops this.</p>;
   }
@@ -492,7 +501,10 @@ function NodeTable({ nodes }: { nodes: ReturnType<typeof nodeStatuses> }) {
               key={`${node.campaignId}#${node.battleIndex}`}
               className={node.unlocked ? '' : 'locked'}
             >
-              <td>{node.campaignName}</td>
+              <td className="node-campaign">
+                <Icon src={campaignIcon(node.campaignId)} size={18} className="portrait" reserve />
+                {node.campaignName}
+              </td>
               <td className="muted">node {node.nodeNumber}</td>
               <td>
                 {node.unlocked ? (
@@ -508,14 +520,24 @@ function NodeTable({ nodes }: { nodes: ReturnType<typeof nodeStatuses> }) {
               {/* Run cost and cost per copy are separate on purpose: a node can
                   be the cheapest per copy and still be the one you cannot
                   afford, because a run is all-or-nothing. */}
-              <td className="muted">{node.energyCost !== undefined ? `${node.energyCost}⚡/run` : ''}</td>
+              <td className="muted">
+                {node.energyCost !== undefined && (
+                  <>
+                    {node.energyCost}
+                    <Energy /> /run
+                  </>
+                )}
+              </td>
               <td className="muted">
                 {node.dropRate !== undefined ? `${(node.dropRate * 100).toFixed(0)}% drop` : ''}
               </td>
               <td className={node.unlocked && node.energyPerDrop === best ? 'ok' : 'muted'}>
-                {node.energyPerDrop !== undefined
-                  ? `${node.energyPerDrop.toFixed(1)}⚡ each`
-                  : ''}
+                {node.energyPerDrop !== undefined && (
+                  <>
+                    {node.energyPerDrop.toFixed(1)}
+                    <Energy /> each
+                  </>
+                )}
               </td>
             </tr>
           ))}
@@ -527,4 +549,11 @@ function NodeTable({ nodes }: { nodes: ReturnType<typeof nodeStatuses> }) {
       </p>
     </div>
   );
+}
+
+/** The game's energy glyph, falling back to the character it stands in for. */
+export function Energy() {
+  useIcons();
+  const src = uiIcon('energy');
+  return src ? <Icon src={src} size={13} alt="energy" /> : <>⚡</>;
 }
