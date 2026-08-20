@@ -88,6 +88,24 @@ for (const b of rated) {
 }
 console.log(`dropRates: ${rated.length}/${battles.length} nodes carry rates`);
 
+// Energy and daily runs come from the same per-type table as the drop rates, so
+// a campaign that has rates must have these too.
+const camps = Object.values(db.campaigns);
+const withEnergy = camps.filter((c) => c.energyCost !== undefined);
+for (const c of camps) {
+  const hasRates = Object.values(c.battles).some((b) => b.dropRates);
+  if (hasRates && c.energyCost === undefined) {
+    note(`campaign ${c.id}: drop rates but no energyCost`);
+  }
+  if (c.energyCost !== undefined && !int(c.energyCost)) {
+    note(`campaign ${c.id}: non-integer energyCost`);
+  }
+  if (c.dailyBattleCount !== undefined && !(c.dailyBattleCount > 0)) {
+    note(`campaign ${c.id}: dailyBattleCount not positive`);
+  }
+}
+console.log(`energy: ${withEnergy.length}/${camps.length} campaigns carry a run cost`);
+
 /* ---- battle refs resolve ------------------------------------------------- */
 const known = new Set(battles.map((b) => b.key));
 const refs = Object.values(db.upgrades).flatMap((u) => u.farmableAt);

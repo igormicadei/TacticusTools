@@ -459,6 +459,25 @@ which is exactly where the allocation rule matters.
 | ability | badges of the tier for each level reached, plus gold |
 | promotion / ascension | shards for the unit, and orbs at the tier |
 
+### Energy and drop rates
+
+Nodes carry what a run costs, how often it drops the item asked about, and the
+two divided — energy per copy. All three are shown, because the cheapest node
+per copy is often the one you cannot afford: an Elite run is 10 energy against
+a Standard's 6, and a run is all-or-nothing, so with 8 energy in hand the
+better-value node buys nothing.
+
+Elite is the better rate at every rarity, and the gap widens as items get
+rarer — 6.5 energy per copy against 6.9 for Common, 24.4 against 33.0 for
+Legendary. Both figures come from Codex's `campaignconfig` table, published per
+campaign *type*, so they describe the type rather than the individual node; the
+`dropRateProvenance` field records that, and a per-node source can replace the
+values without touching anything that reads them.
+
+The player's own energy balance is not in the API — `details` carries only a
+name and power level — so anything that budgets against it has to be told the
+number.
+
 ### Where items come from
 
 Materials split in two: 195 of 558 upgrades drop from campaign nodes, the other

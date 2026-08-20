@@ -177,19 +177,37 @@ function normalizeStatRow(raw: RawGameInfoStatRow): NpcStatRow | undefined {
 /* Battles                                                                    */
 /* -------------------------------------------------------------------------- */
 
-function normalizeDropRates(raw: RawCodexCampaignConfigs['configs']): Map<number, DropRates> {
-  const byType = new Map<number, DropRates>();
+/** What a campaign type costs to run and how often, alongside its drop rates. */
+interface CampaignConfig {
+  dropRates: DropRates;
+  /** Energy one run of a node costs. A run is indivisible: 8 energy buys none
+   *  of a 10-energy Elite node, however cheap its drops are per unit. */
+  energyCost?: number;
+  /** Runs per node per day. */
+  dailyBattleCount?: number;
+}
+
+function normalizeCampaignConfigs(
+  raw: RawCodexCampaignConfigs['configs'],
+): Map<number, CampaignConfig> {
+  const byType = new Map<number, CampaignConfig>();
   for (const config of raw ?? []) {
     const type = parseCampaignType(config.type);
     if (type === undefined) continue;
     const d = config.dropRate;
     byType.set(type, {
-      common: nn(d?.common) ?? 0,
-      uncommon: nn(d?.uncommon) ?? 0,
-      rare: nn(d?.rare) ?? 0,
-      epic: nn(d?.epic) ?? 0,
-      legendary: nn(d?.legendary) ?? 0,
-      shard: nn(d?.shard) ?? 0,
+      dropRates: {
+        common: nn(d?.common) ?? 0,
+        uncommon: nn(d?.uncommon) ?? 0,
+        rare: nn(d?.rare) ?? 0,
+        epic: nn(d?.epic) ?? 0,
+        legendary: nn(d?.legendary) ?? 0,
+        shard: nn(d?.shard) ?? 0,
+      },
+      ...(nn(config.energyCost) !== undefined ? { energyCost: nn(config.energyCost)! } : {}),
+      ...(nn(config.dailyBattleCount) !== undefined
+        ? { dailyBattleCount: nn(config.dailyBattleCount)! }
+        : {}),
     });
   }
   return byType;
@@ -497,7 +515,7 @@ export function normalize(input: NormalizeInput): GameDatabase {
   const rarityCaps = normalizeRarityCaps(input.codexLevelProgression);
 
   /* ---- campaigns and battles ------------------------------------------ */
-  const dropRatesByType = normalizeDropRates(input.codexCampaignConfigs?.configs);
+  const configByType = normalizeCampaignConfigs(input.codexCampaignConfigs?.configs);
   const campaigns: Record<string, CampaignDefinition> = {};
   const shardSources: Record<string, BattleRef[]> = {};
   const unresolvedNpcIds = new Set<string>();
@@ -548,7 +566,8 @@ export function normalize(input: NormalizeInput): GameDatabase {
     const shardUnitId = shardName ? unitIdByName.get(shardName.toLowerCase()) : undefined;
     const rewardUpgradeId = reward && upgrades[reward] ? reward : undefined;
 
-    const dropRates = campaignType === undefined ? undefined : dropRatesByType.get(campaignType);
+    const config = campaignType === undefined ? undefined : configByType.get(campaignType);
+    const dropRates = config?.dropRates;
 
     const battle: BattleDefinition = compact({
       ...ref,
@@ -584,6 +603,12 @@ export function normalize(input: NormalizeInput): GameDatabase {
     }
     if (campaign.type === undefined && campaignType !== undefined) {
       campaign.type = campaignType;
+      // Energy and daily runs are published per campaign type, like drop rates,
+      // so a campaign inherits its type's.
+      if (config?.energyCost !== undefined) campaign.energyCost = config.energyCost;
+      if (config?.dailyBattleCount !== undefined) {
+        campaign.dailyBattleCount = config.dailyBattleCount;
+      }
     }
     campaign.battles[battle.key] = battle;
     battleCount += 1;

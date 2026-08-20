@@ -407,7 +407,7 @@ export interface GameDatabaseStats {
  * stored version differs, so an older cache is refetched rather than served
  * with fields the current code expects but the file never had.
  */
-export const GAME_DATABASE_SCHEMA_VERSION = 6;
+export const GAME_DATABASE_SCHEMA_VERSION = 7;
 
 export interface GameDatabase {
   /** Value of {@link GAME_DATABASE_SCHEMA_VERSION} when this was assembled. */

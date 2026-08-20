@@ -32,10 +32,21 @@ const db = await loadGameDatabase({ refresh: args.includes('--refresh') });
 const snapshot = { ...db };
 if (!full) {
   for (const key of HEAVY_UNUSED) snapshot[key] = Array.isArray(db[key]) ? [] : {};
-  // Campaign names are needed to label farming nodes, but the per-node battle
-  // lists behind them are the bulk of the file and nothing reads them.
+  // Battles carry the drop rates the farming views quote, so they stay — but
+  // their enemy rosters are the bulk of the file and no view reads them.
   snapshot.campaigns = Object.fromEntries(
-    Object.entries(db.campaigns).map(([id, campaign]) => [id, { ...campaign, battles: {} }]),
+    Object.entries(db.campaigns).map(([id, campaign]) => [
+      id,
+      {
+        ...campaign,
+        battles: Object.fromEntries(
+          Object.entries(campaign.battles).map(([key, battle]) => {
+            const { enemies, enemyFactions, enemyAlliances, ...rest } = battle;
+            return [key, rest];
+          }),
+        ),
+      },
+    ]),
   );
   snapshot.slim = true;
 }

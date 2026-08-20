@@ -407,7 +407,36 @@ export interface NodeStatus extends BattleRef {
   attemptsLeft: number;
   attemptsUsed: number;
   campaignName: string;
+  /** Energy one run costs. A run is indivisible — see {@link energyPerDrop}. */
+  energyCost?: number;
+  /** Runs allowed per day. */
+  dailyBattleCount?: number;
+  /** Chance of the item dropping per run, for the rarity asked about. */
+  dropRate?: number;
+  /**
+   * `energyCost / dropRate` — energy per copy on average.
+   *
+   * Deliberately separate from {@link energyCost}: an Elite node is cheaper per
+   * copy than a Standard one at every rarity, but costs 10 energy a run against
+   * 6, so with 8 energy in hand the cheaper node is the one you cannot afford.
+   * Both numbers are needed to choose.
+   */
+  energyPerDrop?: number;
 }
+
+/**
+ * Drop-rate key for a rarity, as the published table names them.
+ *
+ * Indexed by {@link Rarity}, and deliberately one short: the table has no
+ * Mythic column, so a Mythic item reports no rate rather than borrowing one.
+ */
+const DROP_RATE_KEYS: readonly ('common' | 'uncommon' | 'rare' | 'epic' | 'legendary')[] = [
+  'common',
+  'uncommon',
+  'rare',
+  'epic',
+  'legendary',
+];
 
 export interface RecipeComponent {
   key: string;
@@ -495,6 +524,11 @@ export function nodeStatuses(
   refs: readonly BattleRef[],
   player: PlayerResponse,
   db: GameDatabase,
+  /**
+   * What is being farmed here, so the node can report the rate that applies.
+   * Shards use the shard rate; an upgrade uses its rarity's.
+   */
+  looking?: { kind: RequirementKind; rarity?: Rarity },
 ): NodeStatus[] {
   const progress = unlockedNodes(player);
   const ambiguous = ambiguousCampaignNames(db);
@@ -517,12 +551,30 @@ export function nodeStatuses(
           : ambiguous.has(campaign.name) && track !== undefined
             ? `${campaign.name} ${track}`
             : campaign.name;
+      const battle = campaign?.battles[battleKey(ref)];
+      const rateKey =
+        looking?.kind === 'shard'
+          ? 'shard'
+          : looking?.rarity !== undefined
+            ? DROP_RATE_KEYS[looking.rarity]
+            : undefined;
+      const dropRate = rateKey ? battle?.dropRates?.[rateKey] : undefined;
+      const energyCost = campaign?.energyCost;
+
       return {
         ...ref,
         unlocked: hit !== undefined,
         attemptsLeft: hit?.attemptsLeft ?? 0,
         attemptsUsed: hit?.attemptsUsed ?? 0,
         campaignName,
+        ...(energyCost !== undefined ? { energyCost } : {}),
+        ...(campaign?.dailyBattleCount !== undefined
+          ? { dailyBattleCount: campaign.dailyBattleCount }
+          : {}),
+        ...(dropRate !== undefined ? { dropRate } : {}),
+        ...(energyCost !== undefined && dropRate
+          ? { energyPerDrop: energyCost / dropRate }
+          : {}),
       };
     })
     .sort(

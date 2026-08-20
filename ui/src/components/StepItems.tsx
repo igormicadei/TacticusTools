@@ -312,7 +312,14 @@ function ItemSources({
     );
   }
 
-  return <NodeTable nodes={nodeStatuses(source.nodes, player, db)} />;
+  return (
+    <NodeTable
+      nodes={nodeStatuses(source.nodes, player, db, {
+        kind: item.kind,
+        ...(item.rarity !== undefined ? { rarity: item.rarity } : {}),
+      })}
+    />
+  );
 }
 
 function ComponentRow({
@@ -388,7 +395,12 @@ function ComponentRow({
             </ul>
           </div>
         ) : source.kind === 'farm' ? (
-          <NodeTable nodes={nodeStatuses(source.nodes, player, db)} />
+          <NodeTable
+            nodes={nodeStatuses(source.nodes, player, db, {
+              kind: 'upgrade',
+              ...(component.rarity !== undefined ? { rarity: component.rarity } : {}),
+            })}
+          />
         ) : (
           <p className="source-note muted small">No published way to obtain this yet.</p>
         ))}
@@ -457,6 +469,13 @@ function NodeTable({ nodes }: { nodes: ReturnType<typeof nodeStatuses> }) {
   if (nodes.length === 0) {
     return <p className="source-note muted small">No campaign node drops this.</p>;
   }
+  // Cheapest per copy among the nodes actually open, so the best buy is marked
+  // rather than left to be worked out by eye.
+  const best = Math.min(
+    ...nodes
+      .filter((n) => n.unlocked && n.energyPerDrop !== undefined)
+      .map((n) => n.energyPerDrop!),
+  );
   return (
     <div className="source-note">
       <table className="nodes">
@@ -479,10 +498,26 @@ function NodeTable({ nodes }: { nodes: ReturnType<typeof nodeStatuses> }) {
                   <span className="muted">locked</span>
                 )}
               </td>
+              {/* Run cost and cost per copy are separate on purpose: a node can
+                  be the cheapest per copy and still be the one you cannot
+                  afford, because a run is all-or-nothing. */}
+              <td className="muted">{node.energyCost !== undefined ? `${node.energyCost}⚡/run` : ''}</td>
+              <td className="muted">
+                {node.dropRate !== undefined ? `${(node.dropRate * 100).toFixed(0)}% drop` : ''}
+              </td>
+              <td className={node.unlocked && node.energyPerDrop === best ? 'ok' : 'muted'}>
+                {node.energyPerDrop !== undefined
+                  ? `${node.energyPerDrop.toFixed(1)}⚡ each`
+                  : ''}
+              </td>
             </tr>
           ))}
         </tbody>
       </table>
+      <p className="small muted" style={{ margin: '6px 0 0' }}>
+        Drop rates are published per campaign type, not per node. A rate above
+        100% means more than one copy per run on average.
+      </p>
     </div>
   );
 }
