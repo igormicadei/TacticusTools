@@ -265,6 +265,10 @@ table.steps tr.done td { color: var(--text-dim); }
   display: flex; flex-wrap: wrap; gap: 6px 20px; margin-top: 5px; font-size: 13px;
 }
 .attack-note { font-size: 11px; }
+.chip.slot-normal { color: var(--text-dim); }
+.chip.slot-active { color: #7fb2e5; border-color: #2f4a66; }
+.chip.slot-passive { color: #b79ae0; border-color: #4a3a66; }
+.chip.slot-mythic { color: #d9b25a; border-color: #6a5424; }
 .attack-figure em {
   font-style: normal; color: var(--text-dim); font-size: 11px;
   letter-spacing: .06em; text-transform: uppercase; margin-right: 4px;

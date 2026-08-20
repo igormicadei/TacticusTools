@@ -214,6 +214,18 @@ const ITEM_STAT_LABELS: Record<string, string> = {
 const PERCENT_STATS = new Set(['critChance', 'blockChance']);
 
 /**
+ * Where an attack comes from.
+ *
+ * Read off the unit's own ability slots, so it is structural. A normal attack is
+ * the weapon; everything else is the ability that carries it.
+ */
+const SLOT_LABEL: Record<string, string> = {
+  active: 'Active',
+  passive: 'Passive',
+  mythic: 'Mythic',
+};
+
+/**
  * Equipment stats the game folds into the headline figures rather than showing
  * on their own; the crit and block stats are the ones it lists separately.
  */
@@ -310,8 +322,8 @@ function Attributes({ unit, db }: { unit: Unit; db: GameDatabase }) {
         </dl>
       )}
       <p className="small muted" style={{ marginBottom: 0 }}>
-        Rarity adds +20% per tier to <em>ability</em> stats, which the source data leaves
-        as unresolved placeholders and this does not compute.
+        Rarity adds +20% per tier to <em>ability</em> values, not to these — stars scale
+        a unit's stats, rarity scales its abilities, and the two never cross.
       </p>
     </section>
   );
@@ -530,6 +542,9 @@ function Attacks({ unit, db }: { unit: Unit; db: GameDatabase }) {
                   ? 'Ranged'
                   : attack.label}
             </strong>
+            <span className={`chip ${attack.slot ? `slot-${attack.slot}` : 'slot-normal'}`}>
+              {attack.slot ? SLOT_LABEL[attack.slot] : 'Normal'}
+            </span>
             <span className="muted small">
               {attack.hits}× {attack.perHit.mid.toLocaleString()}
               {attack.perHit.high > attack.perHit.mid && ` ±${attack.perHit.high - attack.perHit.mid}`}
@@ -542,8 +557,9 @@ function Attacks({ unit, db }: { unit: Unit; db: GameDatabase }) {
                 </span>
               )}
               {attack.range !== undefined && ` · range ${attack.range}`}
-              {attack.source === 'ability' &&
-                ` · ${attack.attackRangeType?.toLowerCase() ?? 'ability'}`}
+              {attack.attackRangeType !== undefined &&
+                attack.source === 'ability' &&
+                ` · ${attack.attackRangeType.toLowerCase()}`}
             </span>
           </div>
           <div className="attack-figures">

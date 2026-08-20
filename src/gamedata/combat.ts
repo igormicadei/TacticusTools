@@ -98,6 +98,14 @@ export interface AttackProfile {
   armourFloorAt?: number;
   /** Set for abilities that ride on or replace a normal attack. */
   attackRangeType?: 'Melee' | 'Ranged' | 'Normal';
+  /**
+   * Which ability slot an attack came from.
+   *
+   * Read off the unit's own `activeAbilityId` / `passiveAbilityId` /
+   * `mythicAbilityIds`, so it is structural rather than inferred from the
+   * ability's own fields. Absent for the two normal attacks.
+   */
+  slot?: AbilitySlot;
 }
 
 function weaponProfile(
@@ -129,9 +137,13 @@ function weaponProfile(
 /* Abilities                                                                  */
 /* -------------------------------------------------------------------------- */
 
+/** Which of a unit's ability slots this came from. */
+export type AbilitySlot = 'active' | 'passive' | 'mythic';
+
 export interface ResolvedAbility {
   id: string;
   name: string;
+  slot: AbilitySlot;
   level: number;
   /** Description with `{[name]}` placeholders filled in, markup intact. */
   description?: string;
@@ -160,6 +172,7 @@ export function resolveAbility(
   level: number,
   rarity: Rarity | undefined,
   db: GameDatabase,
+  slot: AbilitySlot = 'active',
   /**
    * Values the game client supplies from context rather than from the ability,
    * `UnitName` being the one that appears in descriptions.
@@ -233,12 +246,14 @@ export function resolveAbility(
       ...(ability.attackRangeType !== undefined
         ? { attackRangeType: ability.attackRangeType }
         : {}),
+      slot,
     };
   }
 
   return {
     id: ability.id,
     name: ability.name,
+    slot,
     level,
     ...(description !== undefined ? { description } : {}),
     values,
@@ -298,16 +313,20 @@ export function unitCombat(
     id ? (unit.abilities.find((a) => a.id === id)?.level ?? 1) : 1;
 
   const abilities: ResolvedAbility[] = [];
-  const ids = [
-    definition?.activeAbilityId,
-    definition?.passiveAbilityId,
-    ...(definition?.mythicAbilityIds ?? []),
+  const slots: [string | undefined, AbilitySlot][] = [
+    [definition?.activeAbilityId, 'active'],
+    [definition?.passiveAbilityId, 'passive'],
+    ...(definition?.mythicAbilityIds ?? []).map(
+      (id): [string, AbilitySlot] => [id, 'mythic'],
+    ),
   ];
-  for (const id of ids) {
+  for (const [id, slot] of slots) {
     const ability = id ? db.abilities[id] : undefined;
     if (ability) {
       abilities.push(
-        resolveAbility(ability, levelOf(id), rarity, db, { UnitName: unit.name ?? unit.id }),
+        resolveAbility(ability, levelOf(id), rarity, db, slot, {
+          UnitName: unit.name ?? unit.id,
+        }),
       );
     }
   }
