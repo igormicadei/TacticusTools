@@ -28,9 +28,16 @@ with none of them.
 
 ## Upgrade Rank
 
-- 20 ranks (Stone I → Mythic II in the repo's naming; the wiki calls the top
-  three "Adamantine I–III"; both spellings mean the same three post-Diamond-III
-  ranks — `parseRank` in `enums.ts` accepts both). A new character starts at
+- The repo's `Rank` enum models 20 ranks, Stone I → Mythic II (indices 0–19).
+  The wiki describes **three** post-Diamond-III ranks ("Adamantine I–III");
+  this repo's enum currently has only **two** (Mythic I/II). `parseRank` in
+  `enums.ts` aliases the wiki's `Adamantine I` to Mythic I and Codex's numeric
+  `Rank 20` to Mythic II, but has **no alias for `Adamantine II` or
+  `Adamantine III`** — passing either currently returns `undefined`, not a
+  rank. Don't assume both extra wiki-named ranks parse; if a task needs to
+  resolve `Adamantine II`/`III` from user input, that alias doesn't exist yet
+  and should be added to `RANK_LOOKUP` (and the `Rank` enum extended) rather
+  than assumed. See `sources-and-caveats.md`. A new character starts at
   Stone I (rank 0, no upgrades applied).
 - **Each rank costs 6 upgrade items**: two each boosting Health, Damage, and
   Armour. Exact materials per unit/rank are in `db.units[id].ranks[rank].upgrades`
@@ -166,4 +173,8 @@ typically buffs Mythic-rarity characters.
   gets this right: the level-14-to-15 cost sits at the row for level 14, not
   15).
 - **Passive Ability unlocks at Uncommon rarity or higher**; **Active is
-  available from Common**. Every unit has exactly one of each.
+  available from Common**. Every *character* has exactly one of each — but
+  **not every Machine of War does**: 11 MoW units (e.g. Galatian,
+  `ultraDreadnought`) have no `passiveAbilityId` in `db.units`, and
+  `unitCombat()` already treats the field as optional. Don't assume
+  `db.units[id]` has both slots filled without checking.

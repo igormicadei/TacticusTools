@@ -116,6 +116,18 @@ or wiki:
     interaction, search `tacticus.wiki.gg/wiki/HDTW_<Something>` directly
     rather than assuming this skill's reference files are exhaustive at the
     per-unit level.
+11. **The repo's `Rank` enum has two Mythic-tier ranks, not three.** The wiki
+    describes "Adamantine I–III" (three post-Diamond-III ranks); `enums.ts`
+    currently models only Mythic I/II (indices 18–19), and `parseRank` aliases
+    `Adamantine I` and Codex's `Rank 20` but has no alias for `Adamantine
+    II`/`III` — either the wiki over-counts, or the enum needs a third rank
+    added once that's confirmed against live game data. Caught by an automated
+    PR review on this skill's first draft (see `progression-and-abilities.md`)
+    rather than by the original research; treat it as unresolved until someone
+    checks the live game or a fresher `gameInfo.json` snapshot. The same
+    review also caught this skill overclaiming that every unit has both an
+    Active and a Passive ability — 11 Machines of War have no passive at all,
+    which `progression-and-abilities.md` now notes.
 
 ## What was deliberately excluded
 
