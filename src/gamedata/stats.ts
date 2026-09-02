@@ -8,6 +8,7 @@
 
 import { Rarity } from './enums.js';
 import type { GameDatabase } from './types.js';
+import { UNIT_ITEM_SLOTS } from '../types/player.js';
 import type { Unit, UnitItem } from '../types/player.js';
 
 /**
@@ -84,30 +85,71 @@ const UPGRADE_STAT_TARGET: Record<string, keyof RankUpgradeBonuses> = {
 };
 
 /**
- * Normalise an equipment stat key.
+ * Stats that converge toward 100 instead of summing flatly.
  *
- * Booster items report `blockChanceBonus` / `blockDmgBonus` where the item they
- * boost reports `blockChance` / `blockDmg`. The game adds them into one figure —
- * a Force Field at 30% plus an Amplifier at 4% displays as 34% — so the suffix
- * is dropped and the values summed.
+ * Recovered from tacticustable.com's client code (not published by the game
+ * itself): each successive point of Crit Chance or Block Chance from gear is
+ * worth `(100 - current) * add / 100`, the same shape as compounding
+ * independent-chance events — a 20% base plus a 30%-chance item gives 44%, not
+ * 50%. Every other equipment stat (health, damage, armour, Crit/Block
+ * *Damage*) sums flatly.
  */
-function normaliseStatKey(key: string): string {
-  return key.replace(/Bonus$/, '');
+const DIMINISHING_RETURNS_STATS = new Set(['critChance', 'blockChance']);
+
+/**
+ * Booster stat keys, mapped to the base stat they augment.
+ *
+ * Booster items report `blockChanceBonus` / `blockDmgBonus` where the item
+ * they boost reports `blockChance` / `blockDmg`. The game folds them into the
+ * base stat's own figure — a Force Field at 30% plus an Amplifier at 4%
+ * displays as 34% — but only when the base stat is already present: a
+ * Booster with no matching base item (or one not yet folded in) contributes
+ * nothing, since a Booster cannot be equipped without its base item anyway.
+ */
+const BONUS_STAT_TARGET: Record<string, string> = {
+  critChanceBonus: 'critChance',
+  blockChanceBonus: 'blockChance',
+  critDmgBonus: 'critDmg',
+  blockDmgBonus: 'blockDmg',
+};
+
+/** Fold one item's stats onto a running total, in place. */
+function foldItemStats(totals: ItemBonuses, stats: Record<string, number>): void {
+  for (const [key, value] of Object.entries(stats)) {
+    const bonusTarget = BONUS_STAT_TARGET[key];
+    if (bonusTarget !== undefined) {
+      if (totals[bonusTarget]) totals[bonusTarget] += value;
+      continue;
+    }
+    if (DIMINISHING_RETURNS_STATS.has(key)) {
+      const current = totals[key] ?? 0;
+      totals[key] = Math.floor(current + ((100 - current) * value) / 100);
+    } else {
+      totals[key] = (totals[key] ?? 0) + value;
+    }
+  }
 }
 
-/** Sum the stats of every equipped item at its current level. */
+/**
+ * Sum the stats of every equipped item at its current level.
+ *
+ * Items are folded in slot order (`Slot1`, `Slot2`, `Slot3`), matching the
+ * game's own per-slot sequential application — this matters because Crit/Block
+ * Chance stacking and Booster `*Bonus` stats are both order-dependent (see
+ * {@link foldItemStats}).
+ */
 export function computeItemBonuses(items: readonly UnitItem[], db: GameDatabase): ItemBonuses {
   const totals: ItemBonuses = {};
-  for (const equipped of items) {
+  const bySlot = [...items].sort(
+    (a, b) => UNIT_ITEM_SLOTS.indexOf(a.slotId) - UNIT_ITEM_SLOTS.indexOf(b.slotId),
+  );
+  for (const equipped of bySlot) {
     const definition = db.items[equipped.id];
     // `level` is 1-based; a level beyond the published table yields nothing
     // rather than guessing an extrapolation.
     const level = definition?.levels[equipped.level - 1];
     if (!level) continue;
-    for (const [key, value] of Object.entries(level.stats)) {
-      const stat = normaliseStatKey(key);
-      totals[stat] = (totals[stat] ?? 0) + value;
-    }
+    foldItemStats(totals, level.stats);
   }
   return totals;
 }
