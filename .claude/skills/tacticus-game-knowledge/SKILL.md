@@ -50,7 +50,7 @@ treating a number here as exact.
 | `references/battlefield-and-terrain.md` | Turns/rounds and their resolution order, movement/actions, adjacency vs. surrounding, elevation/cliffs/line of sight, terrain types, hex effects (Fire/Ice/Contamination/Despoiled Ground), displacement (push/pull/throw), charging |
 | `references/traits-and-status-effects.md` | How to read traits (use the DB, not this file, for exact wording), the cross-cutting interactions traits create (Resilient, Overkill-immunity, Immune, Swarm...), status effects that are battle state rather than unit traits (Stunned, Suppressed, Taunted...), healing/repair/revive/resurrect, on-death resolution order |
 | `references/progression-and-abilities.md` | XP levels, upgrade ranks, stars/promotion, rarity/ascension, Mythic rarity, the star-multiplier and ability-rarity-bonus formulas (confirmed linear, not compounding), ability leveling costs, Machines of War ability scaling |
-| `references/equipment-forge-and-items.md` | Equipment slots/categories, the crit/block **diminishing-returns** stacking formula (not a flat sum — differs from how this repo currently sums it, see note), rarity-cap scaling-down rules, forging and crafting cost tables, Mythic binding, Relics |
+| `references/equipment-forge-and-items.md` | Equipment slots/categories, the crit/block **diminishing-returns** stacking formula, rarity-cap scaling-down rules, forging and crafting cost tables, Mythic binding, Relics |
 | `references/game-modes.md` | Every game mode's rules and numbers: Campaign, Arena, Onslaught, Guild Raid (incl. the Prime boss debuff formulas), Guild War, Salvage Run, Tournament Arena, Incursion, Survival, Quest, HRE, LE, Crusade, Battle Pass, Machines of War |
 | `references/economy-and-meta.md` | Currencies and shops, Requisitions/gacha odds, Power Score, factions/alliances, energy, guilds, missions, glossary of abbreviations |
 | `references/sources-and-caveats.md` | Every URL consulted, and every gap/ambiguity/contradiction the research surfaced — read this before citing an exact number as certain |
@@ -63,14 +63,17 @@ treating a number here as exact.
   database has no field for (how block stacks, what a hex effect does), use the
   matching reference file. Only fall back to general knowledge for things
   neither source covers, and say so.
-- **Formulas here describe the game, not this repo's code.** `src/gamedata`
-  already implements a good chunk of this correctly (damage/pierce math, star
-  scaling, ability resolution, evolution planning) — where the reference files
-  add something the code doesn't yet do, or a wiki-observed rule differs from
-  what the code currently assumes, that is called out explicitly rather than
-  silently. Don't assume the code and the reference agree without checking; a
-  couple of known gaps are flagged in `equipment-forge-and-items.md` and
-  `game-modes.md`.
+- **Formulas here describe the game, not this repo's code — check they still
+  agree.** `src/gamedata` already implements a good chunk of this correctly
+  (damage/pierce math, star scaling, crit/block stacking, ability resolution,
+  evolution planning), each cross-checked against a real character screen or a
+  mined formula at the time this skill was written. Most of `game-modes.md`,
+  `battlefield-and-terrain.md`, and the trait/status-effect interactions have
+  no code counterpart at all — the database has no terrain, turn-order, or
+  game-mode fields — so there's nothing to reconcile there. Where a reference
+  file does describe something the code also computes, don't assume they still
+  agree without spot-checking; the code is a moving target and a future change
+  could drift from a rule documented here.
 - **The game changes.** Numbers tied to a patch (Power Level caps, event shard
   costs, rank caps) are dated in the reference files where the source dated
   them. Prefer the database for anything it covers, since it refreshes from the

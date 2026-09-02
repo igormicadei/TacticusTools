@@ -33,9 +33,13 @@ item's exact numbers.
 
 ## Crit Chance / Block Chance stacking is diminishing-returns, not additive
 
-This is the single most important equipment formula that is **not** currently
-implemented the way the game actually behaves — worth checking before trusting
-a stat total for crit/block chance specifically.
+`computeItemBonuses()` in `src/gamedata/stats.ts` implements this correctly:
+Crit/Block Chance from gear stack via diminishing returns, everything else
+(health, damage, armour, flat Crit/Block *Damage*) sums flatly, and `*Bonus`
+booster stats only apply once their base stat is already present — folded in
+slot order (`Slot1`/`Slot2`/`Slot3`) to match the game's own sequencing. Worth
+knowing the exact formula anyway, since it explains why a displayed total
+isn't a simple sum of the equipped items' tooltip values.
 
 Recovered directly from tacticustable.com's client code (a function that folds
 each equipped item's stat block onto a running total, applied per slot in
@@ -57,15 +61,6 @@ corresponding base stat is already non-zero** on the unit. A Crit Booster does
 nothing for a unit with no crit-chance source from its weapon/other gear in
 the first place — consistent with "you can't equip a Booster without the
 matching base item" below.
-
-**Known gap in this repo**: `computeItemBonuses()` in `src/gamedata/stats.ts`
-currently sums *every* stat additively, crit/block chance included — so its
-output for those two stats specifically will read higher than what the game
-actually shows once more than one source contributes. HP, damage, armour, and
-flat crit/block *damage* bonuses are unaffected (those really are additive).
-If a task needs an exact crit/block chance total, apply the diminishing-returns
-formula above rather than trusting `computeItemBonuses()`'s raw sum for those
-two fields.
 
 ## Block Boosters — the narrower rule from `combat-engine.md`
 

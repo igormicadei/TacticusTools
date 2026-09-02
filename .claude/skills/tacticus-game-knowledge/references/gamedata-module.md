@@ -46,12 +46,11 @@ All in `src/gamedata/*.ts`; import from the package root.
   screen's Health/Damage/Armour from rank base stats, cumulative star
   multiplier, applied rank upgrades, and equipment. Returns `undefined` rather
   than extrapolating if the database has no stat row for the unit's rank.
-- **`computeItemBonuses(items, db)`** (`stats.ts`) — sums equipped items' stats.
-  **Known gap**: this currently does a flat sum for every stat including
-  `critChance`/`blockChance`. The real game uses diminishing-returns stacking
-  for those two specifically — see `equipment-forge-and-items.md` for the exact
-  formula and a worked example. Don't assume this function's crit/block output
-  matches the game exactly.
+- **`computeItemBonuses(items, db)`** (`stats.ts`) — sums equipped items' stats,
+  folded in slot order. Most stats sum flatly, but `critChance`/`blockChance`
+  stack via diminishing returns and `*Bonus` booster stats only apply once
+  their base stat is already present — see `equipment-forge-and-items.md` for
+  the exact formula and a worked example.
 - **`unitCombat(unit, damage, rarity, db, critChance?)`** (`combat.ts`) —
   resolves a unit's melee/ranged attack profiles, every ability at its current
   level and rarity, resolved trait text, and the crit-chain probabilities for
