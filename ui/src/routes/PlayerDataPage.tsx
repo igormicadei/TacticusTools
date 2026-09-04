@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type ChangeEvent } from 'react';
 
 import {
+  DEFAULT_RELAY_KEY,
   InvalidPlayerDataError,
   PlayerFetchError,
   fetchPlayer,
@@ -149,8 +150,10 @@ export function PlayerDataPage({
           <h3 style={{ marginTop: 20 }}>Relay key</h3>
           <p className="small muted" style={{ marginTop: 0 }}>
             Only if your relay sets one. This is the relay&apos;s own secret, not your
-            Tacticus key — it stops anyone else who learns the URL from using it. Stored in
-            this browser only, and never built into the page.
+            Tacticus key — it stops anyone else who learns the URL from using it.
+            {DEFAULT_RELAY_KEY
+              ? ' This build ships with one filled in, so it is published along with the page and anyone reading the source has it. Your Tacticus key is not: that stays in this browser, and the relay only ever forwards it to the game API.'
+              : ' Stored in this browser only, and never built into the page.'}
           </p>
           <input
             className="search"

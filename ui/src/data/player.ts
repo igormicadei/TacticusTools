@@ -39,6 +39,27 @@ export const DEFAULT_RELAY_URL = (import.meta.env['VITE_DEFAULT_RELAY'] ?? '')
   .trim()
   .replace(/\/+$/, '');
 
+/**
+ * Relay key used when the user has not set one, from `VITE_DEFAULT_RELAY_KEY`.
+ *
+ * Understand what this is before setting it: the bundle is public, so a key
+ * baked in here is published with it. Anyone reading the page source has it,
+ * which makes it worth roughly what an unset key is worth.
+ *
+ * What that does *not* expose is the account. The relay forwards the caller's
+ * own `X-API-KEY`, reaches only the Tacticus API, and only its three read-only
+ * paths — so a stranger holding this key can make Tacticus calls with their own
+ * key, not read yours. Yours never leaves this browser's storage. The thing
+ * actually at risk is the relay's request quota.
+ *
+ * So the honest choice is between two states, not three: a relay with no key
+ * and an origin allowlist, or a relay whose key is public. If you want the app
+ * to need no setup, prefer the first — unset `RELAY_KEY` on the Worker. This
+ * exists for the case where the key must stay for another reason and the
+ * convenience is worth more than a lock that is already open.
+ */
+export const DEFAULT_RELAY_KEY = (import.meta.env['VITE_DEFAULT_RELAY_KEY'] ?? '').trim();
+
 export interface Credentials {
   apiKey: string | undefined;
   /** Base URL of a relay, e.g. `https://tacticus-relay.someone.workers.dev`. */
@@ -47,8 +68,9 @@ export interface Credentials {
    * The relay's own secret, when it requires one. Distinct from the Tacticus
    * key: this one only proves you are allowed to use the relay.
    *
-   * Never baked into the build — it would be readable by anyone loading the
-   * public page, which is the opposite of what it is for.
+   * Baked into the build only when `VITE_DEFAULT_RELAY_KEY` is set at deploy
+   * time, which publishes it — see `DEFAULT_RELAY_KEY` for what that costs.
+   * Anything saved here in the browser wins over that default.
    */
   relayKey: string | undefined;
 }
@@ -82,7 +104,7 @@ export const storage = {
     return {
       apiKey: read(KEYS.apiKey),
       relayUrl: read(KEYS.relay) ?? (DEFAULT_RELAY_URL || undefined),
-      relayKey: read(KEYS.relayKey),
+      relayKey: read(KEYS.relayKey) ?? (DEFAULT_RELAY_KEY || undefined),
     };
   },
   writeCredentials({ apiKey, relayUrl, relayKey }: Credentials): void {

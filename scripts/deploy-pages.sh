@@ -30,9 +30,21 @@ BASE_PATH="${BASE_PATH:-/$REPO_NAME/}"
 # this is the deployed Cloudflare Worker that forwards the read-only endpoints.
 DEFAULT_RELAY="${VITE_DEFAULT_RELAY:-https://tacticus-relay.i-micadei.workers.dev}"
 
+# The relay's own key, if you choose to publish it. Passed in from the
+# environment and never stored here, because this file is committed to a public
+# repo — though note that a key baked into the bundle is public either way, the
+# moment the site is served. It buys "no setup on a fresh phone" at the cost of
+# the lock; unsetting RELAY_KEY on the Worker buys the same thing with nothing
+# published. Left empty, the app asks for the key as before.
+DEFAULT_RELAY_KEY="${VITE_DEFAULT_RELAY_KEY:-}"
+
 echo "==> building with BASE_PATH=$BASE_PATH${DEFAULT_RELAY:+ and relay $DEFAULT_RELAY}"
+if [[ -n "$DEFAULT_RELAY_KEY" ]]; then
+  echo "==> WARNING: baking a relay key into the bundle — it will be readable by anyone who opens the site"
+fi
 rm -rf ui/dist
-BASE_PATH="$BASE_PATH" VITE_DEFAULT_RELAY="$DEFAULT_RELAY" npm --prefix ui run build
+BASE_PATH="$BASE_PATH" VITE_DEFAULT_RELAY="$DEFAULT_RELAY" \
+  VITE_DEFAULT_RELAY_KEY="$DEFAULT_RELAY_KEY" npm --prefix ui run build
 
 STAGE="$(mktemp -d)"
 INDEX="$(mktemp -u)"

@@ -1,4 +1,5 @@
-import { copyFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { copyFileSync, readFileSync } from 'node:fs';
 import { fileURLToPath, URL } from 'node:url';
 
 import react from '@vitejs/plugin-react';
@@ -25,6 +26,26 @@ function publishRelaySource(): Plugin {
 }
 
 /**
+ * A cache key for the icon manifest, derived from its own bytes.
+ *
+ * `icons.json` maps our names onto Codex's emitted filenames, and Codex
+ * rebuilds those filenames whenever the game updates. A browser holding the
+ * previous copy therefore asks for art that no longer exists: the text is fine
+ * and every picture is missing, which looks like our bug and is fixed only by a
+ * hard refresh the visitor has no reason to try. Hashing the file means the URL
+ * changes exactly when the mapping does — not on every deploy, which would
+ * throw away a good cache for nothing.
+ */
+function iconsVersion(): string {
+  try {
+    const bytes = readFileSync(fileURLToPath(new URL('./public/icons.json', import.meta.url)));
+    return createHash('sha256').update(bytes).digest('hex').slice(0, 8);
+  } catch {
+    return 'none';
+  }
+}
+
+/**
  * The app is a fully static bundle: no server at runtime, no API calls at
  * runtime. The game database ships as `public/gamedata.json` and player data is
  * imported by the user, so the build works unchanged on GitHub Pages.
@@ -45,5 +66,6 @@ export default defineConfig({
       '@lib': fileURLToPath(new URL('../src', import.meta.url)),
     },
   },
+  define: { __ICONS_VERSION__: JSON.stringify(iconsVersion()) },
   build: { outDir: 'dist', sourcemap: true },
 });

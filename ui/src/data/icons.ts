@@ -70,7 +70,7 @@ const listeners = new Set<() => void>();
 function start(): void {
   if (started) return;
   started = true;
-  fetch(`${import.meta.env.BASE_URL}icons.json`)
+  fetch(`${import.meta.env.BASE_URL}icons.json?v=${__ICONS_VERSION__}`)
     .then((r) => (r.ok ? (r.json() as Promise<IconManifest>) : undefined))
     .then((loaded) => {
       if (!loaded?.base) return;

@@ -133,6 +133,11 @@ const OVERFLOW = () =>
       const style = getComputedStyle(el);
       if (style.display === 'none' || style.visibility === 'hidden') continue;
       const box = el.getBoundingClientRect();
+      // A form field scrolls its own value natively, without asking for
+      // overflow-x, so a value longer than the field is not a layout fault —
+      // it is what every text input on the web does. The rule below is about
+      // content that is wider than its box and has no way to scroll.
+      if (el.matches('input, textarea, select')) continue;
       const scrolls = ['auto', 'scroll'].includes(style.overflowX);
       // Something inside a deliberate horizontal scroller is not a fault: the
       // nav strip and the roadmap SVG are both meant to be swiped.
