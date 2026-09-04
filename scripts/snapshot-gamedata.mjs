@@ -41,7 +41,10 @@ if (!full) {
         ...campaign,
         battles: Object.fromEntries(
           Object.entries(campaign.battles).map(([key, battle]) => {
-            const { enemies, enemyFactions, enemyAlliances, ...rest } = battle;
+            // The rolled-up `enemySummary` and the faction list stay: a squad
+            // is picked against a board's totals, and both are small. The
+            // 3,760-row roster behind them is what the file cannot afford.
+            const { enemies, enemyAlliances, ...rest } = battle;
             return [key, rest];
           }),
         ),

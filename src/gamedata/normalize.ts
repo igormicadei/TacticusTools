@@ -48,6 +48,7 @@ import type {
   AbilityUpgradeCost,
   BattleDefinition,
   BattleEnemy,
+  BattleEnemySummary,
   CampaignDefinition,
   DropRates,
   GameDatabase,
@@ -654,6 +655,7 @@ export function normalize(input: NormalizeInput): GameDatabase {
       expectedGold: nn(raw.expectedGold),
       enemiesTotal: nn(raw.enemiesTotal),
       enemies,
+      enemySummary: summariseEnemies(enemies),
       enemyFactions: raw.enemiesFactions ?? [],
       enemyAlliances: (raw.enemiesAlliances ?? [])
         .map((alliance) => parseGrandAlliance(alliance))
@@ -737,3 +739,21 @@ export function normalize(input: NormalizeInput): GameDatabase {
   };
 }
 
+/**
+ * Roll a board's enemies into the totals a squad is actually picked against.
+ *
+ * Means are weighted by count: one heavily armoured enemy among nine light ones
+ * should not make the whole node read as an armour problem.
+ */
+function summariseEnemies(enemies: readonly BattleEnemy[]): BattleEnemySummary | undefined {
+  const count = enemies.reduce((n, enemy) => n + enemy.count, 0);
+  if (count === 0) return undefined;
+  const total = (pick: (enemy: BattleEnemy) => number | undefined) =>
+    enemies.reduce((n, enemy) => n + (pick(enemy) ?? 0) * enemy.count, 0);
+  return {
+    count,
+    health: total((enemy) => enemy.health),
+    armour: total((enemy) => enemy.armour) / count,
+    damage: total((enemy) => enemy.damage) / count,
+  };
+}

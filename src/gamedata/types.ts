@@ -353,6 +353,26 @@ export interface BattleEnemy {
   statsResolved: boolean;
 }
 
+/**
+ * The board in aggregate, kept beside the roster that produced it.
+ *
+ * The full enemy roster is 3,760 rows and the UI snapshot drops it to stay
+ * small, but a squad is picked against totals rather than against individual
+ * enemies — how much health there is to chew through and how much armour sits
+ * in the way. Summarising here rather than in the snapshot means both the full
+ * database and the slim one carry it, so nothing has two code paths.
+ */
+export interface BattleEnemySummary {
+  /** Enemies on the board, counting duplicates. */
+  count: number;
+  /** Total health across all of them. */
+  health: number;
+  /** Mean armour per enemy, weighted by how many carry it. */
+  armour: number;
+  /** Mean damage per enemy, weighted the same way. */
+  damage: number;
+}
+
 export interface BattleDefinition extends BattleRef {
   /** Stable key, `battleKey(ref)`. */
   key: string;
@@ -362,6 +382,8 @@ export interface BattleDefinition extends BattleRef {
   expectedGold?: number;
   enemiesTotal?: number;
   enemies: BattleEnemy[];
+  /** {@link enemies} rolled up, and the only form the UI snapshot keeps. */
+  enemySummary?: BattleEnemySummary;
   enemyFactions: string[];
   enemyAlliances: GrandAlliance[];
   /** Material dropped by this node, when it drops one. */
@@ -473,7 +495,7 @@ export interface GameDatabaseStats {
  * stored version differs, so an older cache is refetched rather than served
  * with fields the current code expects but the file never had.
  */
-export const GAME_DATABASE_SCHEMA_VERSION = 9;
+export const GAME_DATABASE_SCHEMA_VERSION = 10;
 
 export interface GameDatabase {
   /** Value of {@link GAME_DATABASE_SCHEMA_VERSION} when this was assembled. */

@@ -6,6 +6,8 @@ import { fetchPlayer, storage } from './data/player.ts';
 import { BadgesPage } from './routes/BadgesPage.tsx';
 import { ItemsPage } from './routes/ItemsPage.tsx';
 import { PlanDetailPage } from './routes/PlanDetailPage.tsx';
+import { TeamDetailPage } from './routes/TeamDetailPage.tsx';
+import { TeamsPage } from './routes/TeamsPage.tsx';
 import { PlansPage } from './routes/PlansPage.tsx';
 import { TimelinePage } from './routes/TimelinePage.tsx';
 import { PlayerDataPage } from './routes/PlayerDataPage.tsx';
@@ -109,6 +111,9 @@ export function App() {
           <NavLink to="/plans" className={({ isActive }) => (isActive ? 'active' : '')}>
             Plans
           </NavLink>
+          <NavLink to="/teams" className={({ isActive }) => (isActive ? 'active' : '')}>
+            Teams
+          </NavLink>
           <NavLink to="/items" className={({ isActive }) => (isActive ? 'active' : '')}>
             Items
           </NavLink>
@@ -192,6 +197,22 @@ export function App() {
               element={
                 player ? (
                   <PlanDetailPage db={db} player={player} />
+                ) : (
+                  <Navigate to="/player" replace />
+                )
+              }
+            />
+            <Route
+              path="/teams"
+              element={
+                player ? <TeamsPage db={db} player={player} /> : <Navigate to="/player" replace />
+              }
+            />
+            <Route
+              path="/teams/:teamId"
+              element={
+                player ? (
+                  <TeamDetailPage db={db} player={player} />
                 ) : (
                   <Navigate to="/player" replace />
                 )

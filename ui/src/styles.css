@@ -438,3 +438,33 @@ table.uses tr:first-child td { border-top: none; }
 dl.kv dt.row { gap: var(--space-3); }
 .list-item .title strong.row { gap: var(--space-4); }
 .tier-head.row { gap: var(--space-4); }
+
+/* ---- teams ---- */
+.chip-filter {
+  display: flex; align-items: center; gap: var(--space-2);
+  flex-wrap: wrap; margin-bottom: var(--space-4);
+}
+.chip-filter-label {
+  min-width: 92px; font-size: var(--text-2xs); color: var(--text-secondary);
+  letter-spacing: var(--tracking-wide); text-transform: uppercase;
+}
+/* A filter chip is a button, so it has to shed the button chrome first. */
+.chip.toggle {
+  background: none; cursor: pointer;
+  padding: var(--space-1) var(--space-5);
+  transition: border-color var(--duration-fast) var(--ease-standard),
+              color var(--duration-fast) var(--ease-standard);
+}
+.chip.toggle:hover { border-color: var(--accent-dim); color: var(--text-primary); }
+.chip.toggle.on {
+  color: var(--accent); border-color: var(--accent-dim); background: var(--bg-hover);
+}
+table.steps tr.picked td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+/* The team name edits in place, so the field has to read as the heading. */
+.title-input {
+  font: inherit; color: inherit; background: none;
+  border: none; border-bottom: var(--border-w) dashed var(--border-default);
+  padding: 0 0 2px; min-width: 320px;
+}
+.title-input:hover { border-bottom-color: var(--accent-dim); }
+.title-input:focus-visible { outline: none; border-bottom-color: var(--accent); box-shadow: none; }

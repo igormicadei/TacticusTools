@@ -7,6 +7,7 @@ export * from './combat.js';
 export * from './plan.js';
 export * from './requirements.js';
 export * from './materials.js';
+export * from './teams.js';
 export * from './timeline.js';
 export * from './normalize.js';
 export * from './loader.js';

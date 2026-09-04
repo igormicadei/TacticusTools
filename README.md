@@ -662,6 +662,99 @@ the screen also runs a total down the list: spending them on one ability is
 spending them on none of the others, and the line where the running total
 passes the stock is where it stops.
 
+## Teams, rarity caps, and picking for a node
+
+`src/gamedata/teams.ts` is the squad-building half of the library, written as
+classes so the pieces are useful apart: `RarityCeiling` on a unit page,
+`RosterQuery` wherever the roster is listed, `EquipmentPool` to answer "what
+could this unit wear" with no team in sight.
+
+### What a rarity cap actually caps
+
+Tournament Arena, Guild War, Incursion, Survival and Quest all cap a squad to a
+rarity, and the wiki's Quest page is the clearest statement of what that
+touches: "characters are capped at the respective rarity (this regards **gear
+ranks, skill values, and item stats**)", with Survival adding that "unit stats
+only scale down, not up". So a cap moves four things:
+
+- **Rarity and stars** — progression index falls to the last index of the
+  capped rarity, taking the star multiplier with it.
+- **XP level** — `db.rarityCaps`: 8 / 17 / 26 / 35 / 50, and 60 for Mythic
+  (wiki, v1.37; sources have disagreed between 60 and 65).
+- **Ability level** — gated by XP level, so it follows.
+- **Rank** — see below.
+- **Equipment** — see below.
+
+**The rank cap is derived, because nothing publishes it.** The game does not
+need a table: a rank's second row of upgrades is gated on XP level, XP level is
+capped by rarity, so rank is capped transitively — which is how the wiki
+describes it, "rarity ... is tied indirectly to the number of stars and the
+upgrade ranks you can have". Running the level gates
+(`LEVEL_TO_COMPLETE_RANK` in `plan.ts`) against `db.rarityCaps` gives:
+
+| Rarity | Max level | Max rank |
+| --- | --- | --- |
+| Common | 8 | Iron I |
+| Uncommon | 17 | Bronze I |
+| Rare | 26 | Silver I |
+| Epic | 35 | Gold I |
+| Legendary | 50 | Diamond III |
+
+Those are exactly the ranks the game's own cap history names (Silver I in 2022,
+Gold I, then Diamond I–III), and no unit in a real roster exceeds them —
+`test/validate-teams.mjs` re-checks that against the live roster rather than
+trusting the derivation.
+
+**Equipment caps by walking its own series.** The wiki says an item capped to
+Common acts as Common level 3, Uncommon as 5, Rare as 7, Epic as 9, Legendary
+as 11. `ItemDefinition.nextInSeries` chains Standard-Issue → Battle-Hardened →
+Sanctified → Master-Crafted → Artificer Bolt Pistol, and those members have
+exactly 3 / 5 / 7 / 9 / 11 levels — so "capped to Rare" is just "the Rare link
+of this chain, at its top level", with no transcribed table at all. 128 of the
+167 items above Common chain all the way down; the rest have no lower
+counterpart in the data and stay put, which the code says out loud.
+
+Nothing is reimplemented to do this. `RarityCeiling.apply()` returns a *capped
+unit*, and that goes through the same `computeUnitStats` as everything else, so
+the capped figures and the headline ones can never drift apart.
+
+### Optimising equipment
+
+Of the ten stats equipment grants, six are Crit and Block: 626 item levels
+carry Crit Chance against 215 carrying Health. An objective reading only the
+headline stats would therefore price almost every Crit item at zero and
+optimise nothing, so two composites exist — `offence` folds crits in at their
+own odds (`hits x (perHit + chance x critDmg)`), and `defence` converts armour
+and Block into health over an assumed ten incoming hits, since both are per-hit
+reductions and have no value at all without a hit count to spread over. Ten is
+a stated assumption, not a published figure.
+
+The optimiser is greedy: price every (unit, slot, item) pairing, take the best,
+spend the copy, repeat. Not provably optimal, but equipment grants flat stats
+that scale with nothing, so the interactions that would break a greedy pass are
+weak. It only ever proposes layouts the game allows — the slot's own category,
+the unit's rarity or lower, the item's permitted factions, and Rare or above
+for a Booster.
+
+### Picking a squad for a node
+
+Campaign nodes carry the team size, the enemy roster with resolved stats, and
+the enemy factions. They carry **no required or forbidden units**, because the
+game imposes none — so a recommendation is derived from the enemies, never read
+out of the data as a rule.
+
+What makes it worth doing is that armour reorders the roster. Damage against a
+board is `max(damage - armour, damage x pierce)` per hit, so a Psychic attacker
+keeps its whole output where a bigger Physical one loses most of it: on one
+Indomitus node a unit reading 110 "through armour" lands 402 against those
+particular enemies. The picker shows both columns.
+
+Legendary Events are a different case and are **not** built: `gameInfo`'s
+`legendaryEvents` carries per-lane `factionId` and structured `objectives`
+(`DamageType Power`, `NotTrait TerminatorArmour`, `MinHits 5`), which are real
+deployment requirements rather than a recommendation. Ingesting them is a
+separate job.
+
 ## Icons
 
 `npm run icons:snapshot` resolves our ids against Codex's asset bundle and
