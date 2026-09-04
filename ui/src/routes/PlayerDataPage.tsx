@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState, type ChangeEvent } from 'react';
 
 import {
-  DEFAULT_RELAY_KEY,
   InvalidPlayerDataError,
   PlayerFetchError,
   fetchPlayer,
@@ -28,8 +27,9 @@ export function PlayerDataPage({
 }) {
   const stored = storage.readCredentials();
   const [apiKey, setApiKey] = useState(stored.apiKey ?? '');
-  const [relayUrl, setRelayUrl] = useState(stored.relayUrl ?? '');
-  const [relayKey, setRelayKey] = useState(stored.relayKey ?? '');
+  // Read, never written here: the relay comes from the build. Kept in state so
+  // the copy below can say which of the two situations the reader is in.
+  const [relayUrl] = useState(stored.relayUrl ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   const [text, setText] = useState('');
@@ -125,55 +125,32 @@ export function PlayerDataPage({
             onChange={(e) => setApiKey(e.target.value)}
           />
 
-          <h3 style={{ marginTop: 20 }}>Relay URL</h3>
-          <p className="small muted" style={{ marginTop: 0 }}>
-            CORS is a rule browsers apply to pages, not a limit on your machine — your
-            machine can call the API fine, a page cannot read the reply. So run the relay
-            on your machine and point this at it:
+          <p className="small muted">
+            {relayUrl ? (
+              <>
+                Nothing else to set up. The API sends no CORS headers, so a page cannot
+                read its reply directly — this build routes through a relay that adds
+                them and forwards nothing else. It carries no key of its own and stores
+                nothing: your key passes through on each request and goes straight to the
+                game.
+              </>
+            ) : (
+              <>
+                This build has no relay set, so the request will go straight to the API
+                and the browser will block it. That is a browser rule about pages, not a
+                limit on your machine — run <code className="inline">node
+                relay/local-relay.mjs</code> and rebuild with{' '}
+                <code className="inline">VITE_DEFAULT_RELAY</code> pointing at it, or use
+                the file import on the right.
+              </>
+            )}
           </p>
-          <pre className="cmd">node relay/local-relay.mjs</pre>
-          <input
-            className="search"
-            style={{ width: '100%' }}
-            autoComplete="off"
-            spellCheck={false}
-            placeholder="http://localhost:8787"
-            value={relayUrl}
-            onChange={(e) => setRelayUrl(e.target.value)}
-          />
-          <p className="small muted" style={{ marginBottom: 0 }}>
-            It listens on loopback only and stores nothing — your key goes from this page
-            to your own machine and out to the API. A hosted worker is in{' '}
-            <code className="inline">relay/</code> if you would rather not run anything.
-          </p>
-
-          <h3 style={{ marginTop: 20 }}>Relay key</h3>
-          <p className="small muted" style={{ marginTop: 0 }}>
-            Only if your relay sets one, and most do not need to. This is the relay&apos;s
-            own secret, not your Tacticus key. Leaving it unset is a fair choice: the
-            relay forwards whatever key the caller brings and reaches nothing but the
-            game&apos;s three read-only endpoints, so someone else using it reads their own
-            account rather than yours — what they spend is its request allowance.
-            {DEFAULT_RELAY_KEY
-              ? ' This build ships with one filled in, so it is published along with the page and anyone reading the source has it.'
-              : ' Stored in this browser only, and never built into the page.'}
-          </p>
-          <input
-            className="search"
-            style={{ width: '100%' }}
-            type="password"
-            autoComplete="off"
-            spellCheck={false}
-            placeholder="leave blank if the relay has no RELAY_KEY"
-            value={relayKey}
-            onChange={(e) => setRelayKey(e.target.value)}
-          />
 
           <div className="row" style={{ marginTop: 16 }}>
             <button
               className="primary"
               disabled={busy || !apiKey.trim()}
-              onClick={() => void refresh({ apiKey, relayUrl, relayKey })}
+              onClick={() => void refresh({ apiKey, relayUrl })}
             >
               {busy ? 'Fetching…' : player ? 'Refresh roster' : 'Fetch roster'}
             </button>
@@ -182,8 +159,6 @@ export function PlayerDataPage({
               onClick={() => {
                 storage.clearCredentials();
                 setApiKey('');
-                setRelayUrl('');
-                setRelayKey('');
               }}
             >
               Forget key
@@ -301,13 +276,20 @@ function RelaySetup() {
             <li>Select everything there, delete it, and paste the code below.</li>
             <li>Deploy, and name it something you will recognise.</li>
             <li>
-              Open the Worker URL in a browser. A small JSON reply means it is live. Paste
-              that URL above.
+              Open the Worker URL in a browser. A small JSON reply means it is live.
             </li>
             <li>
-              In the Worker&apos;s Settings → Variables, add <code className="inline">RELAY_KEY</code>{' '}
-              (encrypted) set to any string you invent, then put the same string in the
-              Relay key field above. Without it, anyone who learns the URL can use it.
+              In the Worker&apos;s Settings → Variables, set{' '}
+              <code className="inline">ALLOWED_ORIGINS</code> to the site that will use it
+              — that is what keeps other pages out. Leave{' '}
+              <code className="inline">RELAY_KEY</code> unset: this app sends no relay
+              key, and a key baked into a public page is readable by anyone who opens it.
+            </li>
+            <li>
+              Rebuild the app with{' '}
+              <code className="inline">VITE_DEFAULT_RELAY</code> set to the Worker URL.
+              There is no field for it here — it belongs to the build, so a fresh browser
+              needs only the API key.
             </li>
           </ol>
 

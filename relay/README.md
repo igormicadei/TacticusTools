@@ -99,29 +99,30 @@ worst a stranger can do is spend the worker's daily request allowance. On the
 free plan that means Cloudflare answers with its own 1027 page until 00:00 UTC —
 it does not bill you — and the app recognises that case and says so.
 
-### Making it the default
+### Pointing the app at it
 
-Once the URL exists it can be baked into the build so a fresh browser needs
-nothing typed into it:
+The relay URL is baked in at build time. There is no field for it in the app, so
+a fresh browser needs only the Tacticus key:
 
 ```bash
-VITE_DEFAULT_RELAY=https://tacticus-relay.example.workers.dev \
-  VITE_DEFAULT_RELAY_KEY=the-relay-secret npm run ui:deploy
+VITE_DEFAULT_RELAY=https://tacticus-relay.example.workers.dev npm run ui:deploy
 ```
 
-A relay saved in the browser always takes precedence over the baked-in one.
+`scripts/deploy-pages.sh` already sets this, so a normal deploy needs nothing
+extra. For development against a local relay, pass it to the dev server:
 
-**Only do this for a build you are not publishing.** A bundle served from a
-public page publishes whatever is baked into it: the URL says where your Worker
-is, and the key beside it is the only thing stopping anyone from using it. What
-that does *not* expose is your account — the relay forwards the caller's own
-`X-API-KEY` and reaches only the game's three read-only endpoints, so a stranger
-can spend your Worker's request quota, not read your roster. On the Workers free
-plan that means the relay answers `1027` until the daily reset rather than
-costing you anything.
+```bash
+VITE_DEFAULT_RELAY=http://localhost:8787 npm run ui:dev
+```
 
-Neither is baked in by default for exactly this reason. Typing the relay into a
-browser once, which it then remembers, is the cheaper trade.
+A relay in `localStorage` under `tacticus-tools:relay` still takes precedence,
+which is the escape hatch if the URL changes and you would rather not rebuild.
+Nothing in the app writes it — set it from the browser console.
+
+**Never bake `RELAY_KEY` in alongside it.** A published page publishes whatever
+is in it, so a key there is readable by anyone who opens the site: a lock that
+only looks locked, which is worse than no lock. Leave the Worker keyless and let
+the origin allowlist and the endpoint restriction do the work.
 
 ## What it can and cannot see
 

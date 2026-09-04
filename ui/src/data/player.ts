@@ -18,7 +18,6 @@ const KEYS = {
   player: 'tacticus-tools:player',
   apiKey: 'tacticus-tools:apiKey',
   relay: 'tacticus-tools:relay',
-  relayKey: 'tacticus-tools:relayKey',
   fetchedAt: 'tacticus-tools:fetchedAt',
 } as const;
 
@@ -29,50 +28,28 @@ export const PLAYER_PATH = '/api/v1/player';
 export const TACTICUS_API_ORIGIN = 'https://api.tacticusgame.com';
 
 /**
- * Relay used when the user has not set one.
+ * The relay the app talks to, baked in at build time from `VITE_DEFAULT_RELAY`.
  *
- * Baked in at build time from `VITE_DEFAULT_RELAY` so a fresh browser — a phone,
- * a cleared cache — needs only the API key. An explicitly saved relay always
- * wins over this.
+ * There is no field for this any more: a fresh browser needs only the Tacticus
+ * key, which is the whole point. Publishing the URL is the cost, and it buys
+ * less for an attacker than it looks — the relay carries no key of its own, so
+ * a stranger reaching it still needs their own Tacticus key to get anything,
+ * and gets their own account when they do. The origin allowlist keeps other
+ * websites out. What is genuinely spendable is the request allowance.
+ *
+ * A value in storage still wins, which is the escape hatch: point a browser at
+ * a local relay, or at a replacement if this URL ever changes, without a
+ * rebuild. Nothing in the UI writes it — set it from the console.
  */
 export const DEFAULT_RELAY_URL = (import.meta.env['VITE_DEFAULT_RELAY'] ?? '')
   .trim()
   .replace(/\/+$/, '');
 
-/**
- * Relay key used when the user has not set one, from `VITE_DEFAULT_RELAY_KEY`.
- *
- * Understand what this is before setting it: the bundle is public, so a key
- * baked in here is published with it. Anyone reading the page source has it,
- * which makes it worth roughly what an unset key is worth.
- *
- * What that does *not* expose is the account. The relay forwards the caller's
- * own `X-API-KEY`, reaches only the Tacticus API, and only its three read-only
- * paths — so a stranger holding this key can make Tacticus calls with their own
- * key, not read yours. Yours never leaves this browser's storage. The thing
- * actually at risk is the relay's request quota.
- *
- * So the honest choice is between two states, not three: a relay with no key
- * and an origin allowlist, or a relay whose key is public. If you want the app
- * to need no setup, prefer the first — unset `RELAY_KEY` on the Worker. This
- * exists for the case where the key must stay for another reason and the
- * convenience is worth more than a lock that is already open.
- */
-export const DEFAULT_RELAY_KEY = (import.meta.env['VITE_DEFAULT_RELAY_KEY'] ?? '').trim();
 
 export interface Credentials {
   apiKey: string | undefined;
   /** Base URL of a relay, e.g. `https://tacticus-relay.someone.workers.dev`. */
   relayUrl: string | undefined;
-  /**
-   * The relay's own secret, when it requires one. Distinct from the Tacticus
-   * key: this one only proves you are allowed to use the relay.
-   *
-   * Baked into the build only when `VITE_DEFAULT_RELAY_KEY` is set at deploy
-   * time, which publishes it — see `DEFAULT_RELAY_KEY` for what that costs.
-   * Anything saved here in the browser wins over that default.
-   */
-  relayKey: string | undefined;
 }
 
 /** Thrown when imported or fetched data is not a usable player payload. */
@@ -104,19 +81,19 @@ export const storage = {
     return {
       apiKey: read(KEYS.apiKey),
       relayUrl: read(KEYS.relay) ?? (DEFAULT_RELAY_URL || undefined),
-      relayKey: read(KEYS.relayKey) ?? (DEFAULT_RELAY_KEY || undefined),
     };
   },
-  writeCredentials({ apiKey, relayUrl, relayKey }: Credentials): void {
+  writeCredentials({ apiKey, relayUrl }: Credentials): void {
     write(KEYS.apiKey, apiKey?.trim());
     // Trailing slashes would double up against PLAYER_PATH.
     write(KEYS.relay, relayUrl?.trim().replace(/\/+$/, ''));
-    write(KEYS.relayKey, relayKey?.trim());
   },
   clearCredentials(): void {
     write(KEYS.apiKey, undefined);
     write(KEYS.relay, undefined);
-    write(KEYS.relayKey, undefined);
+    // Written by an older build that had a relay-key field. Cleared here so
+    // "forget" means forgotten rather than "forgotten except for that".
+    write('tacticus-tools:relayKey', undefined);
   },
   readPlayer(): PlayerResponse | undefined {
     const raw = read(KEYS.player);
@@ -252,13 +229,7 @@ export async function fetchPlayer(credentials: Credentials): Promise<PlayerRespo
       // The whole point of a refresh is to reach the game, so no cache — the
       // browser's, a proxy's, or a service worker's — may answer for it.
       cache: 'no-store',
-      headers: {
-        'X-API-KEY': apiKey,
-        Accept: 'application/json',
-        ...(credentials.relayKey?.trim()
-          ? { 'X-Relay-Key': credentials.relayKey.trim() }
-          : {}),
-      },
+      headers: { 'X-API-KEY': apiKey, Accept: 'application/json' },
     });
   } catch {
     if (direct) {
@@ -295,8 +266,14 @@ export async function fetchPlayer(credentials: Credentials): Promise<PlayerRespo
     // The relay explains its own refusals; pass that through rather than
     // reporting a generic failure the user cannot act on.
     if (body?.type === 'RELAY_KEY_INVALID') {
+      // The app stopped sending a relay key, so this means the Worker still has
+      // RELAY_KEY set. Say that, since the fix is one variable in a dashboard
+      // and the relay's own wording ("set it on the Player data page") now
+      // points at a field that no longer exists.
       throw new PlayerFetchError(
-        body.detail ?? 'The relay rejected the relay key.',
+        'The relay still requires a relay key, but this app no longer sends one. ' +
+          'Delete the RELAY_KEY variable on the Worker (Settings → Variables) and ' +
+          'it will start answering again.',
         response.status,
       );
     }

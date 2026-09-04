@@ -25,29 +25,27 @@ cd "$REPO_ROOT"
 REPO_NAME="$(basename -s .git "$(git config --get remote.origin.url)")"
 BASE_PATH="${BASE_PATH:-/$REPO_NAME/}"
 
-# The relay the app should use by default, and the relay's own key.
+# The relay the app talks to. The Tacticus API sends no CORS headers, so a page
+# cannot call it directly; this Worker adds them and forwards nothing else.
 #
-# Both are empty here on purpose. This site is public, so anything baked into
-# the bundle is published with it: the URL tells the world where the Worker is,
-# and the key is then the only thing standing between that Worker and anyone
-# who fancies using it. Publishing both together would leave no lock at all.
+# Baked in, and therefore published — deliberately. There is no field for it in
+# the app any more, so a fresh phone needs only the Tacticus key. The URL being
+# public is the price, and it buys an attacker less than it appears: the Worker
+# holds no key of its own, forwards the caller's own X-API-KEY, and proxies only
+# three read-only endpoints, so a stranger gets their own account, not this one.
+# The Worker's origin allowlist keeps other websites out. What is genuinely
+# spendable is its daily request allowance — and on the Workers free plan that
+# means Cloudflare answers 1027 until 00:00 UTC rather than billing anyone. The
+# app recognises that case and explains it.
 #
-# The cost of leaving them empty is one-time and small — a browser is asked for
-# the relay once and remembers it — so it is the right default for a public
-# deploy. Pass them in the environment for a build you are not publishing:
-#
-#   VITE_DEFAULT_RELAY=https://... VITE_DEFAULT_RELAY_KEY=... scripts/deploy-pages.sh
-#
-DEFAULT_RELAY="${VITE_DEFAULT_RELAY:-}"
-DEFAULT_RELAY_KEY="${VITE_DEFAULT_RELAY_KEY:-}"
+# Never add a RELAY_KEY here to go with it. A key baked into a public bundle is
+# readable by anyone who opens the site, which makes it a lock that only looks
+# locked — worse than no lock, because it invites trusting it.
+DEFAULT_RELAY="${VITE_DEFAULT_RELAY:-https://tacticus-relay.i-micadei.workers.dev}"
 
 echo "==> building with BASE_PATH=$BASE_PATH${DEFAULT_RELAY:+ and relay $DEFAULT_RELAY}"
-if [[ -n "$DEFAULT_RELAY" || -n "$DEFAULT_RELAY_KEY" ]]; then
-  echo "==> WARNING: baking relay details into a public bundle — the${DEFAULT_RELAY:+ URL}${DEFAULT_RELAY:+${DEFAULT_RELAY_KEY:+ and}}${DEFAULT_RELAY_KEY:+ key} will be readable by anyone who opens the site"
-fi
 rm -rf ui/dist
-BASE_PATH="$BASE_PATH" VITE_DEFAULT_RELAY="$DEFAULT_RELAY" \
-  VITE_DEFAULT_RELAY_KEY="$DEFAULT_RELAY_KEY" npm --prefix ui run build
+BASE_PATH="$BASE_PATH" VITE_DEFAULT_RELAY="$DEFAULT_RELAY" npm --prefix ui run build
 
 STAGE="$(mktemp -d)"
 INDEX="$(mktemp -u)"
