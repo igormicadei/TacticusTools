@@ -126,13 +126,17 @@ export function App() {
         </nav>
         <span className="spacer" />
         {hasKey && (
-          <span className="row small muted" style={{ gap: 8 }}>
+          <span className="session row small muted">
             {player && (
               <>
-                <span>
+                {/* Dropped on a phone, where the nav and the refresh button are
+                    the only things worth the width. */}
+                <span className="session-name">
                   {player.player.details.name} · power {player.player.details.powerLevel}
                 </span>
-                <span title={syncedAtTitle(player, fetchedAt)}>{age(player, fetchedAt)}</span>
+                <span className="session-age" title={syncedAtTitle(player, fetchedAt)}>
+                  {age(player, fetchedAt)}
+                </span>
               </>
             )}
             {refreshError && (

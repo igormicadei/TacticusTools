@@ -300,7 +300,7 @@ function CapExplainer({ cap, members }: { cap: RarityCeiling; members: RosterUni
                   <span className="chevron" />
                   <Icon src={unitIcon(member.id)} size={22} className="portrait" reserve />
                   <span className="item-name">{member.name}</span>
-                  <span className="muted small">
+                  <span className="row-tail muted small">
                     {rarityLabel(effect.rarity.from)} → {rarityLabel(effect.rarity.to)}
                     {effect.rank.from !== effect.rank.to &&
                       ` · ${rankName(effect.rank.from)} → ${rankName(effect.rank.to)}`}
@@ -380,34 +380,40 @@ function MemberRow({
             {rankName(member.effective.rank)}
           </span>
         </span>
-        <Icon src={rarityIcon(member.stats?.rarity)} size={16} />
-        <Icon src={rankIcon(member.effective.rank)} size={18} reserve />
-        <span className="muted small">
-          {member.stats?.health.toLocaleString()} HP · {member.stats?.damage.toLocaleString()} dmg ·{' '}
-          {member.stats?.armour.toLocaleString()} armour
-        </span>
-        {!brief && (
-          <span className="muted small" title="Through armour: normal weapon, then abilities">
-            {Math.round(member.normalEffectiveDamage)} / {Math.round(member.abilityEffectiveDamage)}
+        <span className="row-tail">
+          <span className="row-icons">
+            <Icon src={rarityIcon(member.stats?.rarity)} size={16} />
+            <Icon src={rankIcon(member.effective.rank)} size={18} reserve />
           </span>
-        )}
-        {brief && (
-          <>
-            <span className="chip ok-chip" title="Melee and ranged, after these enemies' armour">
-              {Math.round(brief.normalDamageAgainst(member))} normal
+          <span className="muted small">
+            {member.stats?.health.toLocaleString()} HP ·{' '}
+            {member.stats?.damage.toLocaleString()} dmg ·{' '}
+            {member.stats?.armour.toLocaleString()} armour
+          </span>
+          {!brief && (
+            <span className="muted small" title="Through armour: normal weapon, then abilities">
+              {Math.round(member.normalEffectiveDamage)} /{' '}
+              {Math.round(member.abilityEffectiveDamage)}
             </span>
-            <span
-              className="chip slot-active"
-              title="Abilities, after these enemies' armour — usually one shot a battle"
-            >
-              {Math.round(brief.abilityDamageAgainst(member))} ability
-            </span>
-          </>
-        )}
-        {member.isCapped && <span className="chip caution">capped</span>}
-        <button className="small" onClick={onRemove}>
-          Remove
-        </button>
+          )}
+          {brief && (
+            <>
+              <span className="chip ok-chip" title="Melee and ranged, after these enemies' armour">
+                {Math.round(brief.normalDamageAgainst(member))} normal
+              </span>
+              <span
+                className="chip slot-active"
+                title="Abilities, after these enemies' armour — usually one shot a battle"
+              >
+                {Math.round(brief.abilityDamageAgainst(member))} ability
+              </span>
+            </>
+          )}
+          {member.isCapped && <span className="chip caution">capped</span>}
+          <button className="small" onClick={onRemove}>
+            Remove
+          </button>
+        </span>
       </div>
       {assignments.length > 0 && (
         <ul className="item-list nested">
@@ -429,7 +435,9 @@ function MemberRow({
                     {a.replaces && ` · replacing ${a.replaces.name} lv ${a.replaces.level}`}
                   </span>
                 </span>
-                <span className="chip ok-chip">+{Math.round(a.gain).toLocaleString()}</span>
+                <span className="row-tail">
+                  <span className="chip ok-chip">+{Math.round(a.gain).toLocaleString()}</span>
+                </span>
               </div>
             </li>
           ))}
@@ -450,35 +458,43 @@ function LayoutTable({
 }) {
   const nameOf = (id: string) => roster.find((u) => u.id === id)?.name ?? id;
   return (
-    <table className="steps">
-      <thead>
-        <tr>
-          <th>Unit</th>
-          <th>Slot</th>
-          <th>Equip</th>
-          <th>Instead of</th>
-          <th style={{ textAlign: 'right' }}>Gain</th>
-          <th>Currently on</th>
-        </tr>
-      </thead>
-      <tbody>
-        {layout.map((a) => (
-          <tr key={`${a.unitId}:${a.slotId}`}>
-            <td>{nameOf(a.unitId)}</td>
-            <td className="muted">{humanise(db.items[a.item.id]?.itemType ?? a.slotId)}</td>
-            <td>
-              {a.item.name} <span className="muted">lv {a.item.level}</span>
-            </td>
-            <td className="muted">
-              {a.replaces ? `${a.replaces.name} lv ${a.replaces.level}` : 'nothing'}
-            </td>
-            <td style={{ textAlign: 'right' }}>+{Math.round(a.gain).toLocaleString()}</td>
-            <td className="muted">
-              {a.item.wornBy ? nameOf(a.item.wornBy) : 'inventory'}
-            </td>
+    <div className="table-wrap">
+      <table className="steps stacked">
+        <thead>
+          <tr>
+            <th>Unit</th>
+            <th>Slot</th>
+            <th>Equip</th>
+            <th>Instead of</th>
+            <th style={{ textAlign: 'right' }}>Gain</th>
+            <th>Currently on</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {layout.map((a) => (
+            <tr key={`${a.unitId}:${a.slotId}`}>
+              <td data-label="" className="card-title-cell">
+                <b>{nameOf(a.unitId)}</b>
+              </td>
+              <td data-label="Slot" className="muted">
+                {humanise(db.items[a.item.id]?.itemType ?? a.slotId)}
+              </td>
+              <td data-label="Equip">
+                {a.item.name} <span className="muted">lv {a.item.level}</span>
+              </td>
+              <td data-label="Instead of" className="muted">
+                {a.replaces ? `${a.replaces.name} lv ${a.replaces.level}` : 'nothing'}
+              </td>
+              <td data-label="Gain" style={{ textAlign: 'right' }}>
+                +{Math.round(a.gain).toLocaleString()}
+              </td>
+              <td data-label="Currently on" className="muted">
+                {a.item.wornBy ? nameOf(a.item.wornBy) : 'inventory'}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }

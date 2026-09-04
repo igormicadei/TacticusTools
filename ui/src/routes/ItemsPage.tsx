@@ -207,15 +207,17 @@ function MaterialRow({
             <span className="muted small"> · {rarityName(material.rarity)}</span>
           )}
         </span>
-        {!material.farmable && (
-          <span className="chip gold" title="No campaign node drops this; it has to be forged.">
-            Forged
+        <span className="row-tail">
+          {!material.farmable && (
+            <span className="chip gold" title="No campaign node drops this; it has to be forged.">
+              Forged
+            </span>
+          )}
+          <span className="muted small">
+            {material.uses.length === 0
+              ? 'nothing in scope needs this'
+              : `${material.unitCount} unit${material.unitCount === 1 ? '' : 's'}`}
           </span>
-        )}
-        <span className="muted small">
-          {material.uses.length === 0
-            ? 'nothing in scope needs this'
-            : `${material.unitCount} unit${material.unitCount === 1 ? '' : 's'}`}
         </span>
       </button>
       {expanded && <MaterialUses material={material} rankById={rankById} />}
@@ -387,10 +389,12 @@ function RankMaterialRow({ material }: { material: RankMaterial }) {
             <span className="muted small"> · {rarityName(material.rarity)}</span>
           )}
         </span>
-        {material.applied > 0 && (
-          <span className="chip ok-chip">{material.applied}× already applied</span>
-        )}
-        {!material.farmable && short > 0 && <span className="chip gold">Forged</span>}
+        <span className="row-tail">
+          {material.applied > 0 && (
+            <span className="chip ok-chip">{material.applied}× already applied</span>
+          )}
+          {!material.farmable && short > 0 && <span className="chip gold">Forged</span>}
+        </span>
       </div>
       {material.components.length > 0 && (
         <ul className="item-list nested">
@@ -421,9 +425,11 @@ function RankMaterialRow({ material }: { material: RankMaterial }) {
                       </span>
                     )}
                   </span>
-                  {!component.farmable && componentShort > 0 && (
-                    <span className="chip gold">Forged</span>
-                  )}
+                  <span className="row-tail">
+                    {!component.farmable && componentShort > 0 && (
+                      <span className="chip gold">Forged</span>
+                    )}
+                  </span>
                 </div>
               </li>
             );

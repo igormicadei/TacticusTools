@@ -111,20 +111,22 @@ function BadgeRow({
         <span className="item-name">
           {rarityName(badge.rarity)} {badge.alliance} badges
         </span>
-        {uses.length === 0 ? (
-          <span className="muted small">nothing to spend these on yet</span>
-        ) : (
-          <>
-            <span className="muted small">
-              {uses.length} {nextOnly ? 'ability upgrade' : 'ability'}
-              {uses.length === 1 ? '' : 's'}
-            </span>
-            <span className={`chip${short === 0 ? ' ok-chip' : ''}`}>
-              {need}× {nextOnly ? 'for the next level of each' : 'to finish every level'}
-              {short > 0 ? ` · ${short} short` : ''}
-            </span>
-          </>
-        )}
+        <span className="row-tail">
+          {uses.length === 0 ? (
+            <span className="muted small">nothing to spend these on yet</span>
+          ) : (
+            <>
+              <span className="muted small">
+                {uses.length} {nextOnly ? 'ability upgrade' : 'ability'}
+                {uses.length === 1 ? '' : 's'}
+              </span>
+              <span className={`chip${short === 0 ? ' ok-chip' : ''}`}>
+                {need}× {nextOnly ? 'for the next level of each' : 'to finish every level'}
+                {short > 0 ? ` · ${short} short` : ''}
+              </span>
+            </>
+          )}
+        </span>
       </button>
       {expanded && <BadgeUses uses={uses} nextOnly={nextOnly} owned={badge.owned} />}
     </div>
@@ -177,26 +179,33 @@ function BadgeUses({
               <div className="item-head static">
                 <span className="chevron" />
                 <span className="count">{cost}×</span>
-                <Icon src={unitIcon(use.unitId)} size={22} className="portrait" reserve />
-                <Icon
-                  src={use.slot === 'mythic' ? undefined : abilityIcon(use.unitId, use.slot)}
-                  size={22}
-                  className="portrait"
-                  reserve
-                />
+                <span className="row-icons">
+                  <Icon src={unitIcon(use.unitId)} size={22} className="portrait" reserve />
+                  <Icon
+                    src={use.slot === 'mythic' ? undefined : abilityIcon(use.unitId, use.slot)}
+                    size={22}
+                    className="portrait"
+                    reserve
+                  />
+                </span>
                 <span className="item-name">
                   <Link to={`/units/${encodeURIComponent(use.unitId)}`}>{use.unitName}</Link>
                   {' · '}
                   {use.abilityName}
                 </span>
-                <span className={`chip slot-${use.slot}`}>{SLOT_LABEL[use.slot]}</span>
-                <span className="muted small">
-                  {nextOnly
-                    ? `level ${use.level} → ${use.level + 1}`
-                    : `levels ${use.steps[0]?.from} → ${use.steps.at(-1)?.to}`}
-                </span>
-                <span className="muted small" title="Running total if you spend down this list in order">
-                  {before} → {running}
+                <span className="row-tail">
+                  <span className={`chip slot-${use.slot}`}>{SLOT_LABEL[use.slot]}</span>
+                  <span className="muted small">
+                    {nextOnly
+                      ? `level ${use.level} → ${use.level + 1}`
+                      : `levels ${use.steps[0]?.from} → ${use.steps.at(-1)?.to}`}
+                  </span>
+                  <span
+                    className="muted small"
+                    title="Running total if you spend down this list in order"
+                  >
+                    {before} → {running}
+                  </span>
                 </span>
               </div>
               {!nextOnly && use.steps.length > 1 && (

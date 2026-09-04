@@ -275,7 +275,8 @@ export function RosterPicker({
       {rows.length === 0 ? (
         <div className="empty">No unit matches those filters.</div>
       ) : (
-        <table className="steps split-head">
+        <div className="table-wrap">
+        <table className="steps split-head stacked">
           <thead>
             <tr>
               <th rowSpan={2} />
@@ -324,7 +325,7 @@ export function RosterPicker({
           <tbody>
             {rows.map((unit) => (
               <tr key={unit.id} className={selected.has(unit.id) ? 'picked' : ''}>
-                <td>
+                <td data-label="" className="pick-cell">
                   <input
                     type="checkbox"
                     checked={selected.has(unit.id)}
@@ -332,7 +333,7 @@ export function RosterPicker({
                     aria-label={`Add ${unit.name}`}
                   />
                 </td>
-                <td>
+                <td data-label="" className="card-title-cell">
                   <span className="row" style={{ gap: 8 }}>
                     <Icon src={unitIcon(unit.id)} size={26} className="portrait" reserve />
                     <Link to={`/units/${encodeURIComponent(unit.id)}`}>{unit.name}</Link>
@@ -344,28 +345,42 @@ export function RosterPicker({
                     )}
                   </span>
                 </td>
-                <td>
+                <td data-label="Rank">
                   <span className="row" style={{ gap: 6 }}>
                     <Icon src={rankIcon(unit.effective.rank)} size={16} reserve />
                     {rankName(unit.effective.rank)}
                     <Icon src={rarityIcon(unit.stats?.rarity)} size={14} />
                   </span>
                 </td>
-                <td style={{ textAlign: 'right' }}>{unit.stats?.health.toLocaleString() ?? '—'}</td>
-                <td style={{ textAlign: 'right' }}>{unit.stats?.damage.toLocaleString() ?? '—'}</td>
-                <td style={{ textAlign: 'right' }}>{unit.stats?.armour.toLocaleString() ?? '—'}</td>
-                <td style={{ textAlign: 'right' }}>
+                <td data-label="Health" style={{ textAlign: 'right' }}>
+                  {unit.stats?.health.toLocaleString() ?? '—'}
+                </td>
+                <td data-label="Attack" style={{ textAlign: 'right' }}>
+                  {unit.stats?.damage.toLocaleString() ?? '—'}
+                </td>
+                <td data-label="Armour" style={{ textAlign: 'right' }}>
+                  {unit.stats?.armour.toLocaleString() ?? '—'}
+                </td>
+                <td data-label="Through · normal" style={{ textAlign: 'right' }}>
                   {Math.round(unit.normalEffectiveDamage) || '—'}
                 </td>
-                <td style={{ textAlign: 'right' }} className="ability-figure">
+                <td
+                  data-label="Through · ability"
+                  style={{ textAlign: 'right' }}
+                  className="ability-figure"
+                >
                   {Math.round(unit.abilityEffectiveDamage) || '—'}
                 </td>
                 {brief && (
                   <>
-                    <td style={{ textAlign: 'right' }}>
+                    <td data-label="Node · normal" style={{ textAlign: 'right' }}>
                       <b>{Math.round(brief.normalDamageAgainst(unit)) || '—'}</b>
                     </td>
-                    <td style={{ textAlign: 'right' }} className="ability-figure">
+                    <td
+                      data-label="Node · ability"
+                      style={{ textAlign: 'right' }}
+                      className="ability-figure"
+                    >
                       <b>{Math.round(brief.abilityDamageAgainst(unit)) || '—'}</b>
                     </td>
                   </>
@@ -374,6 +389,7 @@ export function RosterPicker({
             ))}
           </tbody>
         </table>
+        </div>
       )}
     </section>
   );

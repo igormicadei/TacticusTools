@@ -191,11 +191,13 @@ function OrderOfWork({
                   {bundle.steps.map((s) => s.label).join(' · ')}
                 </span>
                 <span style={{ flex: 1 }} />
-                {bundle.unreachable > 0 && (
-                  <span className="chip warn">{bundle.unreachable} unreachable</span>
-                )}
-                <span className={`chip${bundle.missing === 0 ? ' ok-chip' : ''}`}>
-                  {bundle.missing === 0 ? 'Ready' : `${bundle.missing} missing`}
+                <span className="row-tail">
+                  {bundle.unreachable > 0 && (
+                    <span className="chip warn">{bundle.unreachable} unreachable</span>
+                  )}
+                  <span className={`chip${bundle.missing === 0 ? ' ok-chip' : ''}`}>
+                    {bundle.missing === 0 ? 'Ready' : `${bundle.missing} missing`}
+                  </span>
                 </span>
               </button>
               {open.has(id) && (
@@ -357,6 +359,7 @@ function CandidateTable({
             </button>
             {isOpen && (
               <div className="source-note">
+                <div className="table-wrap">
                 <table className="nodes">
                   <tbody>
                     {nodeStatuses(
@@ -398,6 +401,7 @@ function CandidateTable({
                       ))}
                   </tbody>
                 </table>
+                </div>
                 {row.nodes.length === 0 && (
                   <p className="muted small" style={{ margin: 0 }}>
                     Crafted — the price above is its ingredients, farmed at their cheapest

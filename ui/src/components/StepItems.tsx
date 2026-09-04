@@ -221,7 +221,9 @@ export function ItemRow({
               <span className="muted small"> · {rarityName(item.rarity)}</span>
             )}
           </span>
-          <span className="chip ok-chip">Already applied</span>
+          <span className="row-tail">
+            <span className="chip ok-chip">Already applied</span>
+          </span>
         </div>
       </li>
     );
@@ -239,20 +241,22 @@ export function ItemRow({
             <span className="muted small"> · {rarityName(item.rarity)}</span>
           )}
         </span>
-        {forge !== undefined && <ForgeChip ready={forge} />}
-        {blocked && <span className="chip warn">Nothing unlocked</span>}
-        {finite && (
-          <span className="chip caution" title="You hold enough, but no unlocked source can replace what you spend.">
-            Stock only — cannot farm more
-          </span>
-        )}
-        {totals && !totals.applied && (
-          <span className="muted small">
-            {/* "0 held" of a forged item is the same non-fact as "0/1". */}
-            {forge !== undefined && totals.owned === 0 ? '' : `${totals.owned} held · `}
-            {totals.steps} step{totals.steps === 1 ? '' : 's'}
-          </span>
-        )}
+        <span className="row-tail">
+          {forge !== undefined && <ForgeChip ready={forge} />}
+          {blocked && <span className="chip warn">Nothing unlocked</span>}
+          {finite && (
+            <span className="chip caution" title="You hold enough, but no unlocked source can replace what you spend.">
+              Stock only — cannot farm more
+            </span>
+          )}
+          {totals && !totals.applied && (
+            <span className="muted small">
+              {/* "0 held" of a forged item is the same non-fact as "0/1". */}
+              {forge !== undefined && totals.owned === 0 ? '' : `${totals.owned} held · `}
+              {totals.steps} step{totals.steps === 1 ? '' : 's'}
+            </span>
+          )}
+        </span>
       </button>
       {expanded && (
         <ItemSources
@@ -375,14 +379,15 @@ function ComponentRow({
             <span className="muted small"> · {rarityName(component.rarity)}</span>
           )}
         </span>
-        {forge !== undefined && <ForgeChip ready={forge} />}
-        {blocked && <span className="chip warn">Nothing unlocked</span>}
-        {finite && (
-          <span className="chip caution" title="You hold enough, but no unlocked source can replace what you spend.">
-            Stock only — cannot farm more
-          </span>
-        )}
-
+        <span className="row-tail">
+          {forge !== undefined && <ForgeChip ready={forge} />}
+          {blocked && <span className="chip warn">Nothing unlocked</span>}
+          {finite && (
+            <span className="chip caution" title="You hold enough, but no unlocked source can replace what you spend.">
+              Stock only — cannot farm more
+            </span>
+          )}
+        </span>
       </button>
       {expanded &&
         (source.kind === 'craft' ? (
@@ -494,6 +499,7 @@ function NodeTable({ nodes }: { nodes: ReturnType<typeof nodeStatuses> }) {
   );
   return (
     <div className="source-note">
+      <div className="table-wrap">
       <table className="nodes">
         <tbody>
           {nodes.map((node) => (
@@ -543,6 +549,7 @@ function NodeTable({ nodes }: { nodes: ReturnType<typeof nodeStatuses> }) {
           ))}
         </tbody>
       </table>
+      </div>
       <p className="small muted" style={{ margin: '6px 0 0' }}>
         Drop rates are published per campaign type, not per node. A rate above
         100% means more than one copy per run on average.

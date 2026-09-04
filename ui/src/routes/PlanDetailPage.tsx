@@ -138,28 +138,33 @@ export function PlanDetailPage({ db, player }: { db: GameDatabase; player: Playe
         <PlanRoadmap steps={plan.steps} />
 
         {plan.steps.length > 0 && (
-          <table className="steps">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Step</th>
-                <th>From → to</th>
-                <th>Why</th>
-              </tr>
-            </thead>
-            <tbody>
-              {plan.steps.map((s) => (
-                <tr key={s.order} className={s.done ? 'done' : ''}>
-                  <td className="muted">{s.done ? '✓' : s.order}</td>
-                  <td>{s.label}</td>
-                  <td className="muted">
-                    {s.from} → {s.to}
-                  </td>
-                  <td className="muted small">{s.reason ?? '—'}</td>
+          <div className="table-wrap">
+            <table className="steps stacked">
+              <thead>
+                <tr>
+                  <th>Step</th>
+                  <th>From → to</th>
+                  <th>Why</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {plan.steps.map((s) => (
+                  <tr key={s.order} className={s.done ? 'done' : ''}>
+                    <td data-label="" className="card-title-cell">
+                      <span className="step-order muted">{s.done ? '✓' : s.order}</span>
+                      {s.label}
+                    </td>
+                    <td data-label="From → to" className="muted">
+                      {s.from} → {s.to}
+                    </td>
+                    <td data-label="Why" className="muted small">
+                      {s.reason ?? '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
 
