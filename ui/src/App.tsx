@@ -3,6 +3,8 @@ import { NavLink, Navigate, Route, Routes } from 'react-router-dom';
 
 import { loadGameData } from './data/gamedata.ts';
 import { fetchPlayer, storage } from './data/player.ts';
+import { BadgesPage } from './routes/BadgesPage.tsx';
+import { ItemsPage } from './routes/ItemsPage.tsx';
 import { PlanDetailPage } from './routes/PlanDetailPage.tsx';
 import { PlansPage } from './routes/PlansPage.tsx';
 import { TimelinePage } from './routes/TimelinePage.tsx';
@@ -107,6 +109,12 @@ export function App() {
           <NavLink to="/plans" className={({ isActive }) => (isActive ? 'active' : '')}>
             Plans
           </NavLink>
+          <NavLink to="/items" className={({ isActive }) => (isActive ? 'active' : '')}>
+            Items
+          </NavLink>
+          <NavLink to="/badges" className={({ isActive }) => (isActive ? 'active' : '')}>
+            Badges
+          </NavLink>
           <NavLink to="/player" className={({ isActive }) => (isActive ? 'active' : '')}>
             Player data
           </NavLink>
@@ -187,6 +195,18 @@ export function App() {
                 ) : (
                   <Navigate to="/player" replace />
                 )
+              }
+            />
+            <Route
+              path="/items"
+              element={
+                player ? <ItemsPage db={db} player={player} /> : <Navigate to="/player" replace />
+              }
+            />
+            <Route
+              path="/badges"
+              element={
+                player ? <BadgesPage db={db} player={player} /> : <Navigate to="/player" replace />
               }
             />
             <Route

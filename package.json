@@ -29,6 +29,7 @@
     "ui:deploy": "scripts/deploy-pages.sh",
     "validate:plan": "node test/validate-plan.mjs",
     "validate:requirements": "node test/validate-requirements.mjs",
+    "validate:materials": "node test/validate-materials.mjs",
     "validate:timeline": "node test/validate-timeline.mjs",
     "validate:combat": "node test/validate-combat.mjs",
     "relay": "node relay/local-relay.mjs"

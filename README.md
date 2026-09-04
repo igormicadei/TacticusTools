@@ -617,6 +617,51 @@ against that worked example, that no item is ever allocated beyond what is held
 or beyond what a step needs, that totals agree with the steps, and that every
 blocked flag is genuine.
 
+## Where a material goes
+
+The game marks an item "used for ranking up" without saying by whom, and the
+tables only run one way: each unit lists what each of its ranks consumes.
+`src/gamedata/materials.ts` reads them backwards.
+
+Two things make it more than a map lookup. A material is often not required
+directly but forged into something that is, sometimes through three layers, so
+a use carries the chain that leads to it and the amount multiplied along that
+chain — 12x Armor Trim for Aeldari at Diamond III, via Warforged Safeguard ›
+Grand Tasset Plate › Impressive Armor Trim. And one rank can want the same
+material by more than one route, which stays as separate uses rather than being
+summed: the routes are what the player has to go and get.
+
+Inverting the whole game gives 55,346 uses across 546 materials, 42,060 of them
+through a recipe, in about 50ms. `test/validate-materials.mjs` checks that
+every (unit, rank, material) row the forward tables hold comes back out of the
+index, that every link of every chain is a recipe that really exists, and that
+the arithmetic of one worked three-level example holds.
+
+The answer is only useful narrowed. Unfiltered, 112 of 128 units spend a Fine
+Micro-Generator somewhere, mostly at ranks a given player will never reach with
+units they do not own, so the screen defaults to the player's own roster at
+ranks still ahead — and marks the rank each unit is filling right now, which is
+where the material can go today rather than eventually.
+
+## What a rank costs, and what a badge buys
+
+`nextRankCost` prices one more rank for a unit: the primary materials, the
+recipes under whatever part of them is short, and the slots already filled at
+the current rank, which are reported rather than dropped — those materials are
+spent and cannot be moved, and omitting them would read as if the rank were
+cheaper than it is. It is checked against `planCosts`, which already prices
+rank-ups and has its own tests, rather than against a second hand-rolled sum.
+
+`badgeCatalogue` answers the same question for ability badges. A badge belongs
+to a grand alliance rather than to a unit, which is exactly why the game cannot
+say where one goes: the answer is every ability of every unit on that side. The
+list is narrowed to abilities whose remaining levels actually charge that
+rarity, and carries what each level costs — so an ability shows up under two
+rarities when its ladder crosses from one to the next. Badges are pooled, so
+the screen also runs a total down the list: spending them on one ability is
+spending them on none of the others, and the line where the running total
+passes the stock is where it stops.
+
 ## Icons
 
 `npm run icons:snapshot` resolves our ids against Codex's asset bundle and
