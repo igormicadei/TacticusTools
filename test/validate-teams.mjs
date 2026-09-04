@@ -184,7 +184,15 @@ const OBJECTIVES = ['health', 'armour', 'damage', 'effective', 'offence', 'defen
   const all = new RosterQuery().run(roster);
   if (all.length !== roster.length) note(`empty filter dropped ${roster.length - all.length} units`);
 
-  for (const key of ['health', 'damage', 'armour', 'effective', 'rank']) {
+  for (const key of [
+    'health',
+    'damage',
+    'armour',
+    'effective',
+    'effectiveNormal',
+    'effectiveAbility',
+    'rank',
+  ]) {
     const sorted = new RosterQuery({}, key, true).run(roster);
     for (let i = 1; i < sorted.length; i += 1) {
       if (sorted[i - 1].value(key) < sorted[i].value(key)) {
@@ -222,6 +230,31 @@ const OBJECTIVES = ['health', 'armour', 'damage', 'effective', 'offence', 'defen
   if (cappedRoster.length !== roster.length) note('capping changed the roster size');
   const heavier = cappedRoster.filter((u, i) => (u.stats?.health ?? 0) > (roster[i].stats?.health ?? 0));
   if (heavier.length > 0) note(`${heavier.length} units got healthier under a Rare cap`);
+
+  // The split has to be exhaustive: every attack is a weapon or an ability, so
+  // the best of the two halves must equal the best overall, and neither half
+  // may claim an attack belonging to the other.
+  let withAbility = 0;
+  for (const unit of roster) {
+    const best = Math.max(unit.normalEffectiveDamage, unit.abilityEffectiveDamage);
+    if (Math.abs(best - unit.effectiveDamage) > 1e-9) {
+      note(`${unit.name}: normal/ability split does not reconstruct effectiveDamage`);
+    }
+    if (unit.normalAttacks.length + unit.abilityAttacks.length !== unit.attacks.length) {
+      note(`${unit.name}: an attack is in neither half of the split`);
+    }
+    if (unit.normalAttacks.some((a) => a.source === 'ability')) {
+      note(`${unit.name}: an ability leaked into the normal attacks`);
+    }
+    if (unit.abilityAttacks.some((a) => a.source !== 'ability')) {
+      note(`${unit.name}: a weapon leaked into the ability attacks`);
+    }
+    if (unit.abilityEffectiveDamage > 0) withAbility += 1;
+  }
+  console.log(
+    `split: ${roster.length} units reconstruct from normal + ability, ` +
+      `${withAbility} land damage through armour with an ability  ✓`,
+  );
 
   console.log(
     `roster: ${roster.length} units, ${new Set(roster.map((u) => u.factionId)).size} factions, ` +
@@ -290,6 +323,15 @@ const OBJECTIVES = ['health', 'armour', 'damage', 'effective', 'offence', 'defen
     let picked = 0;
     for (const brief of withEnemies.slice(0, 50)) {
       const squad = new TeamOptimiser(brief).recommend(roster);
+      for (const pick of squad) {
+        const split = Math.max(
+          brief.normalDamageAgainst(pick.unit),
+          brief.abilityDamageAgainst(pick.unit),
+        );
+        if (Math.abs(split - brief.damageAgainst(pick.unit)) > 1e-9) {
+          note(`${pick.unit.name}: node damage split does not reconstruct the whole`);
+        }
+      }
       if (squad.length > brief.slots) note(`${brief.campaignName}: picked ${squad.length} for ${brief.slots} slots`);
       if (squad.length > new Set(squad.map((s) => s.unit.id)).size) {
         note(`${brief.campaignName}: picked the same unit twice`);

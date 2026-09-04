@@ -20,7 +20,9 @@ import { factionIcon, rankIcon, rarityIcon, unitIcon } from '../data/icons.ts';
 import { teamsStore, type StoredTeam } from '../data/teams.ts';
 
 const SORTS: { key: SortKey; label: string }[] = [
-  { key: 'effective', label: 'Effective attack' },
+  { key: 'effectiveNormal', label: 'Effective attack — normal' },
+  { key: 'effectiveAbility', label: 'Effective attack — ability' },
+  { key: 'effective', label: 'Effective attack — best of either' },
   { key: 'damage', label: 'Base attack' },
   { key: 'health', label: 'Health' },
   { key: 'armour', label: 'Armour' },
@@ -169,7 +171,7 @@ export function RosterPicker({
 }) {
   useIcons();
   const [query, setQuery] = useState('');
-  const [sort, setSort] = useState<SortKey>('effective');
+  const [sort, setSort] = useState<SortKey>('effectiveNormal');
   const [factions, setFactions] = useState<string[]>([]);
   const [rarities, setRarities] = useState<Rarity[]>([]);
   const [minRank, setMinRank] = useState<number | undefined>();
@@ -273,17 +275,50 @@ export function RosterPicker({
       {rows.length === 0 ? (
         <div className="empty">No unit matches those filters.</div>
       ) : (
-        <table className="steps">
+        <table className="steps split-head">
           <thead>
             <tr>
-              <th />
-              <th>Unit</th>
-              <th>Rank</th>
-              <th style={{ textAlign: 'right' }}>Health</th>
-              <th style={{ textAlign: 'right' }}>Attack</th>
-              <th style={{ textAlign: 'right' }}>Armour</th>
-              <th style={{ textAlign: 'right' }}>Through armour</th>
-              {brief && <th style={{ textAlign: 'right' }}>On this node</th>}
+              <th rowSpan={2} />
+              <th rowSpan={2}>Unit</th>
+              <th rowSpan={2}>Rank</th>
+              <th rowSpan={2} style={{ textAlign: 'right' }}>
+                Health
+              </th>
+              <th rowSpan={2} style={{ textAlign: 'right' }}>
+                Attack
+              </th>
+              <th rowSpan={2} style={{ textAlign: 'right' }}>
+                Armour
+              </th>
+              <th colSpan={2} style={{ textAlign: 'center' }}>
+                Through armour
+              </th>
+              {brief && (
+                <th colSpan={2} style={{ textAlign: 'center' }}>
+                  On this node
+                </th>
+              )}
+            </tr>
+            <tr>
+              {/* An active ability usually fires once a battle, so its damage
+                  is an opening rather than a rate. Averaging it in with the
+                  weapon hid exactly the difference that decides a pick. */}
+              <th style={{ textAlign: 'right' }} title="Melee and ranged weapons, every turn">
+                Normal
+              </th>
+              <th style={{ textAlign: 'right' }} title="Abilities, usually once a battle">
+                Ability
+              </th>
+              {brief && (
+                <>
+                  <th style={{ textAlign: 'right' }} title="Melee and ranged, after these enemies' armour">
+                    Normal
+                  </th>
+                  <th style={{ textAlign: 'right' }} title="Abilities, after these enemies' armour">
+                    Ability
+                  </th>
+                </>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -319,11 +354,21 @@ export function RosterPicker({
                 <td style={{ textAlign: 'right' }}>{unit.stats?.health.toLocaleString() ?? '—'}</td>
                 <td style={{ textAlign: 'right' }}>{unit.stats?.damage.toLocaleString() ?? '—'}</td>
                 <td style={{ textAlign: 'right' }}>{unit.stats?.armour.toLocaleString() ?? '—'}</td>
-                <td style={{ textAlign: 'right' }}>{Math.round(unit.effectiveDamage) || '—'}</td>
+                <td style={{ textAlign: 'right' }}>
+                  {Math.round(unit.normalEffectiveDamage) || '—'}
+                </td>
+                <td style={{ textAlign: 'right' }} className="ability-figure">
+                  {Math.round(unit.abilityEffectiveDamage) || '—'}
+                </td>
                 {brief && (
-                  <td style={{ textAlign: 'right' }}>
-                    <b>{Math.round(brief.damageAgainst(unit)) || '—'}</b>
-                  </td>
+                  <>
+                    <td style={{ textAlign: 'right' }}>
+                      <b>{Math.round(brief.normalDamageAgainst(unit)) || '—'}</b>
+                    </td>
+                    <td style={{ textAlign: 'right' }} className="ability-figure">
+                      <b>{Math.round(brief.abilityDamageAgainst(unit)) || '—'}</b>
+                    </td>
+                  </>
                 )}
               </tr>
             ))}

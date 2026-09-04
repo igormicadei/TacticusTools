@@ -460,6 +460,16 @@ dl.kv dt.row { gap: var(--space-3); }
   color: var(--accent); border-color: var(--accent-dim); background: var(--bg-hover);
 }
 table.steps tr.picked td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+/* A two-row header: the group label rules off, the sub-labels carry the border. */
+table.split-head thead tr:first-child th { border-bottom: none; padding-bottom: 0; }
+table.split-head thead tr:first-child th[colspan] {
+  border-bottom: var(--border-w) solid var(--border-default);
+  padding-bottom: var(--space-2);
+}
+table.split-head thead tr:last-child th { font-weight: 400; }
+/* Ability damage is usually one shot a battle, so it reads in the ability
+ * colour rather than as another weapon figure. */
+.ability-figure { color: var(--slot-active); }
 /* The team name edits in place, so the field has to read as the heading. */
 .title-input {
   font: inherit; color: inherit; background: none;

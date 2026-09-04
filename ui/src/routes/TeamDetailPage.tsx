@@ -180,7 +180,8 @@ export function TeamDetailPage({ db, player }: { db: GameDatabase; player: Playe
             <Stat label="Health" value={totals.health} />
             <Stat label="Attack" value={totals.damage} />
             <Stat label="Armour" value={totals.armour} />
-            <Stat label="Through armour" value={Math.round(totals.effective)} />
+            <Stat label="Through armour · normal" value={Math.round(totals.effectiveNormal)} />
+            <Stat label="Through armour · ability" value={Math.round(totals.effectiveAbility)} />
           </div>
           <ul className="item-list" style={{ paddingLeft: 0 }}>
             {members.map((member) => (
@@ -348,8 +349,9 @@ function BattlePanel({ brief, onFill }: { brief: BattleBrief; onFill: () => void
       <p className="small muted" style={{ margin: 0 }}>
         Campaign nodes name no required units — the game does not restrict who you deploy — so
         this picks the {brief.slots} that land the most through this board’s armour while
-        surviving it. The “on this node” column in the picker is each unit’s damage after these
-        enemies’ armour, which is why a Psychic attacker outranks a bigger Physical one here.
+        surviving it. The “on this node” columns in the picker are each unit’s damage after these
+        enemies’ armour, which is why a Psychic attacker outranks a bigger Physical one here —
+        split into the weapon it swings every turn and the ability it usually gets one shot of.
       </p>
     </>
   );
@@ -384,10 +386,23 @@ function MemberRow({
           {member.stats?.health.toLocaleString()} HP · {member.stats?.damage.toLocaleString()} dmg ·{' '}
           {member.stats?.armour.toLocaleString()} armour
         </span>
-        {brief && (
-          <span className="chip ok-chip">
-            {Math.round(brief.damageAgainst(member))} through armour
+        {!brief && (
+          <span className="muted small" title="Through armour: normal weapon, then abilities">
+            {Math.round(member.normalEffectiveDamage)} / {Math.round(member.abilityEffectiveDamage)}
           </span>
+        )}
+        {brief && (
+          <>
+            <span className="chip ok-chip" title="Melee and ranged, after these enemies' armour">
+              {Math.round(brief.normalDamageAgainst(member))} normal
+            </span>
+            <span
+              className="chip slot-active"
+              title="Abilities, after these enemies' armour — usually one shot a battle"
+            >
+              {Math.round(brief.abilityDamageAgainst(member))} ability
+            </span>
+          </>
         )}
         {member.isCapped && <span className="chip caution">capped</span>}
         <button className="small" onClick={onRemove}>

@@ -258,8 +258,27 @@ export class RarityCeiling {
 /* One candidate for a team                                                   */
 /* -------------------------------------------------------------------------- */
 
+/** The best pierce floor among a set of attacks. */
+function bestEffective(attacks: readonly AttackProfile[]): number {
+  let best = 0;
+  for (const attack of attacks) best = Math.max(best, attack.effective?.mid ?? 0);
+  return best;
+}
+
 /** How a roster row can be ordered. */
-export type SortKey = 'name' | 'health' | 'damage' | 'armour' | 'effective' | 'rank' | 'rarity';
+export type SortKey =
+  | 'name'
+  | 'health'
+  | 'damage'
+  | 'armour'
+  /** Best pierce floor from any attack, normal or ability. */
+  | 'effective'
+  /** Best pierce floor from the melee and ranged weapons only. */
+  | 'effectiveNormal'
+  /** Best pierce floor from the abilities only. */
+  | 'effectiveAbility'
+  | 'rank'
+  | 'rarity';
 
 /** What a roster row can be narrowed by. Every field is optional and ANDed. */
 export interface UnitFilter {
@@ -369,17 +388,40 @@ export class RosterUnit {
   }
 
   /**
+   * The unit's normal attack — its melee and ranged weapons.
+   *
+   * Kept apart from its abilities throughout, because they are not the same
+   * kind of resource: a normal attack happens every turn, while an active
+   * ability usually fires once a battle. A unit whose whole output is one big
+   * ability is a different tactical proposition from one that grinds the same
+   * damage out every round, and averaging the two hides exactly that.
+   */
+  get normalAttacks(): AttackProfile[] {
+    return this.attacks.filter((attack) => attack.source !== 'ability');
+  }
+
+  get abilityAttacks(): AttackProfile[] {
+    return this.attacks.filter((attack) => attack.source === 'ability');
+  }
+
+  /**
    * The largest damage the unit lands through any armour, across its attacks.
    *
    * The pierce floor rather than the headline: two units with the same damage
    * are not equal if one of them is throwing Psychic and the other Physical.
    */
   get effectiveDamage(): number {
-    let best = 0;
-    for (const attack of this.attacks) {
-      best = Math.max(best, attack.effective?.mid ?? 0);
-    }
-    return best;
+    return Math.max(this.normalEffectiveDamage, this.abilityEffectiveDamage);
+  }
+
+  /** {@link effectiveDamage} from the melee and ranged weapons alone. */
+  get normalEffectiveDamage(): number {
+    return bestEffective(this.normalAttacks);
+  }
+
+  /** {@link effectiveDamage} from the abilities alone, usually a one-off. */
+  get abilityEffectiveDamage(): number {
+    return bestEffective(this.abilityAttacks);
   }
 
   /** Highest unarmoured total across the unit's attacks. */
@@ -434,6 +476,10 @@ export class RosterUnit {
         return this.stats?.armour ?? 0;
       case 'effective':
         return this.effectiveDamage;
+      case 'effectiveNormal':
+        return this.normalEffectiveDamage;
+      case 'effectiveAbility':
+        return this.abilityEffectiveDamage;
       case 'rank':
         return this.effective.rank;
       case 'rarity':
@@ -844,9 +890,29 @@ export class BattleBrief {
    * is why "effective attack" is worth sorting by and raw damage is not.
    */
   damageAgainst(unit: RosterUnit): number {
+    return Math.max(this.normalDamageAgainst(unit), this.abilityDamageAgainst(unit));
+  }
+
+  /** {@link damageAgainst} from the melee and ranged weapons alone. */
+  normalDamageAgainst(unit: RosterUnit): number {
+    return this.through(unit.normalAttacks);
+  }
+
+  /**
+   * {@link damageAgainst} from the abilities alone.
+   *
+   * Reported apart because an active ability is usually one shot a battle,
+   * so it decides an opening rather than a grind — a unit that only out-damages
+   * another through its ability is a different pick.
+   */
+  abilityDamageAgainst(unit: RosterUnit): number {
+    return this.through(unit.abilityAttacks);
+  }
+
+  private through(attacks: readonly AttackProfile[]): number {
     const armour = this.meanEnemyArmour;
     let best = 0;
-    for (const attack of unit.attacks) {
+    for (const attack of attacks) {
       const perHit = Math.max(
         attack.perHit.mid - armour,
         attack.perHit.mid * (attack.pierceRatio ?? 0),
@@ -940,8 +1006,12 @@ export interface TeamTotals {
   health: number;
   damage: number;
   armour: number;
-  /** Sum of each member's best pierce floor. */
+  /** Sum of each member's best pierce floor, from any attack. */
   effective: number;
+  /** The same, from the melee and ranged weapons only. */
+  effectiveNormal: number;
+  /** The same, from the abilities only — mostly one-offs, not a per-turn rate. */
+  effectiveAbility: number;
 }
 
 /** A named squad, its cap, and the battle it is meant for. */
@@ -969,12 +1039,21 @@ export class Team {
   }
 
   totals(roster: readonly RosterUnit[]): TeamTotals {
-    const totals: TeamTotals = { health: 0, damage: 0, armour: 0, effective: 0 };
+    const totals: TeamTotals = {
+      health: 0,
+      damage: 0,
+      armour: 0,
+      effective: 0,
+      effectiveNormal: 0,
+      effectiveAbility: 0,
+    };
     for (const member of this.members(roster)) {
       totals.health += member.stats?.health ?? 0;
       totals.damage += member.stats?.damage ?? 0;
       totals.armour += member.stats?.armour ?? 0;
       totals.effective += member.effectiveDamage;
+      totals.effectiveNormal += member.normalEffectiveDamage;
+      totals.effectiveAbility += member.abilityEffectiveDamage;
     }
     return totals;
   }
