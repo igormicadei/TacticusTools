@@ -90,6 +90,15 @@ callers by origin, and stores nothing — your key passes through on each reques
 and is never written down. Do not point the app at a public CORS proxy: anything
 it is aimed at can read every request it forwards.
 
+`RELAY_KEY` is optional and you probably do not want it. It is only a lock while
+it stays secret, and the obvious way to avoid retyping it — baking it into the
+build — publishes it, since a static site has no server side and any credential
+the page sends is readable by whoever holds the page. Without it the origin
+allowlist is the control, callers still need their own Tacticus API key, and the
+worst a stranger can do is spend the worker's daily request allowance. On the
+free plan that means Cloudflare answers with its own 1027 page until 00:00 UTC —
+it does not bill you — and the app recognises that case and says so.
+
 ### Making it the default
 
 Once the URL exists it can be baked into the build so a fresh browser needs

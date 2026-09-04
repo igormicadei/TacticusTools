@@ -186,6 +186,52 @@ export function assertPlayerResponse(value: unknown): PlayerResponse {
 /* -------------------------------------------------------------------------- */
 
 /**
+ * Hours until the Workers free plan resets, which it does at 00:00 UTC.
+ *
+ * Rounded up, and never below one: "wait 0 hours" reads as a bug when the
+ * thing is plainly still refusing to answer.
+ */
+function hoursUntilUtcMidnight(now = new Date()): number {
+  const next = Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate() + 1,
+  );
+  return Math.max(1, Math.ceil((next - now.getTime()) / 3_600_000));
+}
+
+/**
+ * Tell "the relay answered but the browser would not show us" from "nothing
+ * answered at all".
+ *
+ * When a Workers account passes its daily free-tier allowance, Cloudflare
+ * serves its own 1027 page from the edge — before the worker runs, and so
+ * without any of the CORS headers the worker would have added. The browser
+ * therefore refuses to hand the response to the page, and `fetch` rejects with
+ * the same opaque TypeError it throws for a bad hostname or no network. Three
+ * quite different problems, one indistinguishable symptom, and the advice for
+ * each is different.
+ *
+ * A `no-cors` request separates them. It cannot read the reply — that is the
+ * point of the mode — but it resolves whenever something replied, and rejects
+ * when nothing did. So: main request failed, probe succeeded, means a server is
+ * there and answering without CORS headers, which for this relay means the edge
+ * turned it away rather than the worker handling it.
+ *
+ * Not proof. A worker that throws before returning gives the same shape, and so
+ * would an unrelated proxy in front of it. The message below says the likely
+ * cause and leaves room for the other one rather than asserting a diagnosis.
+ */
+async function relayAnsweredWithoutCors(base: string): Promise<boolean> {
+  try {
+    await fetch(`${base}/health`, { mode: 'no-cors', cache: 'no-store' });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Fetch the roster using the stored key.
  *
  * With no relay configured this calls the API directly, which a browser will
@@ -215,12 +261,29 @@ export async function fetchPlayer(credentials: Credentials): Promise<PlayerRespo
       },
     });
   } catch {
-    throw new PlayerFetchError(
-      direct
-        ? 'The browser blocked the request. This is a browser rule, not a limit on your ' +
+    if (direct) {
+      throw new PlayerFetchError(
+        'The browser blocked the request. This is a browser rule, not a limit on your ' +
           'machine — the API sends no CORS headers, so a page cannot read its reply. Run ' +
-          '`node relay/local-relay.mjs` and set http://localhost:8787 as the relay URL.'
-        : `Could not reach the relay at ${base}. Check the URL, and that the relay is running.`,
+          '`node relay/local-relay.mjs` and set http://localhost:8787 as the relay URL.',
+      );
+    }
+    // Something is there, answering without CORS headers: on a Cloudflare relay
+    // that is what running out of the day's free requests looks like from here.
+    if (await relayAnsweredWithoutCors(base)) {
+      throw new PlayerFetchError(
+        `The relay answered, but not in a way the browser will show a page. The usual ` +
+          `cause is the free hosting tier's daily request limit — Cloudflare Workers ` +
+          `allow 100,000 a day and then serve their own error page until the count ` +
+          `resets at 00:00 UTC, about ${hoursUntilUtcMidnight()}h from now. Nothing is ` +
+          `broken and nothing is being charged; it starts working again on its own. ` +
+          `If it is still refusing after the reset, open ${base}/health in a browser — ` +
+          `a relay that is running answers there with a small JSON object.`,
+      );
+    }
+    throw new PlayerFetchError(
+      `Could not reach the relay at ${base}. Nothing answered at all, so check the URL, ` +
+        `your connection, and that the relay is still deployed.`,
     );
   }
 

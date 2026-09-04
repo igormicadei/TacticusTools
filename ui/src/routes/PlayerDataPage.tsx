@@ -149,10 +149,13 @@ export function PlayerDataPage({
 
           <h3 style={{ marginTop: 20 }}>Relay key</h3>
           <p className="small muted" style={{ marginTop: 0 }}>
-            Only if your relay sets one. This is the relay&apos;s own secret, not your
-            Tacticus key — it stops anyone else who learns the URL from using it.
+            Only if your relay sets one, and most do not need to. This is the relay&apos;s
+            own secret, not your Tacticus key. Leaving it unset is a fair choice: the
+            relay forwards whatever key the caller brings and reaches nothing but the
+            game&apos;s three read-only endpoints, so someone else using it reads their own
+            account rather than yours — what they spend is its request allowance.
             {DEFAULT_RELAY_KEY
-              ? ' This build ships with one filled in, so it is published along with the page and anyone reading the source has it. Your Tacticus key is not: that stays in this browser, and the relay only ever forwards it to the game API.'
+              ? ' This build ships with one filled in, so it is published along with the page and anyone reading the source has it.'
               : ' Stored in this browser only, and never built into the page.'}
           </p>
           <input

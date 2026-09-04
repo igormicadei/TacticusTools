@@ -24,15 +24,28 @@
  *
  * Two controls decide who may use it:
  *
- * - RELAY_KEY, a secret you invent and set as a Worker variable. When set, every
- *   proxied request must carry it as the X-Relay-Key header. This is the real
- *   lock: an Origin header can be forged by anything that is not a browser, a
- *   shared secret cannot.
- * - ALLOWED_ORIGINS, a comma-separated list, also settable as a Worker variable.
- *   Useful against other *pages* calling it, but not against a scripted client.
+ * - ALLOWED_ORIGINS, a comma-separated list, settable as a Worker variable.
+ *   Useful against other *pages* calling it, but not against a scripted client,
+ *   which can send whatever Origin it likes.
+ * - RELAY_KEY, an optional secret you invent and set as a Worker variable. When
+ *   set, every proxied request must carry it as the X-Relay-Key header.
  *
- * It can only ever reach the Tacticus API: the upstream host is hard-coded and
- * only the three read-only endpoints are forwarded.
+ * Running without RELAY_KEY is a reasonable choice, not a mistake, and is what
+ * this relay expects by default. The reason is that the alternative is usually
+ * worse: a key is only a lock while it stays secret, and the obvious way to
+ * avoid typing it into every browser — baking it into the app — publishes it,
+ * since a static site has no server side and any credential the page sends is
+ * readable by whoever holds the page. A published key is an unlocked door that
+ * looks locked. Set RELAY_KEY only if you are willing to enter it by hand.
+ *
+ * What a key does *not* protect is worth being clear about, because it decides
+ * how much any of this matters. This relay forwards the caller's own API key
+ * and never stores it, so a stranger using your relay reads their own account,
+ * not yours. It can only ever reach the Tacticus API: the upstream host is
+ * hard-coded and only the three read-only endpoints are forwarded. What they
+ * can spend is your request quota — on the Workers free plan, 100,000 a day,
+ * after which Cloudflare answers with its own 1027 page until 00:00 UTC rather
+ * than billing you.
  */
 
 /** Origins permitted to use this relay. `*` allows any — prefer naming yours. */
@@ -101,9 +114,14 @@ export default {
           usage: 'GET /api/v1/player with an X-API-KEY header',
           requiresRelayKey: guarded,
           allowedOrigins: allowedOrigins(env),
-          ...(guarded
-            ? {}
-            : { warning: 'No RELAY_KEY set — anyone who learns this URL can use it.' }),
+          // Stated rather than warned about: keyless is the expected posture,
+          // and what it exposes is the request quota, not the account. Anyone
+          // reaching this endpoint already knows the URL, so saying so plainly
+          // costs nothing and saves the owner guessing at their own config.
+          access: guarded
+            ? 'A relay key is required, in addition to the origin allowlist.'
+            : 'Open to the allowed origins above. Callers still need their own ' +
+              'Tacticus API key, and only the three read-only endpoints are proxied.',
         },
         200,
         { 'Access-Control-Allow-Origin': '*' },
