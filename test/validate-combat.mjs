@@ -198,6 +198,65 @@ const WIKI_PIERCE = {
   console.log(`rarity bonus: +20% per tier, only where the ability names it  ✓`);
 }
 
+/* ---- every damaging ability actually resolves to an attack ---------------- */
+{
+  // An ability that publishes a damage profile and damage values but yields no
+  // attack is dropped silently: the unit shows no damage for it and it counts
+  // for nothing in a team's totals. That is how Storm Of Wrath went missing —
+  // it prints its hit count as a literal in the description instead of
+  // publishing `nrOfHits`, so the count read as undefined and the attack with
+  // it. The exceptions below are abilities whose damage genuinely is not an
+  // attack the caster makes.
+  const NOT_AN_ATTACK = new Set([
+    // Damage belongs to the summoned unit, not to the caster.
+    'Reinforcements',
+    // Collision damage from being thrown, with no hit count of its own.
+    'Bounce',
+    // A stance toggle: its damage is splash riding on normal attacks, and the
+    // one hit count it publishes counts hits *removed* from an Overwatch.
+    'CalibaniteGreatsword',
+  ]);
+
+  let resolved = 0;
+  const missing = [];
+  for (const ability of Object.values(db.abilities)) {
+    const profile = ability.constants?.damageProfile;
+    const values = { ...ability.variables, ...ability.constants };
+    const damaging =
+      profile !== undefined &&
+      (values.dmg !== undefined || (values.minDmg !== undefined && values.maxDmg !== undefined));
+    if (!damaging || NOT_AN_ATTACK.has(ability.id)) continue;
+
+    if (resolveAbility(ability, 20, 2, db).attack) resolved += 1;
+    else missing.push(ability.id);
+  }
+  for (const id of missing) {
+    note(`ability attack: ${id} carries damage but resolves to no attack`);
+  }
+  console.log(`ability attacks: ${resolved} damaging abilities all resolve  ✓`);
+}
+
+/* ---- abilities that say they cannot crit are marked as such --------------- */
+{
+  // The one rule in the damage formula with no exceptions, so it is worth
+  // holding: crediting these with Crit Damage makes an optimiser buy Crit items
+  // for a unit that can never use them.
+  let flagged = 0;
+  for (const ability of Object.values(db.abilities)) {
+    const attack = resolveAbility(ability, 20, 2, db).attack;
+    if (!attack) continue;
+    const says = /cannot\s+(?:<[^>]*>\s*)*(?:<img[^>]*>\s*)*crit/i.test(ability.description ?? '');
+    if (says && attack.canCrit !== false) {
+      note(`cannot crit: ${ability.id} says it cannot crit but is not marked`);
+    }
+    if (!says && attack.canCrit === false) {
+      note(`cannot crit: ${ability.id} is marked but its text does not say so`);
+    }
+    if (says) flagged += 1;
+  }
+  console.log(`cannot crit: ${flagged} ability attack(s) excluded from crit  ✓`);
+}
+
 /* ---- traits are carried as written ---------------------------------------- */
 {
   const withDescription = Object.values(db.traits).filter((t) => t.description).length;

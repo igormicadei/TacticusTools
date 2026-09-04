@@ -3,10 +3,10 @@
  * already held cover the plan.
  */
 
-import { CAMPAIGN_TYPE_NAMES, Rarity, parseRarity } from './enums.js';
+import { CAMPAIGN_TYPE_NAMES, Rarity, parseRarity, type Rank } from './enums.js';
 import type { BattleRef, UnitId } from './ids.js';
 import { battleKey } from './ids.js';
-import type { EvolutionPlan, PlanStep } from './plan.js';
+import { levelToCompleteRank, type EvolutionPlan, type PlanStep } from './plan.js';
 import type { GameDatabase } from './types.js';
 import type { PlayerResponse, Unit } from '../types/player.js';
 
@@ -15,6 +15,36 @@ import type { PlayerResponse, Unit } from '../types/player.js';
 /* -------------------------------------------------------------------------- */
 
 export type RequirementKind = 'upgrade' | 'xp' | 'badge' | 'shard' | 'orb';
+
+/**
+ * One upgrade slot a requirement fills.
+ *
+ * A rank has six of them and the same material often fills more than one, so a
+ * requirement carries a list rather than a single position. Without this the
+ * pooling below is lossy: "3x Fine Micro-Generator" says nothing about which
+ * slots they go in, what those slots raise, or whether the unit is high enough
+ * level to fit them.
+ */
+export interface SlotPlacement {
+  rank: Rank;
+  /** Which of the rank's six slots, matching the player's `upgrades` indices. */
+  slotIndex: number;
+  /** Copies this slot consumes. */
+  amount: number;
+  /** Already fitted, so spent rather than wanted. */
+  applied: boolean;
+  /** What the slot raises, and by how much. Absent where the table omits it. */
+  statType?: string;
+  statIncrease?: number;
+  /**
+   * Level that completes this rank, when one is published.
+   *
+   * A rank's second row of upgrades is level-gated per upgrade and only the
+   * rank's highest threshold is published, so this is the ceiling rather than
+   * this slot's own requirement — see `levelToCompleteRank`.
+   */
+  levelToComplete?: number;
+}
 
 export interface ItemRequirement {
   /**
@@ -35,6 +65,11 @@ export interface ItemRequirement {
    * inventory.
    */
   applied?: boolean;
+  /**
+   * The upgrade slots this fills, for rank steps. Absent for XP, badges,
+   * shards and orbs, none of which go into a slot.
+   */
+  slots?: SlotPlacement[];
 }
 
 export interface StepCost {
@@ -65,18 +100,34 @@ export function planCosts(unit: Unit, plan: EvolutionPlan, db: GameDatabase): St
       // Reaching rank B consumes the upgrades of every rank from A up to B-1.
       // At the unit's *current* rank some slots are already filled; those
       // materials are spent and are reported as done rather than as needs.
-      const pooled = new Map<string, { amount: number; applied: number }>();
+      const pooled = new Map<
+        string,
+        { amount: number; applied: number; slots: SlotPlacement[] }
+      >();
       for (let rank = step.from; rank < step.to; rank += 1) {
         const slots = definition?.ranks.find((r) => r.rank === rank)?.upgrades ?? [];
         const filled = rank === unit.rank ? new Set(unit.upgrades) : new Set<number>();
+        const gate = levelToCompleteRank(rank as Rank);
         slots.forEach((upgrade, index) => {
-          const entry = pooled.get(upgrade.upgradeId) ?? { amount: 0, applied: 0 };
+          const entry = pooled.get(upgrade.upgradeId) ?? { amount: 0, applied: 0, slots: [] };
           entry.amount += upgrade.amount;
-          if (filled.has(index)) entry.applied += upgrade.amount;
+          const isApplied = filled.has(index);
+          if (isApplied) entry.applied += upgrade.amount;
+          entry.slots.push({
+            rank: rank as Rank,
+            slotIndex: index,
+            amount: upgrade.amount,
+            applied: isApplied,
+            ...(upgrade.statType !== undefined ? { statType: upgrade.statType } : {}),
+            ...(upgrade.statIncrease !== undefined
+              ? { statIncrease: upgrade.statIncrease }
+              : {}),
+            ...(gate !== undefined ? { levelToComplete: gate } : {}),
+          });
           pooled.set(upgrade.upgradeId, entry);
         });
       }
-      for (const [upgradeId, { amount, applied }] of pooled) {
+      for (const [upgradeId, { amount, applied, slots }] of pooled) {
         const base = {
           key: `upgrade:${upgradeId}`,
           kind: 'upgrade' as const,
@@ -87,8 +138,14 @@ export function planCosts(unit: Unit, plan: EvolutionPlan, db: GameDatabase): St
         };
         // A material can be both fitted once and still needed again for a later
         // slot, so the two are emitted separately rather than netted off.
-        if (applied > 0) items.push({ ...base, amount: applied, applied: true });
-        if (amount - applied > 0) items.push({ ...base, amount: amount - applied });
+        const fitted = slots.filter((slot) => slot.applied);
+        const open = slots.filter((slot) => !slot.applied);
+        if (applied > 0) {
+          items.push({ ...base, amount: applied, applied: true, slots: fitted });
+        }
+        if (amount - applied > 0) {
+          items.push({ ...base, amount: amount - applied, slots: open });
+        }
       }
     }
 
@@ -341,6 +398,115 @@ export interface AggregatedItem extends ItemRequirement {
   components?: AllocatedComponent[];
 }
 
+/* -------------------------------------------------------------------------- */
+/* The shopping list, with recipes resolved to what you actually farm          */
+/* -------------------------------------------------------------------------- */
+
+/** A base ingredient still to be found, and what it is ultimately for. */
+export interface FlatNeed {
+  key: string;
+  kind: RequirementKind;
+  name: string;
+  rarity?: Rarity;
+  /** Copies still missing, summed across every route that leads here. */
+  amount: number;
+  /**
+   * The forging chain from the slot's own requirement down to this, outermost
+   * first. Empty when the requirement is farmed directly.
+   */
+  via: string[];
+  /** The upgrade slots this ultimately serves, for grouping. */
+  slots: SlotPlacement[];
+}
+
+/**
+ * Flatten a step's requirements to the things a player can actually go and get.
+ *
+ * A plan says "2x Anointed Auxiliary Core", which cannot be farmed — it is
+ * forged, sometimes from parts that are themselves forged. What a player takes
+ * to a campaign node is the leaves of that tree, and reading them off a
+ * two-level recipe by eye is exactly the chore this removes.
+ *
+ * Only the shortfall is expanded, matching the allocation: parts already in
+ * hand need no farming, and a composite already held is not broken down at all.
+ * An item with no recipe is its own leaf, whether or not a node drops it —
+ * something unfarmable still belongs on the list, because leaving it off would
+ * silently shorten the plan.
+ */
+export function flattenNeeds(items: readonly AllocatedItem[]): FlatNeed[] {
+  const pooled = new Map<string, FlatNeed>();
+
+  const push = (
+    part: { key: string; name: string; rarity?: Rarity | undefined },
+    kind: RequirementKind,
+    amount: number,
+    via: string[],
+    slots: SlotPlacement[],
+  ) => {
+    if (amount <= 0) return;
+    const existing = pooled.get(part.key);
+    if (existing) {
+      existing.amount += amount;
+      // The same leaf can be reached by two routes; keep the shorter to name
+      // it by, and merge the slots it serves.
+      if (via.length < existing.via.length) existing.via = via;
+      for (const slot of slots) {
+        if (!existing.slots.some((s) => s.rank === slot.rank && s.slotIndex === slot.slotIndex)) {
+          existing.slots.push(slot);
+        }
+      }
+      return;
+    }
+    pooled.set(part.key, {
+      key: part.key,
+      kind,
+      name: part.name,
+      ...(part.rarity !== undefined ? { rarity: part.rarity } : {}),
+      amount,
+      via,
+      slots: [...slots],
+    });
+  };
+
+  const walk = (
+    component: AllocatedComponent,
+    kind: RequirementKind,
+    via: string[],
+    slots: SlotPlacement[],
+    // Guards a recipe that names itself, directly or through a loop. Without it
+    // one bad row in the tables hangs the page rather than showing a wrong number.
+    seen: ReadonlySet<string>,
+  ) => {
+    if (component.missing <= 0) return;
+    if (!component.components?.length || seen.has(component.key)) {
+      push(component, kind, component.missing, via, slots);
+      return;
+    }
+    const deeper = new Set(seen).add(component.key);
+    for (const child of component.components) {
+      walk(child, kind, [...via, component.name], slots, deeper);
+    }
+  };
+
+  for (const item of items) {
+    // Applied materials are spent, not wanted; they never belong on a list of
+    // things to go and get.
+    if (item.applied || item.missing <= 0) continue;
+    const slots = item.slots ?? [];
+    if (!item.components?.length) {
+      push(item, item.kind, item.missing, [], slots);
+      continue;
+    }
+    for (const child of item.components) {
+      walk(child, item.kind, [item.name], slots, new Set([item.key]));
+    }
+  }
+
+  return [...pooled.values()].sort(
+    (a, b) => b.amount - a.amount || a.name.localeCompare(b.name),
+  );
+}
+
 /** Roll every step's items into one list per item. */
 export function aggregate(
   costs: StepCost[],
@@ -357,9 +523,12 @@ export function aggregate(
       if (existing) {
         existing.amount += item.amount;
         existing.steps += 1;
+        // A total spans several ranks, so it fills slots in each of them.
+        if (item.slots?.length) existing.slots = [...(existing.slots ?? []), ...item.slots];
       } else {
         pooled.set(poolKey, {
           ...item,
+          ...(item.slots ? { slots: [...item.slots] } : {}),
           owned: item.applied ? 0 : (owned.get(item.key) ?? 0),
           covered: 0,
           missing: 0,

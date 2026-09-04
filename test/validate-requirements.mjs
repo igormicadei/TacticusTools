@@ -23,6 +23,8 @@ import {
   isUnobtainable,
   canForge,
   itemSources,
+  flattenNeeds,
+  levelToCompleteRank,
 } from '../dist/gamedata/index.js';
 
 const args = process.argv.slice(2);
@@ -242,6 +244,92 @@ for (const unit of player.units) {
 }
 
 console.log(`audited ${checked} plans; ${blockedSeen} blocked-item findings verified`);
+
+/* ---- slot placements line up with the rank tables ------------------------- */
+{
+  // A requirement pools a material across a rank span, so the slots it carries
+  // are the only record of where those copies actually go. If they drift from
+  // the tables the page shows a confident lie about the game screen.
+  let placements = 0;
+  for (const unit of player.units) {
+    const plan = resolvePlan(unit, { rank: Math.min(19, unit.rank + 2) }, db);
+    if (plan.steps.length === 0) continue;
+    for (const cost of planCosts(unit, plan, db)) {
+      if (cost.step.kind !== 'rank') {
+        for (const item of cost.items) {
+          if (item.slots) note(`${unit.name}: a ${cost.step.kind} step carries slot placements`);
+        }
+        continue;
+      }
+      for (const item of cost.items) {
+        const slots = item.slots ?? [];
+        if (slots.length === 0) {
+          note(`${unit.name}: ${item.name} on a rank step carries no slot`);
+          continue;
+        }
+        const total = slots.reduce((sum, slot) => sum + slot.amount, 0);
+        if (total !== item.amount) {
+          note(`${unit.name}: ${item.name} wants ${item.amount} but its slots sum to ${total}`);
+        }
+        for (const slot of slots) {
+          placements += 1;
+          const table = db.units[unit.id]?.ranks.find((r) => r.rank === slot.rank);
+          const entry = table?.upgrades?.[slot.slotIndex];
+          if (entry?.upgradeId !== item.key.replace('upgrade:', '')) {
+            note(`${unit.name}: ${item.name} claims ${slot.rank}#${slot.slotIndex}, table says ${entry?.upgradeId}`);
+          }
+          if (slot.levelToComplete !== levelToCompleteRank(slot.rank)) {
+            note(`${unit.name}: ${item.name} carries the wrong level gate for rank ${slot.rank}`);
+          }
+          // Applied is only ever true at the rank the unit is standing on.
+          if (slot.applied && slot.rank !== unit.rank) {
+            note(`${unit.name}: ${item.name} marked applied at rank ${slot.rank}, unit is at ${unit.rank}`);
+          }
+        }
+      }
+    }
+  }
+  console.log(`slot placements: ${placements} agree with the rank tables  ✓`);
+}
+
+/* ---- flattening resolves recipes without inventing or losing need --------- */
+{
+  // Two things have to hold: nothing flattened is itself a recipe (that would
+  // mean the walk stopped early and the list still needs reading by hand), and
+  // no shortfall goes missing (that would understate the farming).
+  let flattened = 0;
+  let expanded = 0;
+  for (const unit of player.units) {
+    const plan = resolvePlan(unit, { rank: Math.min(19, unit.rank + 2) }, db);
+    if (plan.steps.length === 0) continue;
+    const owned = ownedByKey(playerResponse, db);
+    for (const step of allocateHoldings(planCosts(unit, plan, db), owned, db)) {
+      const needs = flattenNeeds(step.items);
+      flattened += needs.length;
+
+      for (const need of needs) {
+        if (need.amount <= 0) note(`${unit.name}: flattened ${need.name} to a non-positive amount`);
+        const recipe = db.upgrades[need.key.replace('upgrade:', '')]?.crafting;
+        if (need.via.length > 0 && recipe && Object.keys(recipe).length > 0) {
+          note(`${unit.name}: flattened to ${need.name}, which is itself forged`);
+        }
+      }
+
+      // Every item with a shortfall is either on the list or represented by
+      // the ingredients it was replaced with.
+      for (const item of step.items) {
+        if (item.applied || item.missing <= 0) continue;
+        if (item.components?.length) {
+          expanded += 1;
+          if (needs.length === 0) note(`${unit.name}: ${item.name} expanded to nothing`);
+        } else if (!needs.some((n) => n.key === item.key)) {
+          note(`${unit.name}: ${item.name} is missing but absent from the flattened list`);
+        }
+      }
+    }
+  }
+  console.log(`flattening: ${flattened} base need(s) from ${expanded} recipe(s)  ✓`);
+}
 
 if (problems.length === 0) {
   console.log('\n✓ requirements, allocation and sources are consistent');

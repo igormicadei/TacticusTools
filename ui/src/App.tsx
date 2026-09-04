@@ -4,7 +4,7 @@ import { NavLink, Navigate, Route, Routes } from 'react-router-dom';
 import { loadGameData } from './data/gamedata.ts';
 import { fetchPlayer, storage } from './data/player.ts';
 import { BadgesPage } from './routes/BadgesPage.tsx';
-import { ItemsPage } from './routes/ItemsPage.tsx';
+import { UpgradesPage } from './routes/UpgradesPage.tsx';
 import { PlanDetailPage } from './routes/PlanDetailPage.tsx';
 import { TeamDetailPage } from './routes/TeamDetailPage.tsx';
 import { TeamsPage } from './routes/TeamsPage.tsx';
@@ -114,8 +114,8 @@ export function App() {
           <NavLink to="/teams" className={({ isActive }) => (isActive ? 'active' : '')}>
             Teams
           </NavLink>
-          <NavLink to="/items" className={({ isActive }) => (isActive ? 'active' : '')}>
-            Items
+          <NavLink to="/upgrades" className={({ isActive }) => (isActive ? 'active' : '')}>
+            Upgrades
           </NavLink>
           <NavLink to="/badges" className={({ isActive }) => (isActive ? 'active' : '')}>
             Badges
@@ -223,11 +223,14 @@ export function App() {
               }
             />
             <Route
-              path="/items"
+              path="/upgrades"
               element={
-                player ? <ItemsPage db={db} player={player} /> : <Navigate to="/player" replace />
+                player ? <UpgradesPage db={db} player={player} /> : <Navigate to="/player" replace />
               }
             />
+            {/* The page was called Items before it was named after the game's
+                own word for these. Kept so an existing bookmark still lands. */}
+            <Route path="/items" element={<Navigate to="/upgrades" replace />} />
             <Route
               path="/badges"
               element={

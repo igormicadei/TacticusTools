@@ -445,7 +445,11 @@ export class RosterUnit {
     const critDamage = bonuses.critDmg ?? 0;
     let best = 0;
     for (const attack of this.attacks) {
-      best = Math.max(best, attack.hits * (attack.perHit.mid + chance * critDamage));
+      // An ability that states it cannot crit gets none of this, however much
+      // Crit the unit is carrying — otherwise a Crit item prices well for a
+      // unit whose best attack can never use it.
+      const crit = attack.canCrit === false ? 0 : chance * critDamage;
+      best = Math.max(best, attack.hits * (attack.perHit.mid + crit));
     }
     return best;
   }

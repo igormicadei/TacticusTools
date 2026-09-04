@@ -99,6 +99,13 @@ export interface AttackProfile {
   /** Set for abilities that ride on or replace a normal attack. */
   attackRangeType?: 'Melee' | 'Ranged' | 'Normal';
   /**
+   * False for abilities whose text says they cannot crit.
+   *
+   * Absent means it crits normally, which is the case for every normal attack
+   * and for most abilities — so only the exception is recorded.
+   */
+  canCrit?: false;
+  /**
    * Which ability slot an attack came from.
    *
    * Read off the unit's own `activeAbilityId` / `passiveAbilityId` /
@@ -154,10 +161,45 @@ export interface ResolvedAbility {
 }
 
 /** Number of hits an ability deals, when it says. */
+/**
+ * The hit count printed in the game's own `Stat_Hits` span, as a literal.
+ *
+ * 185 of the 198 abilities that publish `nrOfHits` write `{[nrOfHits]}x` here
+ * and take the value from the constant, so the constant is the rule. A handful
+ * skip the constant and bake the number straight into the text instead — Storm
+ * Of Wrath, Mortis Round and Multi-Threat Eliminator — and without this they
+ * resolve to no hits, which drops a real attack silently: the ability shows no
+ * damage at all on the unit and contributes nothing to a team's totals.
+ *
+ * Only a literal is read. A `{[...]}` placeholder here means the value was
+ * meant to come from the constants and did not, which is a different fault and
+ * not one to paper over with a guess.
+ */
+const LITERAL_HITS = /Stat_Hits[^>]*>(?:<img[^>]*>)?\s*(\d+)x/;
+
 function abilityHits(ability: AbilityDefinition): number | undefined {
   const raw = ability.constants?.['nrOfHits'];
   const hits = raw === undefined ? Number.NaN : Number(raw);
-  return Number.isFinite(hits) ? hits : undefined;
+  if (Number.isFinite(hits)) return hits;
+
+  const printed = ability.description?.match(LITERAL_HITS)?.[1];
+  const fromText = printed === undefined ? Number.NaN : Number(printed);
+  return Number.isFinite(fromText) ? fromText : undefined;
+}
+
+/**
+ * Whether an ability's damage can crit.
+ *
+ * A family the wiki calls "Can't Crit" states it in its own description:
+ * the damage ignores the attacker's bonuses and modifiers and cannot crit.
+ * Armour and Block still apply normally — only the crit chain is off. Worth
+ * detecting because an optimiser that credits these with Crit Damage prefers
+ * Crit items for a unit that can never use them.
+ */
+const CANNOT_CRIT = /cannot\s+(?:<[^>]*>\s*)*(?:<img[^>]*>\s*)*crit/i;
+
+function abilityCanCrit(ability: AbilityDefinition): boolean {
+  return !CANNOT_CRIT.test(ability.description ?? '');
 }
 
 /**
@@ -246,6 +288,7 @@ export function resolveAbility(
       ...(ability.attackRangeType !== undefined
         ? { attackRangeType: ability.attackRangeType }
         : {}),
+      ...(abilityCanCrit(ability) ? {} : { canCrit: false as const }),
       slot,
     };
   }

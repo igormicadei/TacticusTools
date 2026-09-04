@@ -183,7 +183,7 @@ const routes = [
   ['timeline', '#/plans/timeline'],
   ['teams', '#/teams'],
   ['team-detail', '#/teams/probe-team'],
-  ['items', '#/items'],
+  ['upgrades', '#/upgrades'],
   ['badges', '#/badges'],
   ['player', '#/player'],
 ];

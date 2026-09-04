@@ -25,22 +25,25 @@ cd "$REPO_ROOT"
 REPO_NAME="$(basename -s .git "$(git config --get remote.origin.url)")"
 BASE_PATH="${BASE_PATH:-/$REPO_NAME/}"
 
-# A relay baked in here means a fresh phone browser needs only the API key.
-# The Tacticus API sends no CORS headers, so a browser cannot call it directly;
-# this is the deployed Cloudflare Worker that forwards the read-only endpoints.
-DEFAULT_RELAY="${VITE_DEFAULT_RELAY:-https://tacticus-relay.i-micadei.workers.dev}"
-
-# The relay's own key, if you choose to publish it. Passed in from the
-# environment and never stored here, because this file is committed to a public
-# repo — though note that a key baked into the bundle is public either way, the
-# moment the site is served. It buys "no setup on a fresh phone" at the cost of
-# the lock; unsetting RELAY_KEY on the Worker buys the same thing with nothing
-# published. Left empty, the app asks for the key as before.
+# The relay the app should use by default, and the relay's own key.
+#
+# Both are empty here on purpose. This site is public, so anything baked into
+# the bundle is published with it: the URL tells the world where the Worker is,
+# and the key is then the only thing standing between that Worker and anyone
+# who fancies using it. Publishing both together would leave no lock at all.
+#
+# The cost of leaving them empty is one-time and small — a browser is asked for
+# the relay once and remembers it — so it is the right default for a public
+# deploy. Pass them in the environment for a build you are not publishing:
+#
+#   VITE_DEFAULT_RELAY=https://... VITE_DEFAULT_RELAY_KEY=... scripts/deploy-pages.sh
+#
+DEFAULT_RELAY="${VITE_DEFAULT_RELAY:-}"
 DEFAULT_RELAY_KEY="${VITE_DEFAULT_RELAY_KEY:-}"
 
 echo "==> building with BASE_PATH=$BASE_PATH${DEFAULT_RELAY:+ and relay $DEFAULT_RELAY}"
-if [[ -n "$DEFAULT_RELAY_KEY" ]]; then
-  echo "==> WARNING: baking a relay key into the bundle — it will be readable by anyone who opens the site"
+if [[ -n "$DEFAULT_RELAY" || -n "$DEFAULT_RELAY_KEY" ]]; then
+  echo "==> WARNING: baking relay details into a public bundle — the${DEFAULT_RELAY:+ URL}${DEFAULT_RELAY:+${DEFAULT_RELAY_KEY:+ and}}${DEFAULT_RELAY_KEY:+ key} will be readable by anyone who opens the site"
 fi
 rm -rf ui/dist
 BASE_PATH="$BASE_PATH" VITE_DEFAULT_RELAY="$DEFAULT_RELAY" \

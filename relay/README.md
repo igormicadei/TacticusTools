@@ -92,14 +92,27 @@ it is aimed at can read every request it forwards.
 
 ### Making it the default
 
-Once the URL exists it can be baked into the build so a fresh browser needs only
-the API key:
+Once the URL exists it can be baked into the build so a fresh browser needs
+nothing typed into it:
 
 ```bash
-VITE_DEFAULT_RELAY=https://tacticus-relay.example.workers.dev npm run ui:deploy
+VITE_DEFAULT_RELAY=https://tacticus-relay.example.workers.dev \
+  VITE_DEFAULT_RELAY_KEY=the-relay-secret npm run ui:deploy
 ```
 
 A relay saved in the browser always takes precedence over the baked-in one.
+
+**Only do this for a build you are not publishing.** A bundle served from a
+public page publishes whatever is baked into it: the URL says where your Worker
+is, and the key beside it is the only thing stopping anyone from using it. What
+that does *not* expose is your account — the relay forwards the caller's own
+`X-API-KEY` and reaches only the game's three read-only endpoints, so a stranger
+can spend your Worker's request quota, not read your roster. On the Workers free
+plan that means the relay answers `1027` until the daily reset rather than
+costing you anything.
+
+Neither is baked in by default for exactly this reason. Typing the relay into a
+browser once, which it then remembers, is the cheaper trade.
 
 ## What it can and cannot see
 

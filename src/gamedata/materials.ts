@@ -41,6 +41,22 @@ export interface MaterialUse {
   chain: ChainLink[];
   /** Copies of *this* material the rank consumes through this chain. */
   amount: number;
+  /**
+   * Which of the rank's six upgrade slots this serves.
+   *
+   * The player's `upgrades` array is a list of these indices, so this is what
+   * turns "this rank wants the material" into "this slot is still empty".
+   */
+  slotIndex: number;
+  /**
+   * The stat the slot raises, and by how much, straight from the rank table.
+   *
+   * Optional because the table is: a slot occasionally publishes neither, and
+   * inventing a zero there would read as "upgrades nothing" rather than "not
+   * published".
+   */
+  statType?: string;
+  statIncrease?: number;
 }
 
 /** Every node of a material's forging tree, with amounts multiplied through. */
@@ -119,8 +135,15 @@ export function indexMaterialUses(db: GameDatabase): Map<string, MaterialUse[]> 
       factionId: definition.factionId ?? 'Unknown',
     };
     for (const rankStats of definition.ranks) {
-      for (const slot of rankStats.upgrades ?? []) {
-        const base = { ...unit, rank: rankStats.rank };
+      const slots = rankStats.upgrades ?? [];
+      for (const [slotIndex, slot] of slots.entries()) {
+        const base = {
+          ...unit,
+          rank: rankStats.rank,
+          slotIndex,
+          ...(slot.statType !== undefined ? { statType: slot.statType } : {}),
+          ...(slot.statIncrease !== undefined ? { statIncrease: slot.statIncrease } : {}),
+        };
         add(slot.upgradeId, { ...base, chain: [], amount: slot.amount });
 
         const top: ChainLink = {
@@ -186,6 +209,126 @@ export function materialCatalogue(player: PlayerResponse, db: GameDatabase): Mat
       directRanks,
     };
   });
+}
+
+/* -------------------------------------------------------------------------- */
+/* Which of those uses the player can act on today                            */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * What a given use means for the player right now.
+ *
+ * - `now` — the unit is standing at that rank and the slot is still empty, so
+ *   the material goes in today.
+ * - `applied` — that slot is already filled; the material went in already.
+ * - `later` — the rank is ahead of the unit. Worth keeping, not worth farming.
+ * - `passed` — the rank is behind the unit and can never be revisited.
+ * - `unowned` — the unit is not in the roster at all.
+ */
+export type UseStatus = 'now' | 'applied' | 'later' | 'passed' | 'unowned';
+
+/** A use, with what it means for this player. */
+export interface AvailableUse extends MaterialUse {
+  status: UseStatus;
+  /**
+   * True when the unit has not yet reached the level that completes this rank.
+   *
+   * A rank's upgrades sit in two rows and the second row is level-gated per
+   * upgrade — but only the rank's highest threshold is published anywhere, so
+   * which of the remaining slots are open cannot be known. This flags the
+   * doubt rather than resolving it: some of what reads as `now` may still be
+   * waiting on levels.
+   */
+  levelGated: boolean;
+  /** The level that completes the rank, when one is published. */
+  levelToComplete?: number;
+}
+
+/**
+ * Answers "can I use this today?" for a roster, once.
+ *
+ * The question is asked for every use of every material — tens of thousands of
+ * times on the Upgrades page — so the roster is indexed once here rather than
+ * scanned per row. Kept separate from {@link materialCatalogue} because the
+ * plan pages need the same answer about materials they reached by a different
+ * route.
+ */
+export class UpgradeAvailability {
+  private readonly units: ReadonlyMap<string, { rank: Rank; filled: ReadonlySet<number>; xpLevel: number }>;
+
+  constructor(
+    player: PlayerResponse,
+    /**
+     * The level that completes a rank, injected rather than imported so this
+     * module keeps no dependency on the planner. Pass
+     * `levelToCompleteRank` from `plan.ts`.
+     */
+    private readonly levelToComplete: (rank: Rank) => number | undefined = () => undefined,
+  ) {
+    const units = new Map<string, { rank: Rank; filled: ReadonlySet<number>; xpLevel: number }>();
+    for (const unit of player.player.units) {
+      units.set(unit.id, {
+        rank: unit.rank as Rank,
+        filled: new Set(unit.upgrades ?? []),
+        xpLevel: unit.xpLevel,
+      });
+    }
+    this.units = units;
+  }
+
+  /** What this one use means today. */
+  statusOf(use: MaterialUse): UseStatus {
+    const unit = this.units.get(use.unitId);
+    if (!unit) return 'unowned';
+    if (use.rank > unit.rank) return 'later';
+    if (use.rank < unit.rank) return 'passed';
+    return unit.filled.has(use.slotIndex) ? 'applied' : 'now';
+  }
+
+  /** The same use, annotated. */
+  annotate(use: MaterialUse): AvailableUse {
+    const status = this.statusOf(use);
+    const unit = this.units.get(use.unitId);
+    const gate = this.levelToComplete(use.rank);
+    const levelGated =
+      status === 'now' && gate !== undefined && unit !== undefined && unit.xpLevel < gate;
+    return {
+      ...use,
+      status,
+      levelGated,
+      ...(gate !== undefined ? { levelToComplete: gate } : {}),
+    };
+  }
+
+  /** Every use of a material, annotated, with the ones to act on first. */
+  annotateAll(uses: readonly MaterialUse[]): AvailableUse[] {
+    return uses.map((use) => this.annotate(use)).sort(byUrgency);
+  }
+
+  /** How many of these the player could spend today. */
+  countNow(uses: readonly MaterialUse[]): number {
+    let n = 0;
+    for (const use of uses) if (this.statusOf(use) === 'now') n += 1;
+    return n;
+  }
+}
+
+/** Rank order within a status, so a list reads as a queue rather than a set. */
+const STATUS_ORDER: Record<UseStatus, number> = {
+  now: 0,
+  later: 1,
+  applied: 2,
+  passed: 3,
+  unowned: 4,
+};
+
+function byUrgency(a: AvailableUse, b: AvailableUse): number {
+  return (
+    STATUS_ORDER[a.status] - STATUS_ORDER[b.status] ||
+    a.rank - b.rank ||
+    a.unitName.localeCompare(b.unitName) ||
+    a.chain.length - b.chain.length
+  );
 }
 
 /* -------------------------------------------------------------------------- */

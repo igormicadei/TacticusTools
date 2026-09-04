@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
 
-import { rarityName } from '@lib/gamedata/enums.js';
+import { rankName, rarityName } from '@lib/gamedata/enums.js';
 import {
   aggregate,
   allocateHoldings,
   canForge,
+  flattenNeeds,
   isUnfarmable,
   isUnobtainable,
   itemSource,
@@ -14,7 +15,9 @@ import {
   type AllocatedComponent,
   type AllocatedItem,
   type AggregatedItem,
+  type FlatNeed,
   type RequirementKind,
+  type SlotPlacement,
 } from '@lib/gamedata/requirements.js';
 import type { EvolutionPlan } from '@lib/gamedata/plan.js';
 import type { GameDatabase } from '@lib/gamedata/types.js';
@@ -49,21 +52,30 @@ export function StepItems({
   player: PlayerResponse;
 }) {
   const [view, setView] = useState<View>('steps');
+  // What you take to a campaign node is the leaves of the recipe trees, not the
+  // composites the plan names. Off by default, because the unflattened list is
+  // the one that matches what the game's own rank screen shows.
+  const [flat, setFlat] = useState(false);
   // A set, not a single id: a recipe row lives inside its item's expansion, so
   // opening it must not close the parent that renders it.
   const [open, setOpen] = useState<ReadonlySet<string>>(() => new Set());
 
-  const { steps, totals, gold, goldByStep } = useMemo(() => {
+  const { steps, totals, gold, goldByStep, allItems } = useMemo(() => {
     // Finished steps cost nothing more, and pricing them against the unit's
     // present state would invent needs it has already met.
     const remaining = { ...plan, steps: plan.steps.filter((step) => !step.done) };
     const costs = planCosts(unit, remaining, db);
     const owned = ownedByKey(player, db);
+    const allocated = allocateHoldings(costs, owned, db);
     return {
-      steps: new Map(allocateHoldings(costs, owned, db).map((s) => [s.step.order, s])),
+      steps: new Map(allocated.map((s) => [s.step.order, s])),
       goldByStep: new Map(costs.map((c) => [c.step.order, c.gold])),
       totals: aggregate(costs, owned, db),
       gold: costs.reduce((sum, c) => sum + c.gold, 0),
+      // Every step's requirements in one list, which is what the flattened
+      // total is built from: pooling after flattening, so a base material
+      // wanted by two steps reads as one line.
+      allItems: allocated.flatMap((s) => s.items),
     };
   }, [unit, plan, db, player]);
 
@@ -73,7 +85,9 @@ export function StepItems({
 
   return (
     <section className="panel">
-      <div className="row" style={{ marginBottom: 12 }}>
+      {/* Wraps: a heading plus three controls does not fit a phone on one line,
+          and the spacer then simply ends the first line. */}
+      <div className="row wrap" style={{ marginBottom: 12 }}>
         <h3 style={{ margin: 0 }}>Items needed</h3>
         <span style={{ flex: 1 }} />
         <div className="tabs">
@@ -84,6 +98,10 @@ export function StepItems({
             Total
           </button>
         </div>
+        <label className="switch" title="Resolve every recipe down to the materials a node actually drops">
+          <input type="checkbox" checked={flat} onChange={(e) => setFlat(e.target.checked)} />
+          <span>Flatten to what you farm</span>
+        </label>
       </div>
 
       <p className="small muted" style={{ marginTop: 0 }}>
@@ -131,6 +149,8 @@ export function StepItems({
                 <p className="muted small" style={{ margin: '4px 0 0 30px' }}>
                   No items.
                 </p>
+              ) : flat ? (
+                <BySlot items={items} />
               ) : (
                 <ul className="item-list">
                   {items.map((item) => (
@@ -149,6 +169,9 @@ export function StepItems({
             </div>
             );
           })
+        : flat ? (
+            <FlatList needs={flattenNeeds(allItems)} />
+          )
         : (
             <ul className="item-list">
               {gold > 0 && (
@@ -176,6 +199,193 @@ export function StepItems({
             </ul>
           )}
     </section>
+  );
+}
+
+/** What the slot raises, in the words the game uses for the stat. */
+const STAT_LABEL: Record<string, string> = {
+  hp: 'health',
+  dmg: 'damage',
+  fixedArmor: 'armour',
+};
+
+/**
+ * Which slots a material fills, and what they give.
+ *
+ * A material often fills more than one slot in a rank span, so the gains are
+ * summed per stat rather than listed one by one — six separate "+30 health"
+ * chips say less than one "+90 health" does. The level is the rank's, and the
+ * highest of them governs, since that is the one that gates leaving the rank.
+ */
+function SlotNote({ slots }: { slots?: readonly SlotPlacement[] | undefined }) {
+  const summary = useMemo(() => {
+    if (!slots?.length) return undefined;
+    const gains = new Map<string, number>();
+    let level: number | undefined;
+    for (const slot of slots) {
+      if (slot.statType !== undefined && slot.statIncrease !== undefined) {
+        gains.set(slot.statType, (gains.get(slot.statType) ?? 0) + slot.statIncrease);
+      }
+      if (slot.levelToComplete !== undefined) {
+        level = Math.max(level ?? 0, slot.levelToComplete);
+      }
+    }
+    return {
+      positions: slots
+        .map((slot) => `${rankName(slot.rank)} slot ${slot.slotIndex + 1}`)
+        .join(', '),
+      gains: [...gains.entries()].map(
+        ([stat, total]) => `+${total} ${STAT_LABEL[stat] ?? stat}`,
+      ),
+      level,
+    };
+  }, [slots]);
+
+  if (!summary) return null;
+  return (
+    <>
+      <span className="muted small" title={summary.positions}>
+        {summary.positions}
+      </span>
+      {summary.gains.map((gain) => (
+        <span className="slot-gain" key={gain}>
+          {gain}
+        </span>
+      ))}
+      {summary.level !== undefined && (
+        <span
+          className="muted small"
+          title="The level that completes this rank. Only the rank's highest threshold is published, so this is the ceiling rather than this slot's own requirement."
+        >
+          level {summary.level}
+        </span>
+      )}
+    </>
+  );
+}
+
+/** `Bronze III · slot 4` — the position, named the way the game screen reads. */
+function slotKey(slot: SlotPlacement): string {
+  return `${slot.rank}:${slot.slotIndex}`;
+}
+
+/**
+ * A rank's requirements arranged by the slot they fill.
+ *
+ * The plan names materials; the game's rank screen shows six slots. Grouping
+ * this way answers the question actually being asked in front of that screen —
+ * what does *this* slot want, what does it give me, and can I fit it yet —
+ * rather than leaving the reader to map a pooled list back onto positions.
+ */
+function BySlot({ items }: { items: AllocatedItem[] }) {
+  const groups = useMemo(() => {
+    const needs = flattenNeeds(items);
+    const bySlot = new Map<string, { slot: SlotPlacement; needs: FlatNeed[] }>();
+    const loose: FlatNeed[] = [];
+    for (const need of needs) {
+      if (need.slots.length === 0) {
+        loose.push(need);
+        continue;
+      }
+      for (const slot of need.slots) {
+        const key = slotKey(slot);
+        const group = bySlot.get(key) ?? { slot, needs: [] };
+        group.needs.push(need);
+        bySlot.set(key, group);
+      }
+    }
+    return {
+      slots: [...bySlot.values()].sort(
+        (a, b) => a.slot.rank - b.slot.rank || a.slot.slotIndex - b.slot.slotIndex,
+      ),
+      loose,
+    };
+  }, [items]);
+
+  if (groups.slots.length === 0 && groups.loose.length === 0) {
+    return (
+      <p className="muted small" style={{ margin: '4px 0 0 30px' }}>
+        Everything this step needs is already in hand.
+      </p>
+    );
+  }
+
+  return (
+    <div className="slot-groups">
+      {groups.slots.map(({ slot, needs }) => (
+        <div className="slot-group" key={slotKey(slot)}>
+          <div className="slot-head">
+            <span className="slot-pos">
+              {rankName(slot.rank)} · slot {slot.slotIndex + 1}
+            </span>
+            {slot.statIncrease !== undefined && slot.statType !== undefined && (
+              <span className="slot-gain">
+                +{slot.statIncrease} {STAT_LABEL[slot.statType] ?? slot.statType}
+              </span>
+            )}
+            {slot.levelToComplete !== undefined && (
+              <span
+                className="chip"
+                title="The level that completes this rank. A rank's second row of upgrades is level-gated per upgrade and only the rank's highest threshold is published, so this is the ceiling rather than this slot's own requirement."
+              >
+                needs up to level {slot.levelToComplete}
+              </span>
+            )}
+          </div>
+          <FlatList needs={needs} />
+        </div>
+      ))}
+      {groups.loose.length > 0 && (
+        <div className="slot-group">
+          <div className="slot-head">
+            <span className="slot-pos">Not a rank slot</span>
+          </div>
+          <FlatList needs={groups.loose} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Base materials to go and find, with the recipe that wanted them.
+ *
+ * No disclosure and no source list: this view exists to be read at a glance
+ * against a campaign screen, and a row that opens into three more rows defeats
+ * that. The unflattened view is where sources live.
+ */
+function FlatList({ needs }: { needs: FlatNeed[] }) {
+  useIcons();
+  if (needs.length === 0) {
+    return (
+      <p className="muted small" style={{ margin: '4px 0 0 30px' }}>
+        Nothing left to farm here.
+      </p>
+    );
+  }
+  return (
+    <ul className="item-list">
+      {needs.map((need) => (
+        <li className="item-row" key={need.key}>
+          <div className="item-head static">
+            <span className="chevron" />
+            <span className="count">{need.amount}×</span>
+            <Icon src={requirementIcon(need.key)} size={22} className="portrait" reserve />
+            <span className="item-name">
+              {need.name}
+              {need.rarity !== undefined && (
+                <span className="muted small"> · {rarityName(need.rarity)}</span>
+              )}
+            </span>
+            <span className="row-tail">
+              {need.via.length > 0 && (
+                <span className="muted small">for {need.via.join(' › ')}</span>
+              )}
+            </span>
+          </div>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -223,6 +433,7 @@ export function ItemRow({
           </span>
           <span className="row-tail">
             <span className="chip ok-chip">Already applied</span>
+            <SlotNote slots={item.slots} />
           </span>
         </div>
       </li>
@@ -242,6 +453,7 @@ export function ItemRow({
           )}
         </span>
         <span className="row-tail">
+          <SlotNote slots={item.slots} />
           {forge !== undefined && <ForgeChip ready={forge} />}
           {blocked && <span className="chip warn">Nothing unlocked</span>}
           {finite && (
@@ -380,6 +592,8 @@ function ComponentRow({
           )}
         </span>
         <span className="row-tail">
+          {/* No slot note here: an ingredient fills no slot of its own, the
+              item it forges into does. */}
           {forge !== undefined && <ForgeChip ready={forge} />}
           {blocked && <span className="chip warn">Nothing unlocked</span>}
           {finite && (

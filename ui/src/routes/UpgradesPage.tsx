@@ -2,11 +2,13 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { rankName, rarityName } from '@lib/gamedata/enums.js';
+import { levelToCompleteRank } from '@lib/gamedata/plan.js';
 import {
   materialCatalogue,
   nextRankCosts,
+  UpgradeAvailability,
+  type AvailableUse,
   type MaterialEntry,
-  type MaterialUse,
   type NextRank,
   type RankMaterial,
 } from '@lib/gamedata/materials.js';
@@ -18,7 +20,7 @@ import { rankIcon, requirementIcon, unitIcon } from '../data/icons.ts';
 
 type View = 'inventory' | 'ranks';
 type Filter = 'stock' | 'all' | 'unused';
-type Scope = 'ahead' | 'roster' | 'everyone';
+type Scope = 'now' | 'ahead' | 'roster' | 'everyone';
 
 const FILTERS: { key: Filter; label: string; hint: string }[] = [
   { key: 'stock', label: 'In stock', hint: 'Materials you hold at least one of' },
@@ -34,18 +36,23 @@ const FILTERS: { key: Filter; label: string; hint: string }[] = [
  * never reach with units they do not own. What a player can act on is their own
  * roster, and within it the ranks still ahead — a rank already passed spent its
  * materials long ago.
+ *
+ * Narrower still, and the default, is what goes in *today*: a unit standing at
+ * that rank with that slot still empty. Everything else is a plan; this is a
+ * thing to go and do.
  */
 const SCOPES: { key: Scope; label: string; hint: string }[] = [
+  { key: 'now', label: 'Usable now', hint: 'Slots standing empty on units at that rank right now' },
   { key: 'ahead', label: 'Still ahead', hint: 'Your units, at ranks they have not reached yet' },
   { key: 'roster', label: 'Your roster', hint: 'Your units, at every rank including ones passed' },
   { key: 'everyone', label: 'Every unit', hint: 'The whole game, owned or not' },
 ];
 
-export function ItemsPage({ db, player }: { db: GameDatabase; player: PlayerResponse }) {
+export function UpgradesPage({ db, player }: { db: GameDatabase; player: PlayerResponse }) {
   useIcons();
   const [view, setView] = useState<View>('inventory');
   const [filter, setFilter] = useState<Filter>('stock');
-  const [scope, setScope] = useState<Scope>('ahead');
+  const [scope, setScope] = useState<Scope>('now');
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState<ReadonlySet<string>>(() => new Set());
 
@@ -54,23 +61,44 @@ export function ItemsPage({ db, player }: { db: GameDatabase; player: PlayerResp
   const catalogue = useMemo(() => materialCatalogue(player, db), [player, db]);
   const ranks = useMemo(() => nextRankCosts(player, db), [player, db]);
 
-  const rankById = useMemo(
-    () => new Map(player.player.units.map((u) => [u.id, u.rank])),
+  // One pass over the roster, reused for every row: the page asks "can I use
+  // this today?" tens of thousands of times.
+  const availability = useMemo(
+    () => new UpgradeAvailability(player, levelToCompleteRank),
     [player],
   );
 
-  /** The catalogue narrowed to the chosen scope, uses and counts alike. */
-  const scoped = useMemo(() => {
-    if (scope === 'everyone') return catalogue;
-    return catalogue.map((material) => {
-      const uses = material.uses.filter((use) => {
-        const current = rankById.get(use.unitId);
-        if (current === undefined) return false;
-        return scope === 'roster' || use.rank >= current;
-      });
-      return { ...material, uses, unitCount: new Set(uses.map((u) => u.unitId)).size };
-    });
-  }, [catalogue, scope, rankById]);
+  /**
+   * The catalogue with every use annotated and narrowed to the chosen scope.
+   *
+   * `openNow` is kept whatever the scope, because it is what the collapsed row
+   * has to say — a material with a slot waiting for it is the one thing on this
+   * page worth acting on, and hiding that behind a scope change would bury it.
+   */
+  const scoped = useMemo(
+    () =>
+      catalogue.map((material) => {
+        const annotated = availability.annotateAll(material.uses);
+        const openNow = annotated.filter((u) => u.status === 'now');
+        const uses =
+          scope === 'everyone'
+            ? annotated
+            : scope === 'now'
+              ? openNow
+              : annotated.filter((u) =>
+                  scope === 'roster'
+                    ? u.status !== 'unowned'
+                    : u.status === 'now' || u.status === 'later',
+                );
+        return {
+          ...material,
+          uses,
+          openNow,
+          unitCount: new Set(uses.map((u) => u.unitId)).size,
+        };
+      }),
+    [catalogue, scope, availability],
+  );
 
   const toggle = (id: string) =>
     setOpen((current) => {
@@ -88,10 +116,20 @@ export function ItemsPage({ db, player }: { db: GameDatabase; player: PlayerResp
         if (!q) return true;
         return m.name.toLowerCase().includes(q) || m.id.toLowerCase().includes(q);
       })
-      .sort((a, b) => b.owned - a.owned || a.name.localeCompare(b.name));
+      // Held and spendable today sorts above held-but-not-yet, which sorts above
+      // everything else: the order answers "what can I do with what I have?"
+      .sort(
+        (a, b) =>
+          Number(b.openNow.length > 0 && b.owned > 0) -
+            Number(a.openNow.length > 0 && a.owned > 0) ||
+          b.openNow.length - a.openNow.length ||
+          b.owned - a.owned ||
+          a.name.localeCompare(b.name),
+      );
   }, [scoped, filter, query]);
 
   const held = catalogue.filter((m) => m.owned > 0).length;
+  const spendable = scoped.filter((m) => m.owned > 0 && m.openNow.length > 0).length;
 
   return (
     <>
@@ -138,6 +176,9 @@ export function ItemsPage({ db, player }: { db: GameDatabase; player: PlayerResp
             />
             <div className="counts small muted">
               <span className="count">
+                <b>{spendable}</b> spendable now
+              </span>
+              <span className="count">
                 <b>{held}</b> in stock
               </span>
               <span className="count">
@@ -155,9 +196,10 @@ export function ItemsPage({ db, player }: { db: GameDatabase; player: PlayerResp
             the rank tables read backwards. A material counts as used whether the rank asks for
             it outright or forges it into something that is asked for, so a component several
             recipes deep still shows the ranks it ultimately serves — with the chain that gets
-            it there, and the amount multiplied along it. Scoped by default to your own units at
-            ranks they have not reached yet, since that is what you can still spend it on —
-            widen it with the buttons above.
+            it there, and the amount multiplied along it. Scoped by default to what you can
+            spend today — a unit standing at that rank with that upgrade slot still empty —
+            because that is the part you can act on without waiting for anything. Widen it
+            with the buttons above to see the ranks ahead, or the whole game.
           </p>
           {rows.length === 0 ? (
             <div className="empty">Nothing matches “{query}”.</div>
@@ -167,7 +209,7 @@ export function ItemsPage({ db, player }: { db: GameDatabase; player: PlayerResp
                 <MaterialRow
                   key={material.id}
                   material={material}
-                  rankById={rankById}
+                  openNow={material.openNow.length}
                   expanded={open.has(material.id)}
                   onToggle={() => toggle(material.id)}
                 />
@@ -186,17 +228,20 @@ export function ItemsPage({ db, player }: { db: GameDatabase; player: PlayerResp
 
 function MaterialRow({
   material,
-  rankById,
+  openNow,
   expanded,
   onToggle,
 }: {
-  material: MaterialEntry;
-  rankById: ReadonlyMap<string, number>;
+  material: MaterialEntry & { uses: AvailableUse[] };
+  openNow: number;
   expanded: boolean;
   onToggle: () => void;
 }) {
+  // Held, and somewhere to put it today. Everything else on this page is
+  // planning; this row is a thing to go and do, so it is marked as one.
+  const spendable = openNow > 0 && material.owned > 0;
   return (
-    <li className="item-row">
+    <li className={`item-row${spendable ? ' actionable' : ''}`}>
       <button className="item-head" onClick={onToggle} aria-expanded={expanded}>
         <span className="chevron">{expanded ? '▾' : '▸'}</span>
         <span className="count">{material.owned > 0 ? `${material.owned}×` : '—'}</span>
@@ -208,6 +253,18 @@ function MaterialRow({
           )}
         </span>
         <span className="row-tail">
+          {openNow > 0 && (
+            <span
+              className={`chip ${spendable ? 'ok-chip' : ''}`}
+              title={
+                spendable
+                  ? 'Slots standing empty right now on units already at that rank'
+                  : 'Slots are open for it, but you hold none'
+              }
+            >
+              {openNow} slot{openNow === 1 ? '' : 's'} open now
+            </span>
+          )}
           {!material.farmable && (
             <span className="chip gold" title="No campaign node drops this; it has to be forged.">
               Forged
@@ -220,7 +277,7 @@ function MaterialRow({
           </span>
         </span>
       </button>
-      {expanded && <MaterialUses material={material} rankById={rankById} />}
+      {expanded && <MaterialUses material={material} />}
     </li>
   );
 }
@@ -234,25 +291,24 @@ function MaterialRow({
  * material by more than one route lists each separately: they are separate
  * things to go and get.
  */
-function MaterialUses({
-  material,
-  rankById,
-}: {
-  material: MaterialEntry;
-  rankById: ReadonlyMap<string, number>;
-}) {
+function MaterialUses({ material }: { material: MaterialEntry & { uses: AvailableUse[] } }) {
   const byUnit = useMemo(() => {
-    const map = new Map<string, MaterialUse[]>();
+    const map = new Map<string, AvailableUse[]>();
     for (const use of material.uses) {
       const list = map.get(use.unitId);
       if (list) list.push(use);
       else map.set(use.unitId, [use]);
     }
     for (const list of map.values()) {
-      list.sort((a, b) => a.rank - b.rank || a.chain.length - b.chain.length);
+      list.sort((a, b) => a.rank - b.rank || a.slotIndex - b.slotIndex);
     }
+    // Units with a slot open today first, so the answer to "where does this go
+    // right now" is at the top rather than alphabetically buried.
     return [...map.entries()].sort(
-      (a, b) => (a[1][0]?.unitName ?? '').localeCompare(b[1][0]?.unitName ?? ''),
+      (a, b) =>
+        Number(b[1].some((u) => u.status === 'now')) -
+          Number(a[1].some((u) => u.status === 'now')) ||
+        (a[1][0]?.unitName ?? '').localeCompare(b[1][0]?.unitName ?? ''),
     );
   }, [material]);
 
@@ -271,38 +327,67 @@ function MaterialUses({
       <table className="uses">
         <tbody>
           {byUnit.map(([unitId, uses]) => (
-            <tr key={unitId}>
+            <tr key={unitId} className={uses.some((u) => u.status === 'now') ? 'now-unit' : ''}>
               <td className="use-unit">
                 <Icon src={unitIcon(unitId)} size={22} className="portrait" reserve />
                 <Link to={`/units/${encodeURIComponent(unitId)}`}>{uses[0]?.unitName}</Link>
               </td>
               <td>
-                {uses.map((use, i) => {
-                  // The rank a unit currently stands at is the one whose slots
-                  // it is filling now, so that is where the material can go
-                  // today rather than eventually.
-                  const now = rankById.get(unitId) === use.rank;
-                  return (
-                    <div className={`use-line${now ? ' now' : ''}`} key={i}>
-                      <Icon src={rankIcon(use.rank)} size={16} reserve />
-                      <span className="use-rank">{rankName(use.rank)}</span>
-                      <b>{use.amount}×</b>
-                      {use.chain.length === 0 ? (
-                        <span className="muted">directly</span>
-                      ) : (
-                        <span className="muted">
-                          via {use.chain.map((link) => link.name).join(' › ')}
-                        </span>
-                      )}
-                      {now && <span className="chip ok-chip">filling now</span>}
-                    </div>
-                  );
-                })}
+                {uses.map((use, i) => (
+                  <UseLine key={`${use.rank}:${use.slotIndex}:${i}`} use={use} />
+                ))}
               </td>
             </tr>
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+/** What the slot gains, in the game's own words for the stat. */
+const STAT_LABEL: Record<string, string> = {
+  hp: 'health',
+  dmg: 'damage',
+  fixedArmor: 'armour',
+};
+
+/**
+ * One place the material goes, and whether it goes there today.
+ *
+ * The status is the point of the line, so it leads with a chip rather than
+ * ending with one; a rank still ahead is dimmed rather than hidden, because
+ * knowing a material is worth keeping is the second most useful thing this page
+ * can say.
+ */
+function UseLine({ use }: { use: AvailableUse }) {
+  const gain =
+    use.statIncrease !== undefined && use.statType !== undefined
+      ? `+${use.statIncrease} ${STAT_LABEL[use.statType] ?? use.statType}`
+      : undefined;
+
+  return (
+    <div className={`use-line status-${use.status}`}>
+      <Icon src={rankIcon(use.rank)} size={16} reserve />
+      <span className="use-rank">{rankName(use.rank)}</span>
+      <b>{use.amount}×</b>
+      {use.status === 'now' && <span className="chip ok-chip">fits now</span>}
+      {use.status === 'applied' && <span className="chip">already fitted</span>}
+      {use.status === 'passed' && <span className="chip">rank passed</span>}
+      {gain !== undefined && <span className="use-gain">{gain}</span>}
+      {use.chain.length === 0 ? (
+        <span className="muted">directly</span>
+      ) : (
+        <span className="muted">via {use.chain.map((link) => link.name).join(' › ')}</span>
+      )}
+      {use.levelGated && use.levelToComplete !== undefined && (
+        <span
+          className="muted small"
+          title="A rank's second row of upgrades is level-gated per upgrade, and only the rank's highest threshold is published — so this slot may still be waiting on levels."
+        >
+          needs up to level {use.levelToComplete}
+        </span>
+      )}
     </div>
   );
 }
