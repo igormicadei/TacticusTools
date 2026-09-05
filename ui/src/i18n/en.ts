@@ -517,7 +517,7 @@ export const EN = {
   'plan.orderBlurb':
     'Each attribute is pushed as far as the current rarity allows before ascending, so nothing is farmed for a rank that is still gated.',
   'si.dropRatesNote':
-    'Drop rates are published per campaign type, not per node. A rate above 100% means more than one copy per run on average.',
+    'Drop rates are published per campaign type, not per node, and are the chance before any Mercy: the game raises it after every win that does not drop the reward and resets it as soon as one does. The energy-per-copy figures count that Mercy counter, which is why they come in under the run cost divided by the rate — at legendary rates it is barely half. How big each step is, the game does not publish; it is inferred from a reward popup, so read the per-copy figures as the better of two estimates rather than as exact. A rate above 100% means more than one copy per run on average, and has no counter to run.',
 
   /* ---- timeline prose -------------------------------------------------- */
   'timeline.none': 'No plans yet. The timeline puts every plan into one running order.',

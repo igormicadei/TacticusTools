@@ -28,6 +28,8 @@ import {
   energyPerCopy,
   raidsToday,
   farmTargets,
+  runsPerDrop,
+  dropsPerRun,
   levelToCompleteRank,
 } from '../dist/gamedata/index.js';
 
@@ -557,6 +559,72 @@ console.log(`audited ${checked} plans; ${blockedSeen} blocked-item findings veri
     }
   }
   console.log(`farm list: ${listed} slot(s) broken down into ${leaves} base material(s)  ✓`);
+
+  /*
+   * The Mercy counter.
+   *
+   * The rule for the step between failures is inferred from a single reward
+   * popup, so the first check is that it still reproduces it: a 75% node that
+   * has failed once shows "(75.00% + 25.00%)". The rest are the properties any
+   * pity system must have whatever its step — it can only ever take runs away,
+   * never add them, and a better base chance can never need more runs.
+   */
+  const chanceAfter = (base, failures) => Math.min(1, base * (failures + 1));
+  if (Math.abs(chanceAfter(0.75, 1) - 1) > 1e-9) {
+    note(`mercy: a 75% node after one failure reads ${(chanceAfter(0.75, 1) * 100).toFixed(2)}%, not 100%`);
+  }
+  if (Math.abs(chanceAfter(0.75, 1) - 0.75 - 0.25) > 1e-9) {
+    note('mercy: the bonus on a 75% node after one failure is not the observed +25.00%');
+  }
+
+  // Walked from the best base chance down, so the run count must only rise.
+  let previous = 0;
+  for (let base = 0.99; base > 0.005; base -= 0.005) {
+    const runs = runsPerDrop(base);
+    if (runs < 1) note(`mercy: ${base.toFixed(3)} needs ${runs.toFixed(3)} runs, fewer than one`);
+    if (runs > 1 / base + 1e-9) {
+      note(`mercy: ${base.toFixed(3)} needs ${runs.toFixed(3)} runs, worse than the ${(1 / base).toFixed(3)} of a plain roll`);
+    }
+    // Ordering, read from the top down: a worse base chance must never need
+    // fewer runs than a better one.
+    if (runs < previous - 1e-9) {
+      note(`mercy: ${base.toFixed(3)} needs ${runs.toFixed(3)} runs, fewer than the better rate above it`);
+    }
+    previous = runs;
+    if (Math.abs(dropsPerRun(base) * runs - 1) > 1e-9) {
+      note(`mercy: drops per run and runs per drop are not reciprocal at ${base.toFixed(3)}`);
+    }
+  }
+  // A guaranteed drop, and the tables' "more than one a run", have no counter.
+  if (runsPerDrop(1) !== 1) note('mercy: a certain drop should take exactly one run');
+  if (Math.abs(runsPerDrop(1.08) - 1 / 1.08) > 1e-9) {
+    note('mercy: a rate above one should stay plain arithmetic');
+  }
+
+  // And every node's advertised price has to be that arithmetic, not the old one.
+  let priced = 0;
+  let cheaper = 0;
+  for (const campaign of Object.values(db.campaigns)) {
+    for (const battle of Object.values(campaign.battles)) {
+      for (const status of nodeStatuses([battle], playerResponse, db, { kind: 'upgrade', rarity: 4 })) {
+        if (status.energyPerDrop === undefined || status.dropRate === undefined) continue;
+        priced += 1;
+        const expected = status.energyCost * runsPerDrop(status.dropRate);
+        if (Math.abs(status.energyPerDrop - expected) > 1e-6) {
+          note(`mercy: ${status.campaignName} node ${status.nodeNumber} prices ${status.energyPerDrop}, not ${expected}`);
+        }
+        if (status.dropRate < 1 && status.energyPerDrop >= status.energyCost / status.dropRate - 1e-9) {
+          note(`mercy: ${status.campaignName} node ${status.nodeNumber} is no cheaper than a plain roll`);
+        } else if (status.dropRate < 1) {
+          cheaper += 1;
+        }
+      }
+    }
+  }
+  console.log(
+    `mercy: reproduces the observed 75% + 25%; ${priced} node price(s) counted, ` +
+      `${cheaper} below a plain roll  ✓`,
+  );
 }
 
 if (problems.length === 0) {

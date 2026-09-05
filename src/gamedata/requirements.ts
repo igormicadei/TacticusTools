@@ -572,9 +572,9 @@ export function energyPerCopy(
  *
  * So this counts runs instead, against the attempts actually remaining. The
  * slot is flattened to the base materials a node actually drops, and each is
- * taken from its cheapest open node first with every run credited `dropRate`
- * copies — the same expected-value arithmetic the prices use, a forecast
- * rather than a promise.
+ * taken from its cheapest open node first with every run credited what the
+ * Mercy counter makes it worth — the same expected-value arithmetic the prices
+ * use, a forecast rather than a promise.
  *
  * `undefined` means today cannot cover it: either nothing is open that drops
  * the item, or what is open has too few attempts left. That is deliberately
@@ -633,13 +633,16 @@ export function raidsForTargets(targets: readonly FarmTarget[]): RaidPlan | unde
     for (const node of open) {
       if (need <= 1e-9) break;
       // Cheapest per copy first, then whatever the node has left. Runs are
-      // whole: half a raid drops nothing.
-      const runs = Math.min(node.attemptsLeft, Math.ceil(need / node.dropRate!));
+      // whole: half a raid drops nothing. A run is worth what the Mercy
+      // counter makes it worth, not the base chance — see `dropsPerRun`.
+      const perRun = dropsPerRun(node.dropRate!);
+      if (perRun <= 0) continue;
+      const runs = Math.min(node.attemptsLeft, Math.ceil(need / perRun));
       if (runs <= 0) continue;
       plan.raids += runs;
       plan.energy += runs * node.energyCost!;
       plan.nodes += 1;
-      need -= runs * node.dropRate!;
+      need -= runs * perRun;
     }
     if (need > 1e-9) return undefined;
   }
@@ -856,7 +859,11 @@ export interface NodeStatus extends BattleRef {
   /** Chance of the item dropping per run, for the rarity asked about. */
   dropRate?: number;
   /**
-   * `energyCost / dropRate` — energy per copy on average.
+   * Energy per copy on average, over the runs the Mercy counter actually takes.
+   *
+   * Not `energyCost / dropRate`: that reads the base chance as a coin flip and
+   * ignores the counter the game raises after every empty win — see
+   * {@link runsPerDrop}.
    *
    * Deliberately separate from {@link energyCost}: an Elite node is cheaper per
    * copy than a Standard one at every rarity, but costs 10 energy a run against
@@ -864,6 +871,56 @@ export interface NodeStatus extends BattleRef {
    * Both numbers are needed to choose.
    */
   energyPerDrop?: number;
+}
+
+/* -------------------------------------------------------------------------- */
+/* The Mercy counter                                                          */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Expected runs to win one copy, counting the game's Mercy system.
+ *
+ * A node's published figure is a *base* chance. The game raises it after every
+ * win that does not drop the reward and resets it the moment one does, which it
+ * states on the reward popup: "After 1 win without getting the reward, the
+ * Mercy system increases your chances… The probability resets to the base
+ * chance as soon as you get it." Reading the base chance as a plain coin flip
+ * therefore overstates the work, and not slightly — at the legendary rate it
+ * asks for 5.5 runs a copy where the counter needs 2.6.
+ *
+ * The step between failures is the part the game does not publish. What it does
+ * publish is the current chance, and the one reading with a counter on it — a
+ * 75% node showing "(75.00% + 25.00%)" after one failure — fits `base x (fails
+ * + 1)`, capped at certainty. Two other readings at zero failures agree
+ * trivially. So that is the rule used here, and it is an inference from one
+ * observation rather than a published formula: it is right about the direction
+ * and the shape, and could be wrong about the size of the step.
+ *
+ * A rate at or above 1 is not a chance at all — the Elite tables carry 1.08,
+ * meaning a guaranteed copy plus a chance of a second — so those are left as
+ * plain arithmetic, with no counter to run.
+ */
+export function runsPerDrop(baseRate: number): number {
+  if (!(baseRate > 0)) return Infinity;
+  if (baseRate >= 1) return 1 / baseRate;
+
+  let expected = 0;
+  let stillWaiting = 1;
+  // Terminates on its own: the chance reaches certainty at `ceil(1 / base)`
+  // runs, and the guard is only against a rate too small to get there in a
+  // sane number of steps.
+  for (let failures = 0; failures < 10_000 && stillWaiting > 1e-12; failures += 1) {
+    const chance = Math.min(1, baseRate * (failures + 1));
+    expected += stillWaiting * chance * (failures + 1);
+    stillWaiting *= 1 - chance;
+  }
+  return expected;
+}
+
+/** Copies a single run is worth on average — the reciprocal of {@link runsPerDrop}. */
+export function dropsPerRun(baseRate: number): number {
+  const runs = runsPerDrop(baseRate);
+  return runs === Infinity ? 0 : 1 / runs;
 }
 
 /**
@@ -1015,7 +1072,7 @@ export function nodeStatuses(
           : {}),
         ...(dropRate !== undefined ? { dropRate } : {}),
         ...(energyCost !== undefined && dropRate
-          ? { energyPerDrop: energyCost / dropRate }
+          ? { energyPerDrop: energyCost * runsPerDrop(dropRate) }
           : {}),
       };
     })

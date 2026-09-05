@@ -511,7 +511,7 @@ export const PT: Record<keyof typeof EN, string> = {
   'plan.orderBlurb':
     'Cada atributo é empurrado até onde a raridade atual permite antes de ascender, então nada é farmado para um rank que ainda está travado.',
   'si.dropRatesNote':
-    'As taxas de drop são publicadas por tipo de campanha, não por nó. Uma taxa acima de 100% significa mais de uma cópia por corrida, em média.',
+    'As taxas de drop são publicadas por tipo de campanha, não por nó, e são a chance antes de qualquer Misericórdia: o jogo a aumenta a cada vitória que não derruba a recompensa e a zera assim que uma derruba. Os valores de energia por cópia já contam esse contador de Misericórdia, e é por isso que ficam abaixo do custo da corrida dividido pela taxa — nas taxas lendárias, quase pela metade. O tamanho de cada passo o jogo não publica; ele foi inferido de um popup de recompensa, então leia os valores por cópia como a melhor de duas estimativas, não como exatos. Uma taxa acima de 100% significa mais de uma cópia por corrida, em média, e não tem contador para rodar.',
 
   /* ---- textos da linha do tempo ---------------------------------------- */
   'timeline.none': 'Nenhum plano ainda. A linha do tempo põe todos os planos em uma ordem só.',
