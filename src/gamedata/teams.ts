@@ -14,13 +14,21 @@
  * function, so the two can never drift.
  */
 
-import { GRAND_ALLIANCE_NAMES, Rarity, rarityName, type Rank } from './enums.js';
+import {
+  CampaignType,
+  GRAND_ALLIANCE_NAMES,
+  Rarity,
+  rarityName,
+  type GrandAlliance,
+  type Rank,
+} from './enums.js';
 import { computeUnitStats, type ComputedUnitStats } from './stats.js';
 import { unitCombat, type AttackProfile, type UnitCombat } from './combat.js';
 import { levelToCompleteRank } from './plan.js';
 import type { UnitId } from './ids.js';
 import type {
   BattleDefinition,
+  CampaignDefinition,
   GameDatabase,
   ItemDefinition,
   UnitDefinition,
@@ -836,20 +844,186 @@ export class ItemOptimiser {
 /* Battles                                                                    */
 /* -------------------------------------------------------------------------- */
 
+/* -------------------------------------------------------------------------- */
+/* Who a campaign lets you deploy                                             */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The three axes the game's own campaign screen is arranged on.
+ *
+ * The data models a campaign as one flat `CampaignType`, which conflates two
+ * independent choices — whose side you are on, and how hard the board is — and
+ * then names each combination separately: "Fall of Cadia Mirror Elite" is one
+ * campaign, not a coordinate. Pulled apart here so a picker can offer the same
+ * three lists the game does instead of one list of twenty-eight.
+ */
+export type BattleLevel = 'Standard' | 'Elite' | 'Extremis';
+
+/** `Mirror` and `EliteMirror` are the two sides played from the enemy's end. */
+const MIRROR_TYPES: ReadonlySet<number> = new Set([CampaignType.Mirror, CampaignType.EliteMirror]);
+
+/** The opposite side of the same board: standard against mirror, at each level. */
+const OPPOSITE_SIDE: Readonly<Record<number, number>> = {
+  [CampaignType.Standard]: CampaignType.Mirror,
+  [CampaignType.Mirror]: CampaignType.Standard,
+  [CampaignType.Elite]: CampaignType.EliteMirror,
+  [CampaignType.EliteMirror]: CampaignType.Elite,
+};
+
+/**
+ * Faction names the roster and the campaign tables spell differently.
+ *
+ * The battle tables name the faction as the setting does; the roster names it
+ * as the game's own ids do. One pair disagrees, and it is the same faction —
+ * the Adepta Sororitas are the Sisterhood.
+ */
+const FACTION_ALIASES: Readonly<Record<string, string>> = { adeptasororitas: 'sisterhood' };
+
+/** Case, spacing and punctuation are not part of a faction's identity here. */
+const foldFaction = (name: string): string => {
+  const folded = name.replace(/[^a-z0-9]/gi, '').toLowerCase();
+  return FACTION_ALIASES[folded] ?? folded;
+};
+
+/** A campaign's name with the words that describe the side and level removed. */
+export function campaignFamily(name: string): string {
+  return name.replace(/\s+(Mirror|Elite|Extremis)\b/gi, '').trim();
+}
+
+export function battleLevelOf(type: CampaignType | undefined): BattleLevel {
+  if (type === CampaignType.Elite || type === CampaignType.EliteMirror) return 'Elite';
+  if (type === CampaignType.Extremis) return 'Extremis';
+  return 'Standard';
+}
+
+export const isMirrorType = (type: CampaignType | undefined): boolean =>
+  type !== undefined && MIRROR_TYPES.has(type);
+
+/**
+ * The Grand Alliance each campaign lets you deploy, by campaign id.
+ *
+ * Campaigns are alliance-locked: Indomitus is fought by the Imperium, its
+ * Mirror by the Xenos who hold the other end of the same board. Neither data
+ * source publishes that — no table anywhere says who a node *permits* — so it
+ * is derived, from the one place the answer is written down implicitly: the
+ * enemies of the opposite side. Whoever you fight in Indomitus Mirror is
+ * whoever you play in Indomitus, and that is Ultramarines on every node of it.
+ *
+ * Deliberately partial. Only a campaign with an opposite side is derived at
+ * all: an event campaign has none, and its name is no substitute — the Dark
+ * Angels event fights Dark Angels, so reading the name as the side you play
+ * gets it backwards. Those are left unrestricted, as is any campaign whose
+ * opponent is not clear enough to name.
+ *
+ * Left out rather than guessed at because the cost of the two mistakes is not
+ * symmetric: a missing restriction shows a squad the game will refuse, which
+ * the player sees the moment they try it, while an invented one hides units
+ * they could have brought and says nothing at all.
+ */
+export function campaignAlliances(db: GameDatabase): Map<string, GrandAlliance> {
+  const allianceOfFaction = new Map<string, GrandAlliance>();
+  for (const unit of Object.values(db.units)) {
+    if (unit.factionId === undefined || unit.grandAlliance === undefined) continue;
+    allianceOfFaction.set(foldFaction(unit.factionId), unit.grandAlliance);
+  }
+
+  const families = new Map<string, Map<number, CampaignDefinition>>();
+  for (const campaign of Object.values(db.campaigns)) {
+    const family = campaignFamily(campaign.name ?? campaign.id);
+    const byType = families.get(family) ?? new Map<number, CampaignDefinition>();
+    byType.set(campaign.type ?? CampaignType.Standard, campaign);
+    families.set(family, byType);
+  }
+
+  const allowed = new Map<string, GrandAlliance>();
+  for (const byType of families.values()) {
+    for (const [type, campaign] of byType) {
+      const opposite = byType.get(OPPOSITE_SIDE[type] ?? -1);
+      if (opposite === undefined) continue;
+      const faction = mostFoughtFaction(opposite);
+      if (faction === undefined) continue;
+      const alliance = allianceOfFaction.get(foldFaction(faction));
+      if (alliance !== undefined) allowed.set(campaign.id, alliance);
+    }
+  }
+  return allowed;
+}
+
+/**
+ * The faction a campaign is fought against on most of its nodes.
+ *
+ * A majority rather than a union: a three-way war like Octarius puts a third
+ * party on boards of both sides, and pooling every faction that appears would
+ * take the one constant — who you are actually fighting — and bury it. The
+ * threshold rejects a campaign with no clear opponent instead of guessing at
+ * one.
+ */
+function mostFoughtFaction(campaign: CampaignDefinition): string | undefined {
+  const battles = Object.values(campaign.battles);
+  if (battles.length === 0) return undefined;
+  const seen = new Map<string, number>();
+  for (const battle of battles) {
+    for (const faction of new Set(battle.enemyFactions ?? [])) {
+      seen.set(faction, (seen.get(faction) ?? 0) + 1);
+    }
+  }
+  const [top] = [...seen].sort((a, b) => b[1] - a[1]);
+  return top && top[1] / battles.length >= 0.5 ? top[0] : undefined;
+}
+
 /**
  * What a campaign node asks of a squad.
  *
  * The node data carries the team size, the enemy roster with each enemy's rank,
  * stars and resolved stats, and which factions and alliances they belong to. It
- * carries **no required or forbidden units** — regular campaign nodes impose
- * none. Anything this class says about who to bring is therefore a
- * recommendation derived from the enemies, not a rule read out of the data.
+ * names no required or forbidden units — no table anywhere does — but the game
+ * does impose one rule the data can be made to admit: a campaign is fought by a
+ * single Grand Alliance, and {@link allowedAlliance} carries it when it can be
+ * worked out. Everything else here about who to bring is a recommendation
+ * derived from the enemies rather than a rule read out of the data.
  */
 export class BattleBrief {
   constructor(
     readonly battle: BattleDefinition,
     readonly campaignName: string,
+    /** The alliance this campaign is fought by — see {@link campaignAlliances}. */
+    readonly allowedAlliance?: GrandAlliance,
   ) {}
+
+  /** The campaign without the words for its side and level: "Fall of Cadia". */
+  get family(): string {
+    return campaignFamily(this.campaignName);
+  }
+
+  /** Played from the enemy's end of the same board. */
+  get mirror(): boolean {
+    return isMirrorType(this.battle.campaignType);
+  }
+
+  get level(): BattleLevel {
+    return battleLevelOf(this.battle.campaignType);
+  }
+
+  /** The alliance as the page spells it, or nothing when unrestricted. */
+  get allowedAllianceName(): string | undefined {
+    return this.allowedAlliance === undefined
+      ? undefined
+      : GRAND_ALLIANCE_NAMES[this.allowedAlliance];
+  }
+
+  /**
+   * Whether the game would let this unit onto the board.
+   *
+   * Open where the restriction is unknown, on both counts: a campaign whose
+   * side could not be derived permits everyone, and so does a unit whose own
+   * alliance the roster never gave. Refusing on missing data would hide units
+   * for want of a field rather than for a rule.
+   */
+  allows(unit: RosterUnit): boolean {
+    const required = this.allowedAllianceName;
+    if (required === undefined) return true;
+    return unit.alliance === 'Unknown' || unit.alliance === required;
+  }
 
   /** Units the player may deploy, 1 to 5. */
   get slots(): number {
@@ -928,10 +1102,17 @@ export class BattleBrief {
 
   /** Every node in the database, as briefs, for a picker. */
   static all(db: GameDatabase): BattleBrief[] {
+    // Derived once for the whole database: the answer for a node is a property
+    // of its campaign, and working it out per node would redo the same scan of
+    // every board seven hundred times over.
+    const alliances = campaignAlliances(db);
     const briefs: BattleBrief[] = [];
     for (const campaign of Object.values(db.campaigns)) {
+      const alliance = alliances.get(campaign.id);
       for (const battle of Object.values(campaign.battles)) {
-        briefs.push(new BattleBrief(battle, campaign.name ?? campaign.id));
+        briefs.push(
+          new BattleBrief(battle, campaign.name ?? campaign.id, alliance),
+        );
       }
     }
     return briefs;
@@ -965,6 +1146,10 @@ export class TeamOptimiser {
 
   recommend(units: readonly RosterUnit[], slots = this.brief.slots): Recommendation[] {
     const scored = units
+      // A squad the game will not let you deploy is not a recommendation. The
+      // filter comes first so the normalisation below is measured against the
+      // units actually in contention, not against a Necron the node refuses.
+      .filter((unit) => this.brief.allows(unit))
       .map((unit) => {
         const damage = this.brief.damageAgainst(unit);
         const toughness = score(unit, 'defence');

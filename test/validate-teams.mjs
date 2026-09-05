@@ -25,6 +25,9 @@ import {
   rankName,
   rarityName,
   Rarity,
+  campaignAlliances,
+  campaignFamily,
+  GRAND_ALLIANCE_NAMES,
 } from '../dist/gamedata/index.js';
 
 const player = JSON.parse(readFileSync(process.argv[2] ?? 'player.json', 'utf8'));
@@ -355,6 +358,99 @@ const OBJECTIVES = ['health', 'armour', 'damage', 'effective', 'offence', 'defen
       );
     }
   }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Who a campaign lets you deploy                                             */
+/* -------------------------------------------------------------------------- */
+{
+  /*
+   * The alliance a campaign is fought by is derived, not published, so the
+   * checks are the ones that would catch a derivation drifting: a side must
+   * never be the alliance it spends the campaign shooting at, and the two ends
+   * of the same board must never be the same side.
+   */
+  const alliances = campaignAlliances(db);
+  const roster = buildRosterUnits(player, db);
+  const allianceOfFaction = new Map();
+  for (const unit of Object.values(db.units)) {
+    if (unit.factionId === undefined || unit.grandAlliance === undefined) continue;
+    allianceOfFaction.set(unit.factionId.replace(/[^a-z0-9]/gi, '').toLowerCase(), unit.grandAlliance);
+  }
+
+  const unresolved = [];
+  const byFamily = new Map();
+  for (const campaign of Object.values(db.campaigns)) {
+    const name = campaign.name ?? campaign.id;
+    const alliance = alliances.get(campaign.id);
+    if (alliance === undefined) {
+      unresolved.push(name);
+      continue;
+    }
+
+    // You do not fight your own side. Whoever the campaign puts across the
+    // board on most of its nodes must belong to a different alliance than the
+    // one it is derived to be fought by.
+    const battles = Object.values(campaign.battles);
+    const seen = new Map();
+    for (const battle of battles) {
+      for (const faction of new Set(battle.enemyFactions ?? [])) {
+        seen.set(faction, (seen.get(faction) ?? 0) + 1);
+      }
+    }
+    const [top] = [...seen].sort((a, b) => b[1] - a[1]);
+    if (top && top[1] / battles.length >= 0.5) {
+      const enemyAlliance = allianceOfFaction.get(top[0].replace(/[^a-z0-9]/gi, '').toLowerCase());
+      if (enemyAlliance !== undefined && enemyAlliance === alliance) {
+        note(
+          `campaigns: ${name} is played by ${GRAND_ALLIANCE_NAMES[alliance]} and fights ` +
+            `${top[0]}, who are ${GRAND_ALLIANCE_NAMES[enemyAlliance]}`,
+        );
+      }
+    }
+
+    const family = campaignFamily(name);
+    const list = byFamily.get(family) ?? [];
+    list.push({ name, type: campaign.type ?? 0, alliance });
+    byFamily.set(family, list);
+  }
+
+  // Standard against Mirror at the same level: two ends of one board, and the
+  // whole point of a mirror is that the sides swap.
+  const OPPOSITE = { 0: 1, 1: 0, 2: 3, 3: 2 };
+  let mirrored = 0;
+  for (const [family, sides] of byFamily) {
+    for (const side of sides) {
+      const other = sides.find((s) => s.type === OPPOSITE[side.type]);
+      if (!other) continue;
+      mirrored += 1;
+      if (other.alliance === side.alliance) {
+        note(`campaigns: ${family} has both sides played by ${GRAND_ALLIANCE_NAMES[side.alliance]}`);
+      }
+    }
+  }
+
+  // And the restriction has to actually reach the squad picker.
+  let filtered = 0;
+  for (const brief of BattleBrief.all(db)) {
+    if (brief.allowedAlliance === undefined) continue;
+    for (const pick of new TeamOptimiser(brief, 'defence').recommend(roster)) {
+      if (!brief.allows(pick.unit)) {
+        note(
+          `campaigns: ${brief.campaignName} node ${brief.battle.nodeNumber} picked ` +
+            `${pick.unit.name} (${pick.unit.alliance}) for a ${brief.allowedAllianceName} board`,
+        );
+      }
+      filtered += 1;
+    }
+  }
+
+  console.log(
+    `campaigns: ${alliances.size} sides derived, ${mirrored} mirrored pairs, ` +
+      `${filtered} pick(s) within their alliance` +
+      (unresolved.length > 0 ? `; unrestricted: ${[...new Set(unresolved)].join(', ')}` : '') +
+      '  ✓',
+  );
 }
 
 if (problems.length === 0) {

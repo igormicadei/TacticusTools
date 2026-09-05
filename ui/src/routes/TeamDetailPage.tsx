@@ -12,6 +12,7 @@ import {
   TeamOptimiser,
   buildRosterUnits,
   type Assignment,
+  type BattleLevel,
   type Objective,
   type PoolScope,
 } from '@lib/gamedata/teams.js';
@@ -22,8 +23,17 @@ import { Icon, useIcons } from '../components/Icon.tsx';
 import { campaignIcon, rankIcon, rarityIcon, requirementIcon, unitIcon } from '../data/icons.ts';
 import { teamsStore } from '../data/teams.ts';
 import { RosterPicker, humanise } from './TeamsPage.tsx';
-import { localNumber, localRank, localRarity } from '../i18n/game.ts';
+import {
+  localAlliance,
+  localCampaignType,
+  localNumber,
+  localRank,
+  localRarity,
+} from '../i18n/game.ts';
 import { t, tn, type StringKey } from '../i18n/locale.ts';
+
+/** Standard, then harder. The data's enum order does not read as a difficulty. */
+const LEVEL_ORDER: readonly BattleLevel[] = ['Standard', 'Elite', 'Extremis'];
 
 const RARITIES: Rarity[] = [
   Rarity.Common,
@@ -125,9 +135,13 @@ export function TeamDetailPage({ db, player }: { db: GameDatabase; player: Playe
             />
           </h1>
           <div className="muted">
-            {members.length} unit{members.length === 1 ? '' : 's'}
+            {tn(members.length, 'upg.unitCount', 'upg.unitCountPlural')}
             {cap && t('td.playedAt', { rarity: localRarity(team.capRarity) })}
-            {brief && ` · ${brief.campaignName} node ${brief.battle.nodeNumber}`}
+            {brief &&
+              ` · ${t('td.campaignNode', {
+                campaign: brief.campaignName,
+                node: brief.battle.nodeNumber,
+              })}`}
           </div>
         </div>
       </div>
@@ -151,20 +165,11 @@ export function TeamDetailPage({ db, player }: { db: GameDatabase; player: Playe
               ))}
             </select>
           </label>
-          <label>
-            <span>{t('td.battle')}</span>
-            <select
-              value={stored.battleKey ?? ''}
-              onChange={(e) => save({ battleKey: e.target.value || undefined })}
-            >
-              <option value="">{t('td.noNode')}</option>
-              {battles.map((b) => (
-                <option key={b.battle.key} value={b.battle.key}>
-                  {t('td.nodeSlots', { campaign: b.campaignName, node: b.battle.nodeNumber, slots: b.slots })}
-                </option>
-              ))}
-            </select>
-          </label>
+          <BattlePicker
+            battles={battles}
+            selected={brief}
+            onPick={(key) => save({ battleKey: key })}
+          />
         </div>
 
         {cap && <CapExplainer cap={cap} members={members} />}
@@ -314,6 +319,139 @@ function CapExplainer({ cap, members }: { cap: RarityCeiling; members: RosterUni
 }
 
 /**
+ * The node, chosen the way the game's own campaign screen is arranged.
+ *
+ * One list of every node was seven hundred options deep, ordered by nothing a
+ * player thinks in: "Fall of Cadia Mirror Elite" sat between two unrelated
+ * campaigns because the data models the side and the difficulty as part of the
+ * campaign's name rather than as choices of their own. These are the same three
+ * choices the game asks for, and then the node.
+ *
+ * Changing an axis keeps the node number wherever the new combination has one,
+ * so stepping Standard → Elite on node 12 lands on node 12 rather than dropping
+ * the selection on the floor.
+ */
+function BattlePicker({
+  battles,
+  selected,
+  onPick,
+}: {
+  battles: BattleBrief[];
+  selected: BattleBrief | undefined;
+  onPick: (key: string | undefined) => void;
+}) {
+  const [family, setFamily] = useState(() => selected?.family ?? '');
+  const [mirror, setMirror] = useState(() => selected?.mirror ?? false);
+  const [level, setLevel] = useState<BattleLevel>(() => selected?.level ?? 'Standard');
+
+  const families = useMemo(
+    () => [...new Set(battles.map((b) => b.family))].sort((a, b) => a.localeCompare(b)),
+    [battles],
+  );
+  const inFamily = useMemo(
+    () => battles.filter((b) => b.family === family),
+    [battles, family],
+  );
+  // Only the sides and levels this campaign actually has: an event campaign has
+  // no mirror, and runs Extremis where a story campaign runs Elite.
+  const sides = useMemo(() => [...new Set(inFamily.map((b) => b.mirror))].sort(), [inFamily]);
+  const onSide = useMemo(() => inFamily.filter((b) => b.mirror === mirror), [inFamily, mirror]);
+  const levels = useMemo(
+    () => LEVEL_ORDER.filter((l) => onSide.some((b) => b.level === l)),
+    [onSide],
+  );
+  const nodes = useMemo(
+    () =>
+      onSide
+        .filter((b) => b.level === level)
+        .sort((a, b) => a.battle.nodeNumber - b.battle.nodeNumber),
+    [onSide, level],
+  );
+
+  /** Re-point at the node with the same number, or at nothing when it is gone. */
+  const move = (next: { family?: string; mirror?: boolean; level?: BattleLevel }) => {
+    const wantFamily = next.family ?? family;
+    const wantMirror = next.mirror ?? mirror;
+    const wantLevel = next.level ?? level;
+    const pool = battles.filter((b) => b.family === wantFamily);
+    // An axis the new campaign does not have falls back to one it does, so the
+    // three selects can never sit on a combination with no nodes behind it.
+    const side = pool.some((b) => b.mirror === wantMirror) ? wantMirror : (pool[0]?.mirror ?? false);
+    const onThatSide = pool.filter((b) => b.mirror === side);
+    const lvl = onThatSide.some((b) => b.level === wantLevel)
+      ? wantLevel
+      : (LEVEL_ORDER.find((l) => onThatSide.some((b) => b.level === l)) ?? 'Standard');
+
+    setFamily(wantFamily);
+    setMirror(side);
+    setLevel(lvl);
+
+    const number = selected?.battle.nodeNumber;
+    const match = onThatSide.find((b) => b.level === lvl && b.battle.nodeNumber === number);
+    onPick(match?.battle.key);
+  };
+
+  return (
+    <>
+      <label>
+        <span>{t('td.campaign')}</span>
+        <select value={family} onChange={(e) => move({ family: e.target.value })}>
+          <option value="">{t('td.noCampaign')}</option>
+          {families.map((name) => (
+            <option key={name} value={name}>
+              {name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label>
+        <span>{t('td.side')}</span>
+        <select
+          value={mirror ? 'mirror' : 'standard'}
+          onChange={(e) => move({ mirror: e.target.value === 'mirror' })}
+          disabled={sides.length < 2}
+        >
+          {sides.map((isMirror) => (
+            <option key={String(isMirror)} value={isMirror ? 'mirror' : 'standard'}>
+              {isMirror ? localCampaignType('Mirror') : localCampaignType('Standard')}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label>
+        <span>{t('td.level')}</span>
+        <select
+          value={level}
+          onChange={(e) => move({ level: e.target.value as BattleLevel })}
+          disabled={levels.length < 2}
+        >
+          {levels.map((l) => (
+            <option key={l} value={l}>
+              {localCampaignType(l)}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label>
+        <span>{t('td.nodeLabel')}</span>
+        <select
+          value={selected?.battle.key ?? ''}
+          onChange={(e) => onPick(e.target.value || undefined)}
+          disabled={nodes.length === 0}
+        >
+          <option value="">{t('td.noNode')}</option>
+          {nodes.map((b) => (
+            <option key={b.battle.key} value={b.battle.key}>
+              {t('td.nodeOnly', { node: b.battle.nodeNumber, slots: b.slots })}
+            </option>
+          ))}
+        </select>
+      </label>
+    </>
+  );
+}
+
+/**
  * The node's own numbers.
  *
  * Campaign nodes carry no required or forbidden units — the game imposes none —
@@ -326,7 +464,10 @@ function BattlePanel({ brief, onFill }: { brief: BattleBrief; onFill: () => void
       <div className="row wrap" style={{ marginTop: 12, marginBottom: 8 }}>
         <Icon src={campaignIcon(brief.battle.campaignId)} size={24} className="portrait" reserve />
         <b>
-          {brief.campaignName} node {brief.battle.nodeNumber}
+          {t('td.campaignNode', {
+            campaign: brief.campaignName,
+            node: brief.battle.nodeNumber,
+          })}
         </b>
         <span className="chip">{t('td.slots', { n: brief.slots })}</span>
         <span className="chip">{t('td.enemies', { n: brief.enemyCount })}</span>
@@ -342,10 +483,20 @@ function BattlePanel({ brief, onFill }: { brief: BattleBrief; onFill: () => void
           </span>
         ))}
         <span style={{ flex: 1 }} />
+        {/* The one rule the node imposes, said plainly — a derived restriction
+            that hides units has to be visible enough to argue with. */}
+        {brief.allowedAllianceName ? (
+          <span className="chip gold">
+            {t('td.allianceOnly', { alliance: localAlliance(brief.allowedAllianceName) })}
+          </span>
+        ) : (
+          <span className="chip">{t('td.allianceUnknown')}</span>
+        )}
         <button onClick={onFill}>{t('td.fillFromNode')}</button>
       </div>
       <p className="small muted" style={{ margin: 0 }}>
         {t('td.nodeBlurb')}
+        {brief.allowedAllianceName ? ` ${t('td.allianceNote')}` : ''}
       </p>
     </>
   );
@@ -373,6 +524,12 @@ function MemberRow({
             {' · '}
             {localRank(member.effective.rank)}
           </span>
+          {/* A squad picked before the node was chosen can hold units the node
+              refuses. Said here rather than silently dropping them: the team is
+              the player's, and removing their pick is not this page's call. */}
+          {brief && !brief.allows(member) && (
+            <span className="chip warn">{t('td.wrongAlliance')}</span>
+          )}
         </span>
         <span className="row-tail">
           <span className="row-icons">
@@ -395,13 +552,13 @@ function MemberRow({
           {brief && (
             <>
               <span className="chip ok-chip" title={t('teams.nodeNormalHint')}>
-                {Math.round(brief.normalDamageAgainst(member))} normal
+                {t('td.normalDamage', { n: Math.round(brief.normalDamageAgainst(member)) })}
               </span>
               <span
                 className="chip slot-active"
                 title={t('teams.nodeAbilityHint')}
               >
-                {Math.round(brief.abilityDamageAgainst(member))} ability
+                {t('td.abilityDamage', { n: Math.round(brief.abilityDamageAgainst(member)) })}
               </span>
             </>
           )}

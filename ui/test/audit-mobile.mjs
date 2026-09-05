@@ -218,6 +218,10 @@ const ENGLISH_TELLS = [
   // Units of measure read as furniture and are easy to leave behind: two of
   // these sat in a node table through two whole translation passes.
   'each', 'per run', 'per copy',
+  // Chip labels beside a number: the source scan reads these as one stray word
+  // and lets them past. "normal" is the same word in both languages, so only
+  // its neighbour can be tested for.
+  'ability',
 ];
 
 /*
