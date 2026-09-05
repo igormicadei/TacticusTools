@@ -227,6 +227,9 @@ export const PT: Record<keyof typeof EN, string> = {
   'spend.unitBeyond': '{n} espaço fora do alcance',
   'spend.unitBeyondPlural': '{n} espaços fora do alcance',
   'spend.each': '{n}⚡ por cópia',
+  'spend.toFarm': 'A farmar: {n} drop, {energy}⚡ — o que você já tem sai da conta primeiro.',
+  'spend.toFarmPlural': 'A farmar: {n} drops, {energy}⚡ — o que você já tem sai da conta primeiro.',
+  'spend.nothingToFarm': 'Nada a farmar — as peças já estão em mãos.',
   'spend.today': 'Só o que dá para hoje',
   'spend.todayHint':
     'Cada nó permite um número fixo de investidas por dia. Isto mantém só os espaços que as investidas restantes de hoje conseguiriam preencher.',

@@ -725,7 +725,7 @@ function ForgeChip({ ready }: { ready: boolean }) {
   );
 }
 
-function NodeTable({ nodes }: { nodes: ReturnType<typeof nodeStatuses> }) {
+export function NodeTable({ nodes }: { nodes: ReturnType<typeof nodeStatuses> }) {
   useIcons();
   if (nodes.length === 0) {
     return <p className="source-note muted small">{t('si.noNodeDrops')}</p>;

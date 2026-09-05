@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 
 
 import { currentState, markProgress, resolvePlan } from '@lib/gamedata/plan.js';
-import { nodeStatuses } from '@lib/gamedata/requirements.js';
+import { farmTargets } from '@lib/gamedata/requirements.js';
 import {
   buildTimeline,
   energyCandidates,
@@ -14,9 +14,9 @@ import {
 import type { GameDatabase } from '@lib/gamedata/types.js';
 import type { PlayerResponse } from '@lib/types/player.js';
 
-import { ItemRow, toggleOpen } from '../components/StepItems.tsx';
+import { ItemRow, NodeTable, toggleOpen } from '../components/StepItems.tsx';
 import { plansStore } from '../data/plans.ts';
-import { rankIcon, unitIcon } from '../data/icons.ts';
+import { rankIcon, requirementIcon, unitIcon } from '../data/icons.ts';
 import { Icon, useIcons } from '../components/Icon.tsx';
 import { localNumber, localRank, localRarity, localStat, localStepLabel } from '../i18n/game.ts';
 import { t, tn } from '../i18n/locale.ts';
@@ -441,6 +441,110 @@ function ByUnit({
   );
 }
 
+/**
+ * What filling this slot sends you out to farm, and where.
+ *
+ * The row above prices the slot; this is the shopping list behind the price —
+ * the same flattened base materials the plan screen shows, each opening into
+ * the nodes that drop it. A forged material is not on it: what a player takes
+ * to a campaign node is the leaves of the recipe, not the thing at the top.
+ *
+ * The total here counts what is already in the bag, so it can sit under a
+ * higher figure on the row: that one is the price of the whole quantity from
+ * scratch, which is what makes it comparable between slots.
+ */
+function FarmList({
+  row,
+  db,
+  player,
+}: {
+  row: EnergyCandidate;
+  db: GameDatabase;
+  player: PlayerResponse;
+}) {
+  const [shown, setShown] = useState<string>();
+  const targets = useMemo(
+    () =>
+      farmTargets(
+        {
+          kind: 'upgrade',
+          key: row.itemKey,
+          name: row.itemName,
+          ...(row.rarity !== undefined ? { rarity: row.rarity } : {}),
+        },
+        row.copies,
+        db,
+        player,
+      ),
+    [row, db, player],
+  );
+
+  if (targets.length === 0) {
+    return (
+      <div className="source-note">
+        <p className="muted small" style={{ margin: 0 }}>{t('spend.nothingToFarm')}</p>
+      </div>
+    );
+  }
+
+  const drops = targets.reduce((n, target) => n + target.amount, 0);
+  const energy = targets.reduce((n, target) => n + (target.energy ?? 0), 0);
+
+  return (
+    <div className="source-note">
+      <p className="muted small" style={{ margin: '0 0 6px' }}>
+        {tn(drops, 'spend.toFarm', 'spend.toFarmPlural', {
+          energy: localNumber(Math.round(energy)),
+        })}
+      </p>
+      <ul className="item-list nested">
+        {targets.map((target) => {
+          const id = `${row.unitId}:${row.slotIndex}:${target.key}`;
+          const isOpen = shown === id;
+          return (
+            <li className="item-row" key={target.key}>
+              <button
+                className="item-head"
+                onClick={() => setShown(isOpen ? undefined : id)}
+                aria-expanded={isOpen}
+              >
+                <span className="chevron">{isOpen ? '▾' : '▸'}</span>
+                <span className="count">{target.amount}×</span>
+                <Icon src={requirementIcon(target.key)} size={22} className="portrait" reserve />
+                <span className="item-name">
+                  {target.name}
+                  {target.rarity !== undefined && (
+                    <span className="muted small"> · {localRarity(target.rarity)}</span>
+                  )}
+                  {/* The chain it is forged into, so a part several recipes
+                      down still says what it is for. */}
+                  {target.via.length > 0 && (
+                    <span className="muted small">
+                      {' · '}
+                      {t('si.forFlat', { chain: target.via.join(' › ') })}
+                    </span>
+                  )}
+                </span>
+                <span className="muted small">
+                  {target.energyPerCopy === undefined
+                    ? t('si.noSource')
+                    : t('spend.each', { n: target.energyPerCopy.toFixed(1) })}
+                </span>
+                {target.energy !== undefined && (
+                  <span className="chip">
+                    {t('spend.cost', { n: localNumber(Math.round(target.energy)) })}
+                  </span>
+                )}
+              </button>
+              {isOpen && <NodeTable nodes={target.nodes} />}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
 function CandidateTable({
   rows,
   db,
@@ -493,60 +597,7 @@ function CandidateTable({
                     : tn(row.today.raids, 'spend.raids', 'spend.raidsPlural')}
               </span>
             </button>
-            {isOpen && (
-              <div className="source-note">
-                <div className="table-wrap">
-                <table className="nodes">
-                  <tbody>
-                    {nodeStatuses(
-                      row.nodes,
-                      player,
-                      db,
-                      row.rarity !== undefined
-                        ? { kind: 'upgrade', rarity: row.rarity }
-                        : { kind: 'upgrade' },
-                    )
-                      .slice(0, 6)
-                      .map((node) => (
-                        <tr
-                          key={`${node.campaignId}#${node.battleIndex}`}
-                          className={node.unlocked ? '' : 'locked'}
-                        >
-                          <td>{node.campaignName}</td>
-                          <td className="muted">{t('si.node', { n: node.nodeNumber })}</td>
-                          <td>
-                            {node.unlocked ? (
-                              node.attemptsLeft > 0 ? (
-                                <span className="ok">{t('timeline.triesLeft', { n: node.attemptsLeft })}</span>
-                              ) : (
-                                <span className="muted">{t('timeline.noneLeftToday')}</span>
-                              )
-                            ) : (
-                              <span className="muted">{t('si.locked')}</span>
-                            )}
-                          </td>
-                          <td className="muted">
-                            {node.energyCost !== undefined
-                              ? `${node.energyCost}⚡ ${t('si.perRun')}`
-                              : ''}
-                          </td>
-                          <td className="muted">
-                            {node.energyPerDrop !== undefined
-                              ? `${node.energyPerDrop.toFixed(1)}⚡ ${t('si.each')}`
-                              : ''}
-                          </td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
-                </div>
-                {row.nodes.length === 0 && (
-                  <p className="muted small" style={{ margin: 0 }}>
-                    {t('timeline.craftedNote')}
-                  </p>
-                )}
-              </div>
-            )}
+            {isOpen && <FarmList row={row} db={db} player={player} />}
           </li>
         );
       })}

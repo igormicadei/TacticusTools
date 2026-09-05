@@ -670,6 +670,69 @@ export function raidsToday(
   return need > 1e-9 ? undefined : plan;
 }
 
+/**
+ * One base material a slot comes down to, with where to get it and what it costs.
+ *
+ * {@link FlatNeed} says what to farm; this says where and for how much, which
+ * is the other half of the same question and was previously only answered on
+ * the plan screen.
+ */
+export interface FarmTarget extends FlatNeed {
+  /** Energy per copy at the cheapest node open now, absent when there is none. */
+  energyPerCopy?: number;
+  /** Total for this material — `amount * energyPerCopy`. */
+  energy?: number;
+  /** Where to run for it, unlocked and cheapest per copy first. */
+  nodes: NodeStatus[];
+}
+
+/**
+ * What filling one slot actually sends you out to farm.
+ *
+ * A slot asks for a material, and the material is often forged from parts that
+ * are themselves forged; what a player takes to a campaign node is the leaves
+ * of that tree. This is {@link flattenNeeds} pointed at a single requirement
+ * rather than a whole step, with each leaf priced and given its nodes.
+ *
+ * `copies` is the shortfall of `item` itself, already net of what is held of
+ * it — the caller has done that subtraction, and this consumes stock only as
+ * it descends into a recipe, exactly as {@link raidsToday} does.
+ */
+export function farmTargets(
+  item: Pick<ItemRequirement, 'kind' | 'key' | 'name'> & { rarity?: Rarity },
+  copies: number,
+  db: GameDatabase,
+  player: PlayerResponse,
+  held: Map<string, number> = ownedByKey(player, db),
+): FarmTarget[] {
+  if (copies <= 0) return [];
+  const components = allocateComponents(item, copies, db, held, new Set());
+  const top: AllocatedItem = {
+    ...item,
+    amount: copies,
+    covered: 0,
+    missing: copies,
+    ...(components ? { components } : {}),
+  };
+
+  return flattenNeeds([top]).map((need) => {
+    const each = energyPerCopy(need, db, player);
+    const sources = itemSources(need, db) ?? [];
+    return {
+      ...need,
+      ...(each !== undefined ? { energyPerCopy: each, energy: each * need.amount } : {}),
+      nodes: nodeStatuses(sources, player, db, {
+        kind: need.kind,
+        ...(need.rarity !== undefined ? { rarity: need.rarity } : {}),
+      }).sort(
+        (a, b) =>
+          Number(b.unlocked) - Number(a.unlocked) ||
+          (a.energyPerDrop ?? Infinity) - (b.energyPerDrop ?? Infinity),
+      ),
+    };
+  });
+}
+
 /** What is left to do, counted three ways because they answer different questions. */
 export interface FarmingCost {
   /**

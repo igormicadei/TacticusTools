@@ -27,6 +27,7 @@ import {
   farmingCost,
   energyPerCopy,
   raidsToday,
+  farmTargets,
   levelToCompleteRank,
 } from '../dist/gamedata/index.js';
 
@@ -505,6 +506,57 @@ console.log(`audited ${checked} plans; ${blockedSeen} blocked-item findings veri
   console.log(
     `raids: ${planned} slot(s) reachable today, ${stocked} needing no raid at all  ✓`,
   );
+
+  /*
+   * The shopping list behind a slot.
+   *
+   * `farmTargets` answers "what do I actually go and get", so every line of it
+   * has to be something a node drops — a forged material on that list is the
+   * chore the flattening exists to remove. And because stock only ever takes
+   * work away, the list can never cost more than the same slot priced from
+   * scratch.
+   */
+  let listed = 0;
+  let leaves = 0;
+  for (const { who, item, copies, name } of items.values()) {
+    const targets = farmTargets(item, copies, db, playerResponse);
+    if (targets.length === 0) continue;
+    listed += 1;
+    leaves += targets.length;
+
+    for (const target of targets) {
+      if (itemSource(target, db).kind === 'craft') {
+        note(`farm list: ${who} is sent to farm ${target.name}, which is forged`);
+      }
+      if (target.amount <= 0) note(`farm list: ${who} asks for ${target.amount}x ${target.name}`);
+      if (
+        target.energyPerCopy !== undefined &&
+        Math.abs((target.energy ?? 0) - target.amount * target.energyPerCopy) > 1e-6
+      ) {
+        note(`farm list: ${target.name} totals ${target.energy}, not ${target.amount} x ${target.energyPerCopy}`);
+      }
+      // Nodes are for the caller to send the player to; a locked one ahead of
+      // an open one would send them somewhere they cannot go.
+      let seenLocked = false;
+      for (const node of target.nodes) {
+        if (!node.unlocked) seenLocked = true;
+        else if (seenLocked) {
+          note(`farm list: ${target.name} lists an open node behind a locked one`);
+          break;
+        }
+      }
+    }
+
+    const scratch = energyPerCopy(item, db, playerResponse);
+    const total = targets.reduce((n, t) => n + (t.energy ?? 0), 0);
+    if (scratch !== undefined && total > copies * scratch + 1e-6) {
+      note(
+        `farm list: ${who} costs ${total.toFixed(1)} to farm but only ` +
+          `${(copies * scratch).toFixed(1)} from scratch — stock cannot add work`,
+      );
+    }
+  }
+  console.log(`farm list: ${listed} slot(s) broken down into ${leaves} base material(s)  ✓`);
 }
 
 if (problems.length === 0) {

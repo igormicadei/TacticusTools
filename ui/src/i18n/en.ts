@@ -233,6 +233,9 @@ export const EN = {
   'spend.unitBeyond': '{n} slot out of reach',
   'spend.unitBeyondPlural': '{n} slots out of reach',
   'spend.each': '{n}⚡ per copy',
+  'spend.toFarm': 'To farm: {n} drop, {energy}⚡ — what you already hold is taken off first.',
+  'spend.toFarmPlural': 'To farm: {n} drops, {energy}⚡ — what you already hold is taken off first.',
+  'spend.nothingToFarm': 'Nothing to farm — the parts are already in the bag.',
   'spend.today': 'Only what today can reach',
   'spend.todayHint':
     'Nodes allow a fixed number of runs a day. This keeps the slots today’s remaining runs could be expected to fill.',
