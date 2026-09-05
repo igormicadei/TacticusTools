@@ -570,11 +570,11 @@ export function energyPerCopy(
  * left. A price in energy says nothing about that: it is an average over
  * unlimited runs, so it happily quotes a figure for work the day cannot hold.
  *
- * So this counts runs instead, against the attempts actually remaining. Copies
- * are taken from the cheapest open node first and each run is credited with
- * `dropRate` copies, which is the same expected-value arithmetic the prices
- * use — a forecast, not a promise. A crafted item costs its ingredients'
- * raids, recursively, since no node drops it.
+ * So this counts runs instead, against the attempts actually remaining. The
+ * slot is flattened to the base materials a node actually drops, and each is
+ * taken from its cheapest open node first with every run credited `dropRate`
+ * copies — the same expected-value arithmetic the prices use, a forecast
+ * rather than a promise.
  *
  * `undefined` means today cannot cover it: either nothing is open that drops
  * the item, or what is open has too few attempts left. That is deliberately
@@ -596,78 +596,54 @@ export interface RaidPlan {
 }
 
 export function raidsToday(
-  item: Pick<ItemRequirement, 'kind' | 'key'> & { rarity?: Rarity },
+  item: Pick<ItemRequirement, 'kind' | 'key' | 'name'> & { rarity?: Rarity },
   copies: number,
   db: GameDatabase,
   player: PlayerResponse,
   /**
-   * Stock, spent as the recursion descends into a recipe.
+   * Stock, spent as the flattening descends into a recipe.
    *
-   * Held ingredients are the difference between a recipe you can finish today
-   * and one you cannot, so unlike the energy price — a unit price, which has no
-   * business knowing what you own — this consumes them. `copies` is what you
-   * still need of `item` itself, already net of what you hold of it; the
-   * caller has done that subtraction and doing it again here would credit the
-   * same materials twice.
+   * `copies` is what you still need of `item` itself, already net of what you
+   * hold of it; the caller has done that subtraction and doing it again here
+   * would credit the same materials twice.
    */
   held: Map<string, number> = ownedByKey(player, db),
-  seen: ReadonlySet<string> = new Set(),
 ): RaidPlan | undefined {
-  if (copies <= 0) return { raids: 0, energy: 0, nodes: 0 };
-  if (seen.has(item.key)) return undefined;
+  return raidsForTargets(farmTargets(item, copies, db, player, held));
+}
 
-  let need = copies;
-  const source = itemSource(item, db);
-
-  if (source.kind === 'craft') {
-    const nested = new Set(seen).add(item.key);
-    const total: RaidPlan = { raids: 0, energy: 0, nodes: 0 };
-    for (const component of source.recipe) {
-      const want = need * component.amount;
-      const have = held.get(component.key) ?? 0;
-      const fromStock = Math.min(have, want);
-      held.set(component.key, have - fromStock);
-      const part = raidsToday(
-        {
-          kind: 'upgrade',
-          key: component.key,
-          ...(component.rarity !== undefined ? { rarity: component.rarity } : {}),
-        },
-        want - fromStock,
-        db,
-        player,
-        held,
-        nested,
-      );
-      if (part === undefined) return undefined;
-      total.raids += part.raids;
-      total.energy += part.energy;
-      total.nodes += part.nodes;
-    }
-    return total;
-  }
-  if (source.kind !== 'farm') return undefined;
-
-  const open = nodeStatuses(source.nodes, player, db, {
-    kind: item.kind,
-    ...(item.rarity !== undefined ? { rarity: item.rarity } : {}),
-  })
-    .filter((n) => n.unlocked && n.attemptsLeft > 0 && n.dropRate && n.energyCost !== undefined)
-    .sort((a, b) => (a.energyPerDrop ?? Infinity) - (b.energyPerDrop ?? Infinity));
-
+/**
+ * {@link raidsToday}, for a list already flattened.
+ *
+ * The two used to walk the recipe separately, once to price it and once to
+ * count runs, which is one walk too many: they consumed the same stock and had
+ * to be given separate ledgers to stop them charging it twice. One flattening
+ * feeds both, and the run count is then only a question about nodes.
+ *
+ * Nodes are not contended between targets — a campaign node drops one reward —
+ * so each target's attempts can be spent without regard to the others.
+ */
+export function raidsForTargets(targets: readonly FarmTarget[]): RaidPlan | undefined {
   const plan: RaidPlan = { raids: 0, energy: 0, nodes: 0 };
-  for (const node of open) {
-    if (need <= 1e-9) break;
-    // Cheapest per copy first, then whatever the node has left. Runs are whole:
-    // half a raid drops nothing.
-    const runs = Math.min(node.attemptsLeft, Math.ceil(need / node.dropRate!));
-    if (runs <= 0) continue;
-    plan.raids += runs;
-    plan.energy += runs * node.energyCost!;
-    plan.nodes += 1;
-    need -= runs * node.dropRate!;
+  for (const target of targets) {
+    const open = target.nodes.filter(
+      (node) => node.unlocked && node.attemptsLeft > 0 && node.dropRate && node.energyCost !== undefined,
+    );
+    let need = target.amount;
+    for (const node of open) {
+      if (need <= 1e-9) break;
+      // Cheapest per copy first, then whatever the node has left. Runs are
+      // whole: half a raid drops nothing.
+      const runs = Math.min(node.attemptsLeft, Math.ceil(need / node.dropRate!));
+      if (runs <= 0) continue;
+      plan.raids += runs;
+      plan.energy += runs * node.energyCost!;
+      plan.nodes += 1;
+      need -= runs * node.dropRate!;
+    }
+    if (need > 1e-9) return undefined;
   }
-  return need > 1e-9 ? undefined : plan;
+  return plan;
 }
 
 /**

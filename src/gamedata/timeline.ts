@@ -24,9 +24,11 @@ import {
   nodeStatuses,
   ownedByKey,
   planCosts,
-  raidsToday,
+  farmTargets,
+  raidsForTargets,
   type AllocatedItem,
   type ItemRequirement,
+  type FarmTarget,
   type NodeStatus,
   type RaidPlan,
   type StepCost,
@@ -390,6 +392,14 @@ export interface EnergyCandidate {
    * figure for work the day has no attempts left for. See {@link raidsToday}.
    */
   today?: RaidPlan;
+  /**
+   * The base materials this slot comes down to, priced and with their nodes.
+   *
+   * Carried rather than recomputed by the caller so the row and the breakdown
+   * under it are the same arithmetic: {@link energy} is exactly the sum of
+   * these.
+   */
+  targets: FarmTarget[];
 }
 
 export interface EnergyPlan {
@@ -436,18 +446,19 @@ export function energyCandidates(
   const owned = ownedByKey(player, db);
   const remaining = new Map(owned);
   /**
-   * A second ledger, for the raid plans alone.
+   * A second ledger, for what a slot's recipe draws on.
    *
-   * Kept apart from `remaining` on purpose. Both spend the same inventory, but
-   * they answer different questions and must not move each other: `remaining`
-   * decides how many copies a slot is still short, which is what the price is
-   * built on, while this one decides whether a recipe's ingredients are already
-   * in hand. Sharing one map would let a recipe eat the materials another
-   * slot's price was quoted from, and the page would show energy figures that
-   * shift for reasons nothing on it explains. Shared *across candidates*
-   * though, since two slots must not both be told they hold the same parts.
+   * Kept apart from `remaining`, which tracks stock of the slot's own material
+   * and decides how many copies it is short. This one is spent a level down, on
+   * ingredients, and it is shared across candidates for the same reason
+   * `remaining` is: two slots must not both be told they hold the same parts.
+   *
+   * Two ledgers rather than one because they answer at different levels and
+   * merging them would make a slot's *shortfall* — the headline count — move
+   * because some other slot's recipe ate an ingredient, with nothing on the
+   * page to explain the change.
    */
-  const forRaids = new Map(owned);
+  const forFarming = new Map(owned);
   const candidates: EnergyCandidate[] = [];
 
   for (const unit of units) {
@@ -479,9 +490,28 @@ export function energyCandidates(
 
       const each = energyPerCopy(item, db, player);
       if (each === undefined) return;
-      const today = raidsToday(item, copies, db, player, forRaids);
 
-      const energy = copies * each;
+      /*
+       * One flattening, feeding the price, the raid count and the breakdown.
+       *
+       * `energyPerCopy` above is a unit price and prices the whole recipe from
+       * scratch, which is the right number for comparing two materials and the
+       * wrong one for costing tonight: a slot whose ingredients are half in the
+       * bag does not charge for the half you own. These targets are the
+       * shortfall, so their total is what filling the slot actually costs —
+       * the same figure, and the same arithmetic, the plan screens have always
+       * shown.
+       */
+      const targets = farmTargets(
+        { ...item, name: upgrade?.name ?? slot.upgradeId },
+        copies,
+        db,
+        player,
+        forFarming,
+      );
+      const today = raidsForTargets(targets);
+
+      const energy = targets.reduce((total, target) => total + (target.energy ?? 0), 0);
       candidates.push({
         unitId: unit.id,
         unitName: unit.name ?? unit.id,
@@ -496,7 +526,11 @@ export function energyCandidates(
         copies,
         energyPerCopy: each,
         energy,
-        ratio: gain / energy,
+        // A slot whose parts are all in hand costs nothing and is the best buy
+        // on the page; dividing by its zero would say so as `Infinity`, which
+        // sorts right but reads as a bug wherever it surfaces.
+        ratio: energy > 0 ? gain / energy : Number.POSITIVE_INFINITY,
+        targets,
         nodes: rankedNodes(item, db, player),
         // Raids are costed as though this were the only slot filled today —
         // which is what the list is, a set of alternatives — but the stock

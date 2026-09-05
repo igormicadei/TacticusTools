@@ -227,8 +227,10 @@ export const PT: Record<keyof typeof EN, string> = {
   'spend.unitBeyond': '{n} espaço fora do alcance',
   'spend.unitBeyondPlural': '{n} espaços fora do alcance',
   'spend.each': '{n}⚡ por cópia',
-  'spend.toFarm': 'A farmar: {n} drop, {energy}⚡ — o que você já tem sai da conta primeiro.',
-  'spend.toFarmPlural': 'A farmar: {n} drops, {energy}⚡ — o que você já tem sai da conta primeiro.',
+  'spend.toFarm': 'A farmar: {n} drop, {energy}⚡.',
+  'spend.toFarmPlural': 'A farmar: {n} drops, {energy}⚡.',
+  'spend.dropsLeft': 'falta {n} drop',
+  'spend.dropsLeftPlural': 'faltam {n} drops',
   'spend.nothingToFarm': 'Nada a farmar — as peças já estão em mãos.',
   'spend.today': 'Só o que dá para hoje',
   'spend.todayHint':
@@ -240,7 +242,7 @@ export const PT: Record<keyof typeof EN, string> = {
     'Nada aqui dá para terminar hoje: o que falta pede mais investidas do que os nós abertos têm. Desligue o filtro para ver mesmo assim, ou volte quando as contagens reiniciarem.',
   'spend.noPlans': 'Nenhum plano ainda, então não há para o que filtrar. Mostrando todas as unidades.',
   'spend.blurb':
-    'Só os espaços que cada unidade consegue preencher no rank em que está agora — uma melhoria de um rank posterior não aumenta nada até você chegar lá. Cada linha é um desses espaços, precificado inteiro, porque um espaço pela metade vale zero. São alternativas, não uma lista para percorrer: o orçamento compra uma delas, e a mais barata vem primeiro dentro de cada unidade. Os preços são valores esperados sobre as taxas de drop publicadas, então trate isto como conselho, não como aritmética. A contagem de investidas é o que os nós abertos hoje levariam nessas taxas, já contando os ingredientes que você tem — por isso um item forjado pode pedir menos investidas do que o preço sugere.',
+    'Só os espaços que cada unidade consegue preencher no rank em que está agora — uma melhoria de um rank posterior não aumenta nada até você chegar lá. Cada linha é um desses espaços, precificado inteiro, porque um espaço pela metade vale zero — mas precificado sobre o que *falta*: ingredientes que já estão em mãos não são cobrados de novo. São alternativas, não uma lista para percorrer: o orçamento compra uma delas, e a mais barata vem primeiro dentro de cada unidade. Os preços são valores esperados sobre as taxas de drop publicadas, então trate isto como conselho, não como aritmética. A contagem de investidas é o que os nós abertos hoje levariam nessas taxas, já contando os ingredientes que você tem — por isso um item forjado pode pedir menos investidas do que o preço sugere.',
 
   /* ---- equipes -------------------------------------------------------- */
   'teams.heading': 'Equipes',

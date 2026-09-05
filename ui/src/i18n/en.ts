@@ -233,8 +233,10 @@ export const EN = {
   'spend.unitBeyond': '{n} slot out of reach',
   'spend.unitBeyondPlural': '{n} slots out of reach',
   'spend.each': '{n}⚡ per copy',
-  'spend.toFarm': 'To farm: {n} drop, {energy}⚡ — what you already hold is taken off first.',
-  'spend.toFarmPlural': 'To farm: {n} drops, {energy}⚡ — what you already hold is taken off first.',
+  'spend.toFarm': 'To farm: {n} drop, {energy}⚡.',
+  'spend.toFarmPlural': 'To farm: {n} drops, {energy}⚡.',
+  'spend.dropsLeft': '{n} drop to find',
+  'spend.dropsLeftPlural': '{n} drops to find',
   'spend.nothingToFarm': 'Nothing to farm — the parts are already in the bag.',
   'spend.today': 'Only what today can reach',
   'spend.todayHint':
@@ -246,7 +248,7 @@ export const EN = {
     'Nothing here can be finished today: what is left needs more runs than the open nodes have. Turn the filter off to see it anyway, or come back when the counts reset.',
   'spend.noPlans': 'No plans yet, so there is nothing to filter to. Showing every unit.',
   'spend.blurb':
-    'Only the slots each unit can fill at the rank it is on now — an upgrade for a later rank raises nothing until you get there. Each row is one such slot, priced whole, because a part-filled slot counts for zero. They are alternatives rather than a list to work through: the budget buys one of them, and the cheapest comes first within each unit. Prices are expected values over published drop rates, so treat this as advice rather than arithmetic. A raid count is what today’s open nodes would take at those rates, counting ingredients you already hold — which is why a crafted item can want fewer runs than its price suggests.',
+    'Only the slots each unit can fill at the rank it is on now — an upgrade for a later rank raises nothing until you get there. Each row is one such slot, priced whole, because a part-filled slot counts for zero — but priced on what is *left*: ingredients already in the bag are not charged for again. They are alternatives rather than a list to work through: the budget buys one of them, and the cheapest comes first within each unit. Prices are expected values over published drop rates, so treat this as advice rather than arithmetic. A raid count is what today’s open nodes would take at those rates, counting ingredients you already hold — which is why a crafted item can want fewer runs than its price suggests.',
 
   /* ---- teams ---------------------------------------------------------- */
   'teams.heading': 'Teams',

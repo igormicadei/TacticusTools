@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 
 
 import { currentState, markProgress, resolvePlan } from '@lib/gamedata/plan.js';
-import { farmTargets } from '@lib/gamedata/requirements.js';
 import {
   buildTimeline,
   energyCandidates,
@@ -371,13 +370,13 @@ function SpendEnergy({ db, player }: { db: GameDatabase; player: PlayerResponse 
               })}
         </div>
       ) : (
-        <ByUnit rows={affordable} db={db} player={player} affordable />
+        <ByUnit rows={affordable} affordable />
       )}
 
       {beyond.length > 0 && (
         <>
           <h3 style={{ marginTop: 20 }}>{t('spend.beyond')}</h3>
-          <ByUnit rows={beyond.slice(0, 12)} db={db} player={player} affordable={false} />
+          <ByUnit rows={beyond.slice(0, 12)} affordable={false} />
         </>
       )}
     </section>
@@ -391,17 +390,7 @@ function SpendEnergy({ db, player }: { db: GameDatabase; player: PlayerResponse 
  * rows under one name are three ways to spend the same energy on the same
  * character, and only one of them is going to happen tonight.
  */
-function ByUnit({
-  rows,
-  db,
-  player,
-  affordable,
-}: {
-  rows: EnergyCandidate[];
-  db: GameDatabase;
-  player: PlayerResponse;
-  affordable: boolean;
-}) {
+function ByUnit({ rows, affordable }: { rows: EnergyCandidate[]; affordable: boolean }) {
   const groups = useMemo(() => {
     const map = new Map<string, EnergyCandidate[]>();
     for (const row of rows) {
@@ -434,7 +423,7 @@ function ByUnit({
                 : tn(candidates.length, 'spend.unitBeyond', 'spend.unitBeyondPlural')}
             </span>
           </div>
-          <CandidateTable rows={candidates} db={db} player={player} affordable={affordable} />
+          <CandidateTable rows={candidates} affordable={affordable} />
         </div>
       ))}
     </>
@@ -453,31 +442,9 @@ function ByUnit({
  * higher figure on the row: that one is the price of the whole quantity from
  * scratch, which is what makes it comparable between slots.
  */
-function FarmList({
-  row,
-  db,
-  player,
-}: {
-  row: EnergyCandidate;
-  db: GameDatabase;
-  player: PlayerResponse;
-}) {
+function FarmList({ row }: { row: EnergyCandidate }) {
   const [shown, setShown] = useState<string>();
-  const targets = useMemo(
-    () =>
-      farmTargets(
-        {
-          kind: 'upgrade',
-          key: row.itemKey,
-          name: row.itemName,
-          ...(row.rarity !== undefined ? { rarity: row.rarity } : {}),
-        },
-        row.copies,
-        db,
-        player,
-      ),
-    [row, db, player],
-  );
+  const targets = row.targets;
 
   if (targets.length === 0) {
     return (
@@ -547,13 +514,9 @@ function FarmList({
 
 function CandidateTable({
   rows,
-  db,
-  player,
   affordable,
 }: {
   rows: EnergyCandidate[];
-  db: GameDatabase;
-  player: PlayerResponse;
   affordable: boolean;
 }) {
   const [shown, setShown] = useState<string>();
@@ -591,13 +554,17 @@ function CandidateTable({
                   node in the detail below. */}
               <span className="muted small">
                 {row.today === undefined
-                  ? t('spend.each', { n: row.energyPerCopy.toFixed(1) })
+                  ? tn(
+                      row.targets.reduce((n, target) => n + target.amount, 0),
+                      'spend.dropsLeft',
+                      'spend.dropsLeftPlural',
+                    )
                   : row.today.raids === 0
                     ? t('spend.raidsNone')
                     : tn(row.today.raids, 'spend.raids', 'spend.raidsPlural')}
               </span>
             </button>
-            {isOpen && <FarmList row={row} db={db} player={player} />}
+            {isOpen && <FarmList row={row} />}
           </li>
         );
       })}

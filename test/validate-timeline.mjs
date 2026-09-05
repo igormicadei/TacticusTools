@@ -17,6 +17,7 @@ import {
   buildTimeline,
   energyCandidates,
   planEnergy,
+  itemSource,
 } from '../dist/gamedata/index.js';
 
 const playerPath = process.argv[2] ?? 'player.json';
@@ -143,9 +144,32 @@ console.log('ordering: rank tier, then effort  ✓');
     if (at && c.statType !== (at.statType ?? '')) {
       note(`energy: ${c.unitName} slot ${c.slotIndex + 1} claims ${c.statType}, the slot gives ${at.statType}`);
     }
-    if (!(c.energy > 0) || !(c.gain > 0)) note(`energy: ${c.itemName} priced ${c.energy} for ${c.gain}`);
-    if (Math.abs(c.energy - c.copies * c.energyPerCopy) > 1e-6) {
-      note(`energy: ${c.itemName} total disagrees with copies x per-copy`);
+    if (c.energy < 0 || !(c.gain > 0)) note(`energy: ${c.itemName} priced ${c.energy} for ${c.gain}`);
+
+    /*
+     * The price is the shortfall, not the recipe.
+     *
+     * It used to be `copies x energyPerCopy` — the whole recipe from scratch —
+     * which charged again for ingredients already in the bag and put slots in
+     * "beyond this budget" that the player could have finished that evening.
+     * It is now the sum of the flattened targets, and the two checks are that
+     * it says so exactly, and that it never exceeds the from-scratch figure,
+     * since holding a part can only ever take work away.
+     */
+    const fromTargets = c.targets.reduce((n, t) => n + (t.energy ?? 0), 0);
+    if (Math.abs(c.energy - fromTargets) > 1e-6) {
+      note(`energy: ${c.itemName} priced ${c.energy}, its own targets come to ${fromTargets}`);
+    }
+    if (c.energy > c.copies * c.energyPerCopy + 1e-6) {
+      note(
+        `energy: ${c.itemName} costs ${c.energy.toFixed(1)} but only ` +
+          `${(c.copies * c.energyPerCopy).toFixed(1)} from scratch — stock cannot add work`,
+      );
+    }
+    for (const target of c.targets) {
+      if (itemSource(target, db).kind === 'craft') {
+        note(`energy: ${c.itemName} sends the player to farm ${target.name}, which is forged`);
+      }
     }
   }
   for (let i = 1; i < candidates.length; i += 1) {
@@ -168,8 +192,12 @@ console.log('ordering: rank tier, then effort  ✓');
   }
 
   const sixty = planEnergy(candidates, 60);
+  const cheaper = candidates.filter(
+    (c) => c.energy < c.copies * c.energyPerCopy - 0.5,
+  ).length;
   console.log(
-    `energy: ${candidates.length} slots priced; 60 buys ${sixty.picks.length} for +${sixty.gain}  ✓`,
+    `energy: ${candidates.length} slots priced on the shortfall (${cheaper} below their ` +
+      `from-scratch price); 60 buys ${sixty.picks.length} for +${sixty.gain}  ✓`,
   );
 }
 
