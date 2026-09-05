@@ -31,7 +31,7 @@ import {
   type Rarity,
 } from '@lib/gamedata/enums.js';
 
-import { currentLang, t } from './locale.ts';
+import { currentLang, t, type StringKey } from './locale.ts';
 
 /** Rarity tiers. The Portuguese words used across Brazilian coverage of the game. */
 const RARITY_PT: Record<string, string> = {
@@ -212,4 +212,28 @@ export function localStepLabel(step: {
       // A kind added to the library and not yet here still reads as something.
       return step.label;
   }
+}
+
+/**
+ * Why a step is in the plan, in the reader's language.
+ *
+ * The planner also builds an English sentence for its own scripts; this reads
+ * the code and values beside it instead. Rank and rarity arrive as numbers so
+ * they are named here rather than there — the same reason unit names are not.
+ */
+export function localStepReason(step: {
+  reason?: string | undefined;
+  reasonCode?: string | undefined;
+  reasonValues?: Readonly<Record<string, string | number>> | undefined;
+}): string | undefined {
+  if (step.reasonCode === undefined) return step.reason;
+  const raw = step.reasonValues ?? {};
+  const values: Record<string, string | number> = { ...raw };
+  if (typeof raw['rank'] === 'number') values['rank'] = localRank(raw['rank']);
+  if (typeof raw['rarity'] === 'number') values['rarity'] = localRarity(raw['rarity']);
+  const key = `why.${step.reasonCode}` as StringKey;
+  const phrased = t(key, values);
+  // An unknown code would render as its own key, which is worse than the
+  // English the planner already wrote.
+  return phrased === key ? step.reason : phrased;
 }

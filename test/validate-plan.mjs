@@ -185,6 +185,33 @@ if (certus) {
   for (const s of plan.steps) console.log(`  ${String(s.order).padStart(2)}. ${s.label}`);
 }
 
+/* ---- every reason carries both of its forms ------------------------------ */
+{
+  // The planner writes an English sentence for scripts and a code for the UI.
+  // A step with one and not the other reads as blank in one of the two places,
+  // and which one depends on the language — so neither is optional.
+  let coded = 0;
+  for (const unit of player.units) {
+    for (const target of TARGETS) {
+      for (const step of resolvePlan(unit, target, db).steps) {
+        if (step.reason === undefined && step.reasonCode === undefined) continue;
+        if (step.reason === undefined) {
+          note(`${unit.name}: step ${step.order} has a reason code but no sentence`);
+        }
+        if (step.reasonCode === undefined) {
+          note(`${unit.name}: step ${step.order} has a reason but no code — "${step.reason}"`);
+        } else {
+          coded += 1;
+          if (step.reasonValues === undefined) {
+            note(`${unit.name}: reason ${step.reasonCode} carries no values`);
+          }
+        }
+      }
+    }
+  }
+  console.log(`reasons: ${coded} carry both a sentence and a code  ✓`);
+}
+
 if (problems.length === 0) {
   console.log('\n✓ every plan respects the caps at every step');
   process.exit(0);

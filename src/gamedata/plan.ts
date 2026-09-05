@@ -130,6 +130,25 @@ function firstIndexOfRarity(rarity: Rarity, db: GameDatabase): number | undefine
 /* Model                                                                      */
 /* -------------------------------------------------------------------------- */
 
+/** Why a step the player did not ask for is in the plan. */
+export type PlanReasonCode =
+  | 'rankUpgradesNeedLevel'
+  | 'cappedByRarity'
+  | 'cappedByLevel'
+  | 'neededBeforeAscending'
+  | 'onTheWayTo'
+  | 'abilityRequiresLevel'
+  | 'rankRequiresLevel'
+  | 'levelRequiresRarity'
+  | 'rankRequiresRarity';
+
+/** A reason derived while resolving a target, in both forms. */
+interface DerivedReason {
+  text: string;
+  code: PlanReasonCode;
+  values: Readonly<Record<string, string | number>>;
+}
+
 export interface UnitState {
   progressionIndex: number;
   rarity: Rarity | undefined;
@@ -164,8 +183,19 @@ export interface PlanStep {
   /**
    * Why this step is in the plan when it was not asked for — e.g. a level
    * raised only because an ability target needs it.
+   *
+   * English, for scripts and validators that read a plan without a UI.
    */
   reason?: string;
+  /**
+   * The same reason as a code and its values.
+   *
+   * A sentence built here can only be built in one language, and the UI has
+   * more than one. This carries what the sentence is *about* so the reader's
+   * language can phrase it — see the UI's `localStepReason`.
+   */
+  reasonCode?: PlanReasonCode;
+  reasonValues?: Readonly<Record<string, string | number>>;
   /** State after the step completes. */
   after: UnitState;
   /**
@@ -228,8 +258,12 @@ function resolveTarget(
   target: EvolutionTarget,
   current: UnitState,
   db: GameDatabase,
-): { resolved: EvolutionTarget; blocked?: string; reasons: Map<string, string> } {
-  const reasons = new Map<string, string>();
+): {
+  resolved: EvolutionTarget;
+  blocked?: string;
+  reasons: Map<string, DerivedReason>;
+} {
+  const reasons = new Map<string, DerivedReason>();
 
   const abilityMax = Math.max(
     target.activeAbilityLevel ?? 0,
@@ -240,14 +274,22 @@ function resolveTarget(
   let level = Math.max(target.xpLevel ?? 0, current.xpLevel);
   if (abilityMax > level) {
     level = abilityMax;
-    reasons.set('level', `ability level ${abilityMax} requires character level ${abilityMax}`);
+    reasons.set('level', {
+      text: `ability level ${abilityMax} requires character level ${abilityMax}`,
+      code: 'abilityRequiresLevel',
+      values: { level: abilityMax },
+    });
   }
   // A rank is left by applying its upgrades, and those are level-gated, so a
   // rank target drags the character level up with it.
   const rankLevel = rank > current.rank ? levelToCompleteRank((rank - 1) as Rank) : undefined;
   if (rankLevel !== undefined && rankLevel > level) {
     level = rankLevel;
-    reasons.set('level', `rank ${rankName(rank)} requires character level ${rankLevel}`);
+    reasons.set('level', {
+      text: `rank ${rankName(rank)} requires character level ${rankLevel}`,
+      code: 'rankRequiresLevel',
+      values: { rank, level: rankLevel },
+    });
   }
 
   const neededForLevel = rarityForLevel(level, db);
@@ -267,11 +309,20 @@ function resolveTarget(
   ) as Rarity;
 
   if (rarity > (target.rarity ?? current.rarity ?? 0)) {
-    const driver =
+    reasons.set(
+      'rarity',
       neededForLevel >= neededForRank
-        ? `level ${level} requires ${rarityName(rarity)}`
-        : `rank ${rankName(rank)} requires ${rarityName(rarity)}`;
-    reasons.set('rarity', driver);
+        ? {
+            text: `level ${level} requires ${rarityName(rarity)}`,
+            code: 'levelRequiresRarity',
+            values: { level, rarity },
+          }
+        : {
+            text: `rank ${rankName(rank)} requires ${rarityName(rarity)}`,
+            code: 'rankRequiresRarity',
+            values: { rank, rarity },
+          },
+    );
   }
 
   return {
@@ -356,10 +407,17 @@ export function resolvePlan(
           label: `Level to ${reached}`,
           from: fromLevel,
           to: reached,
-          reason:
-            reached >= gate!
-              ? `${rankName(from)}'s upgrades need character level ${gate} to apply`
-              : `capped by ${rarityName(rarity)} until ascension`,
+          ...(reached >= gate!
+            ? {
+                reason: `${rankName(from)}'s upgrades need character level ${gate} to apply`,
+                reasonCode: 'rankUpgradesNeedLevel' as const,
+                reasonValues: { rank: from, level: gate! },
+              }
+            : {
+                reason: `capped by ${rarityName(rarity)} until ascension`,
+                reasonCode: 'cappedByRarity' as const,
+                reasonValues: { rarity },
+              }),
         });
         continue;
       }
@@ -372,7 +430,11 @@ export function resolvePlan(
           from,
           to,
           ...(to === rankCap && to < wantRank
-            ? { reason: `capped by ${rarityName(rarity)} until ascension` }
+            ? {
+                reason: `capped by ${rarityName(rarity)} until ascension`,
+                reasonCode: 'cappedByRarity' as const,
+                reasonValues: { rarity },
+              }
             : {}),
         });
         continue;
@@ -390,8 +452,20 @@ export function resolvePlan(
         label: `Level to ${to}`,
         from,
         to,
-        ...(reasons.has('level') && to >= wantLevel ? { reason: reasons.get('level')! } : {}),
-        ...(to < wantLevel ? { reason: `capped by ${rarityName(rarity)} until ascension` } : {}),
+        ...(reasons.has('level') && to >= wantLevel
+          ? {
+              reason: reasons.get('level')!.text,
+              reasonCode: reasons.get('level')!.code,
+              reasonValues: reasons.get('level')!.values,
+            }
+          : {}),
+        ...(to < wantLevel
+          ? {
+              reason: `capped by ${rarityName(rarity)} until ascension`,
+              reasonCode: 'cappedByRarity' as const,
+              reasonValues: { rarity },
+            }
+          : {}),
       });
       continue;
     }
@@ -407,7 +481,13 @@ export function resolvePlan(
         label: `Active ability to ${to}`,
         from,
         to,
-        ...(to < wantActive ? { reason: `capped by character level ${state.xpLevel}` } : {}),
+        ...(to < wantActive
+          ? {
+              reason: `capped by character level ${state.xpLevel}`,
+              reasonCode: 'cappedByLevel' as const,
+              reasonValues: { level: state.xpLevel },
+            }
+          : {}),
       });
       continue;
     }
@@ -421,7 +501,13 @@ export function resolvePlan(
         label: `Passive ability to ${to}`,
         from,
         to,
-        ...(to < wantPassive ? { reason: `capped by character level ${state.xpLevel}` } : {}),
+        ...(to < wantPassive
+          ? {
+              reason: `capped by character level ${state.xpLevel}`,
+              reasonCode: 'cappedByLevel' as const,
+              reasonValues: { level: state.xpLevel },
+            }
+          : {}),
       });
       continue;
     }
@@ -462,6 +548,8 @@ export function resolvePlan(
         from,
         to: state.progressionIndex,
         reason: `needed before ascending to ${rarityName(nextRarity)}`,
+        reasonCode: 'neededBeforeAscending' as const,
+        reasonValues: { rarity: nextRarity },
       });
     }
     const fromIndex = state.progressionIndex;
@@ -476,8 +564,16 @@ export function resolvePlan(
       from: fromIndex,
       to: ascendAt,
       ...(isFinalAscension && reasons.has('rarity')
-        ? { reason: reasons.get('rarity')! }
-        : { reason: `on the way to ${rarityName(wantRarity)}` }),
+        ? {
+            reason: reasons.get('rarity')!.text,
+            reasonCode: reasons.get('rarity')!.code,
+            reasonValues: reasons.get('rarity')!.values,
+          }
+        : {
+            reason: `on the way to ${rarityName(wantRarity)}`,
+            reasonCode: 'onTheWayTo' as const,
+            reasonValues: { rarity: wantRarity },
+          }),
     });
   }
 
@@ -525,19 +621,30 @@ export function markProgress(plan: EvolutionPlan, live: UnitState): EvolutionPla
  * Rank upgrades are counted as none applied: reaching a rank consumes the
  * previous rank's upgrades, so a freshly reached rank starts empty.
  */
+export function projectedStatsAt(
+  unit: Unit,
+  state: UnitState,
+  db: GameDatabase,
+): ComputedUnitStats | undefined {
+  const projected: Unit = {
+    ...unit,
+    rank: state.rank,
+    xpLevel: state.xpLevel,
+    progressionIndex: state.progressionIndex,
+    // No rank upgrades applied. Reaching a rank consumes the previous rank's,
+    // so a newly reached rank starts empty — projecting with the unit's current
+    // upgrades would credit it with slots it is about to spend.
+    upgrades: [],
+  };
+  return computeUnitStats(projected, db);
+}
+
 export function projectedStats(
   unit: Unit,
   plan: EvolutionPlan,
   db: GameDatabase,
 ): ComputedUnitStats | undefined {
-  const projected: Unit = {
-    ...unit,
-    rank: plan.final.rank,
-    xpLevel: plan.final.xpLevel,
-    progressionIndex: plan.final.progressionIndex,
-    upgrades: [],
-  };
-  return computeUnitStats(projected, db);
+  return projectedStatsAt(unit, plan.final, db);
 }
 
 /* -------------------------------------------------------------------------- */

@@ -215,8 +215,8 @@ export function TeamDetailPage({ db, player }: { db: GameDatabase; player: Playe
             <span>{t('td.drawingFrom')}</span>
             <select value={scope} onChange={(e) => setScope(e.target.value as PoolScope)}>
               {SCOPES.map((s) => (
-                <option key={s.key} value={s.key} title={s.hint}>
-                  {s.label}
+                <option key={s.key} value={s.key} title={t(s.hint)}>
+                  {t(s.label)}
                 </option>
               ))}
             </select>

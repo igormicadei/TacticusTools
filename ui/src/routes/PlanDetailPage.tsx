@@ -2,8 +2,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
 import { rankName, rarityName } from '@lib/gamedata/enums.js';
-import { currentState, markProgress, projectedStats, resolvePlan } from '@lib/gamedata/plan.js';
-import { computeUnitStats } from '@lib/gamedata/stats.js';
+import {
+  currentState,
+  markProgress,
+  projectedStats,
+  projectedStatsAt,
+  resolvePlan,
+} from '@lib/gamedata/plan.js';
+import { computeUnitStats, type ComputedUnitStats } from '@lib/gamedata/stats.js';
 import type { GameDatabase } from '@lib/gamedata/types.js';
 import type { PlayerResponse } from '@lib/types/player.js';
 
@@ -13,7 +19,8 @@ import { plansStore } from '../data/plans.ts';
 import { unitIcon } from '../data/icons.ts';
 import { Icon, useIcons } from '../components/Icon.tsx';
 import { describeTarget, PlanForm } from './PlansPage.tsx';
-import { localRank } from '../i18n/game.ts';
+import { ProjectedStats } from '../components/ProjectedStats.tsx';
+import { localRank, localStepLabel, localStepReason } from '../i18n/game.ts';
 import { t } from '../i18n/locale.ts';
 
 export function PlanDetailPage({ db, player }: { db: GameDatabase; player: PlayerResponse }) {
@@ -58,6 +65,28 @@ export function PlanDetailPage({ db, player }: { db: GameDatabase; player: Playe
   const left = plan.steps.filter((s) => !s.done).length;
   const now = computeUnitStats(unit, db);
   const then = projectedStats(unit, plan, db);
+
+  /*
+   * Attributes at each point along the plan.
+   *
+   * Each step's `after` state already carries the accumulation — it is the unit
+   * as it stands once that step and everything before it is done — so this is a
+   * lookup per step rather than a running sum, and cannot drift from the
+   * plan's own arithmetic. The "before" of the first step is where the unit
+   * stands today.
+   */
+  const { statsBefore, statsAfter } = useMemo(() => {
+    const before = new Map<number, ComputedUnitStats | undefined>();
+    const after = new Map<number, ComputedUnitStats | undefined>();
+    let previous = now;
+    for (const step of plan.steps) {
+      const at = projectedStatsAt(unit, step.after, db);
+      before.set(step.order, previous);
+      after.set(step.order, at);
+      previous = at;
+    }
+    return { statsBefore: before, statsAfter: after };
+  }, [unit, plan, db, now]);
 
   return (
     <>
@@ -149,6 +178,7 @@ export function PlanDetailPage({ db, player }: { db: GameDatabase; player: Playe
                   <th>{t('common.step')}</th>
                   <th>{t('common.fromTo')}</th>
                   <th>{t('common.why')}</th>
+                  <th>{t('proj.afterStep')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -156,13 +186,23 @@ export function PlanDetailPage({ db, player }: { db: GameDatabase; player: Playe
                   <tr key={s.order} className={s.done ? 'done' : ''}>
                     <td data-label="" className="card-title-cell">
                       <span className="step-order muted">{s.done ? '✓' : s.order}</span>
-                      {s.label}
+                      {localStepLabel(s)}
                     </td>
                     <td data-label={t('common.fromTo')} className="muted">
                       {s.from} → {s.to}
                     </td>
                     <td data-label={t('common.why')} className="muted small">
-                      {s.reason ?? '—'}
+                      {localStepReason(s) ?? '—'}
+                    </td>
+                    <td data-label={t('proj.afterStep')} className="small">
+                      {/* Against the step before it, not against today, so the
+                          column reads as a running total rather than repeating
+                          the whole plan's gain on every row. */}
+                      <ProjectedStats
+                        from={statsBefore.get(s.order)}
+                        to={statsAfter.get(s.order)}
+                        compact
+                      />
                     </td>
                   </tr>
                 ))}

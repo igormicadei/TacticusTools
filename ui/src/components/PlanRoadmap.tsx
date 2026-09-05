@@ -1,5 +1,5 @@
-import { localRank, localRarity } from '../i18n/game.ts';
-import { t } from '../i18n/locale.ts';
+import { localRank, localRarity, localStepLabel, localStepReason } from '../i18n/game.ts';
+import { t, type StringKey } from '../i18n/locale.ts';
 import { useState } from 'react';
 
 import type { PlanStep, PlanStepKind } from '@lib/gamedata/plan.js';
@@ -17,11 +17,11 @@ import type { PlanStep, PlanStepKind } from '@lib/gamedata/plan.js';
  * four series and also carries identity without relying on colour.
  */
 
-const LANES: { kind: PlanStepKind | 'progression'; label: string; color: string }[] = [
-  { kind: 'progression', label: 'Rarity & stars', color: '#3987e5' },
-  { kind: 'rank', label: 'Rank', color: '#d95926' },
-  { kind: 'level', label: 'Level', color: '#199e70' },
-  { kind: 'ability', label: 'Abilities', color: '#c98500' },
+const LANES: { kind: PlanStepKind | 'progression'; label: StringKey; color: string }[] = [
+  { kind: 'progression', label: 'lane.progression', color: '#3987e5' },
+  { kind: 'rank', label: 'lane.rank', color: '#d95926' },
+  { kind: 'level', label: 'lane.level', color: '#199e70' },
+  { kind: 'ability', label: 'lane.ability', color: '#c98500' },
 ];
 
 const laneOf = (step: PlanStep): number =>
@@ -71,7 +71,7 @@ export function PlanRoadmap({ steps }: { steps: PlanStep[] }) {
         {LANES.map((lane) => (
           <span className="legend-item" key={lane.label}>
             <span className="swatch" style={{ background: lane.color }} />
-            {lane.label}
+            {t(lane.label)}
           </span>
         ))}
       </div>
@@ -86,7 +86,7 @@ export function PlanRoadmap({ steps }: { steps: PlanStep[] }) {
                 y={i * laneH + 28}
                 className={`roadmap-lane-label${used.has(i) ? '' : ' idle'}`}
               >
-                {lane.label}
+                {t(lane.label)}
                 {!used.has(i) && <tspan className="roadmap-idle-note"> {t('plan.noChange')}</tspan>}
               </text>
               <line
@@ -147,9 +147,11 @@ export function PlanRoadmap({ steps }: { steps: PlanStep[] }) {
         {hover ? (
           <>
             <strong>
-              {hover.order}. {hover.label}
+              {hover.order}. {localStepLabel(hover)}
             </strong>
-            {hover.reason && <span className="muted"> — {hover.reason}</span>}
+            {localStepReason(hover) && (
+              <span className="muted"> — {localStepReason(hover)}</span>
+            )}
           </>
         ) : (
           <span className="muted">{t('plan.hoverStep')}</span>

@@ -165,6 +165,34 @@ export const PT: Record<keyof typeof EN, string> = {
   'plan.roadmapLabel': 'Mapa do plano de evolução, em ordem de passo',
   'plan.noChange': '· sem mudança',
   'plan.hoverStep': 'Passe o cursor sobre um passo para ver por que ele está no plano.',
+  'lane.progression': 'Raridade e estrelas',
+  'lane.rank': 'Rank',
+  'lane.level': 'Nível',
+  'lane.ability': 'Habilidades',
+
+  /* ---- atributos projetados -------------------------------------------- */
+  'stat.hp': 'vida',
+  'stat.dmg': 'dano',
+  'stat.armour': 'armadura',
+  'proj.cardHint':
+    'Vida, dano e armadura quando o plano estiver pronto — projetado sem nenhuma melhoria de rank aplicada, já que alcançar um rank consome as do rank anterior.',
+  'proj.stepHint':
+    'Onde vida, dano e armadura ficam depois deste passo e de tudo que vem antes dele.',
+  'proj.unchanged': 'sem mudança',
+  'proj.afterStep': 'Depois deste passo',
+
+  /* ---- por que um passo está no plano ---------------------------------- */
+  'why.rankUpgradesNeedLevel': 'as melhorias de {rank} precisam do nível {level} para serem aplicadas',
+  'why.cappedByRarity': 'limitado por {rarity} até ascender',
+  'why.cappedByLevel': 'limitado pelo nível {level} do personagem',
+  'why.neededBeforeAscending': 'necessário antes de ascender para {rarity}',
+  'why.onTheWayTo': 'a caminho de {rarity}',
+  'why.abilityRequiresLevel': 'habilidade nível {level} exige o nível {level} do personagem',
+  'why.rankRequiresLevel': 'o rank {rank} exige o nível {level} do personagem',
+  'why.levelRequiresRarity': 'o nível {level} exige {rarity}',
+  'why.rankRequiresRarity': 'o rank {rank} exige {rarity}',
+  'common.edit': 'Editar',
+  'common.delete': 'Excluir',
 
   /* ---- linha do tempo -------------------------------------------------- */
   'timeline.heading': 'Tudo, em ordem',

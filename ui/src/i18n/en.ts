@@ -171,6 +171,34 @@ export const EN = {
   'plan.roadmapLabel': 'Evolution plan roadmap, ordered by step',
   'plan.noChange': '· no change',
   'plan.hoverStep': 'Hover a step for the reason it is in the plan.',
+  'lane.progression': 'Rarity & stars',
+  'lane.rank': 'Rank',
+  'lane.level': 'Level',
+  'lane.ability': 'Abilities',
+
+  /* ---- projected attributes -------------------------------------------- */
+  'stat.hp': 'HP',
+  'stat.dmg': 'dmg',
+  'stat.armour': 'armour',
+  'proj.cardHint':
+    'Health, damage and armour once the plan is done — projected with no rank upgrades applied, since reaching a rank consumes the previous rank’s.',
+  'proj.stepHint':
+    'Where health, damage and armour stand once this step and everything before it is done.',
+  'proj.unchanged': 'unchanged',
+  'proj.afterStep': 'After this step',
+
+  /* ---- why a step is in the plan --------------------------------------- */
+  'why.rankUpgradesNeedLevel': '{rank}’s upgrades need character level {level} to apply',
+  'why.cappedByRarity': 'capped by {rarity} until ascension',
+  'why.cappedByLevel': 'capped by character level {level}',
+  'why.neededBeforeAscending': 'needed before ascending to {rarity}',
+  'why.onTheWayTo': 'on the way to {rarity}',
+  'why.abilityRequiresLevel': 'ability level {level} requires character level {level}',
+  'why.rankRequiresLevel': 'rank {rank} requires character level {level}',
+  'why.levelRequiresRarity': 'level {level} requires {rarity}',
+  'why.rankRequiresRarity': 'rank {rank} requires {rarity}',
+  'common.edit': 'Edit',
+  'common.delete': 'Delete',
 
   /* ---- timeline ------------------------------------------------------- */
   'timeline.heading': 'Everything, in order',

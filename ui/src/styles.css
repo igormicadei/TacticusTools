@@ -423,6 +423,26 @@ table.steps tr:last-child td { border-bottom: none; }
 /* Energy is a cost like gold, but a different currency and a different
  * decision — gold you have or you do not, energy comes back on a clock. */
 .chip.energy { color: var(--n-9); border-color: var(--n-6); font-variant-numeric: tabular-nums; }
+
+/* Where a plan, or one step of it, leaves the three attributes. The "to" side
+ * carries the accent because that is the number being decided; the "from" is
+ * only there to give it a size. */
+.projected {
+  display: inline-flex; flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5); align-items: baseline; min-width: 0;
+}
+.projected-stat {
+  display: inline-flex; align-items: baseline; gap: var(--space-2);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.projected-stat .from { color: var(--text-secondary); }
+.projected-stat .arrow { color: var(--accent-dim); }
+.projected-stat .to { color: var(--accent); font-weight: 600; }
+.projected-stat .unit {
+  color: var(--text-secondary); font-size: var(--text-xs);
+  letter-spacing: var(--tracking-wide);
+}
+.projected.compact { font-size: var(--text-sm); }
 .chip.ok-chip { color: var(--status-owned); border-color: color-mix(in srgb, var(--status-owned) 45%, transparent); }
 .item-row.applied .item-name { color: var(--text-secondary); }
 .item-head.static:hover { background: none; }

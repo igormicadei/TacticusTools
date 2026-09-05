@@ -2,8 +2,8 @@ import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
 import {  Rarity } from '@lib/gamedata/enums.js';
-import { currentState, markProgress, resolvePlan } from '@lib/gamedata/plan.js';
-import { computeUnitStats } from '@lib/gamedata/stats.js';
+import { currentState, markProgress, projectedStats, resolvePlan } from '@lib/gamedata/plan.js';
+import { computeUnitStats, type ComputedUnitStats } from '@lib/gamedata/stats.js';
 import { buildTimeline, type StatPriority } from '@lib/gamedata/timeline.js';
 import type { GameDatabase } from '@lib/gamedata/types.js';
 import type { PlayerResponse } from '@lib/types/player.js';
@@ -13,6 +13,7 @@ import { unitIcon } from '../data/icons.ts';
 import { Icon, useIcons } from '../components/Icon.tsx';
 import { localRank, localRarity } from '../i18n/game.ts';
 import { PlanCost } from '../components/PlanCost.tsx';
+import { ProjectedStats } from '../components/ProjectedStats.tsx';
 import { t } from '../i18n/locale.ts';
 
 export function PlansPage({ db, player }: { db: GameDatabase; player: PlayerResponse }) {
@@ -46,6 +47,29 @@ export function PlansPage({ db, player }: { db: GameDatabase; player: PlayerResp
     }
     return buildTimeline(entries, player, db).byPlan;
   }, [plans, owned, player, db]);
+
+  /**
+   * Where each plan lands, against where the unit stands now.
+   *
+   * Computed here rather than inside the card so the whole list is one pass
+   * over the roster, and so a card renders no arithmetic of its own.
+   */
+  const projections = useMemo(() => {
+    const map = new Map<
+      string,
+      { from: ComputedUnitStats | undefined; to: ComputedUnitStats | undefined }
+    >();
+    for (const saved of plans) {
+      const unit = owned.find((u) => u.id === saved.unitId);
+      if (!unit) continue;
+      const resolved = resolvePlan(unit, saved.target, db, saved.origin);
+      map.set(saved.id, {
+        from: computeUnitStats(unit, db),
+        to: projectedStats(unit, resolved, db),
+      });
+    }
+    return map;
+  }, [plans, owned, db]);
 
   const remove = (id: string) => {
     plansStore.remove(id);
@@ -115,6 +139,13 @@ export function PlansPage({ db, player }: { db: GameDatabase; player: PlayerResp
                       idea as "with no route" below but measured before recipes
                       are resolved — two different numbers for one fact. */}
                   {summary && <PlanCost cost={summary.cost} />}
+                </div>
+                <div className="meta">
+                  <ProjectedStats
+                    from={projections.get(stored.id)?.from}
+                    to={projections.get(stored.id)?.to}
+                    compact
+                  />
                   {plan.blocked && <span className="chip">{t('common.blocked')}</span>}
                 </div>
               </Link>
@@ -126,10 +157,10 @@ export function PlansPage({ db, player }: { db: GameDatabase; player: PlayerResp
                     setEditing((current) => (current === stored.id ? undefined : stored.id));
                   }}
                 >
-                  {editing === stored.id ? 'Cancel' : 'Edit'}
+                  {editing === stored.id ? t('common.cancel') : t('common.edit')}
                 </button>
                 <button className="danger small" onClick={() => remove(stored.id)}>
-                  Delete
+                  {t('common.delete')}
                 </button>
               </div>
               {editing === stored.id && (

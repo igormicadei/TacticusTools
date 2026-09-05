@@ -95,7 +95,10 @@ for await (const file of walk(SRC)) {
       bare.endsWith(':') ||
       /^[\w.[\]]+$/.test(bare);
     const words = bare.split(/\s+/).filter((w) => /^[A-Za-z][A-Za-z'’-]*$/.test(w));
-    if (bare.length > 0 && !looksLikeCode && words.length >= 2 && isProse(bare)) {
+    // A single capitalised word on its own line is a button or a heading —
+    // "Delete", "Edit". Requiring two words let every one of those through.
+    const oneLabel = words.length === 1 && /^[A-Z][a-z]{2,}$/.test(bare);
+    if (bare.length > 0 && !looksLikeCode && (words.length >= 2 || oneLabel) && isProse(bare)) {
       findings.push({ file, line: i + 1, text: bare, how: 'jsx-line' });
     }
 
