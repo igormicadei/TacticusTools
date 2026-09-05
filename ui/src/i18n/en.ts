@@ -233,9 +233,17 @@ export const EN = {
   'spend.unitBeyond': '{n} slot out of reach',
   'spend.unitBeyondPlural': '{n} slots out of reach',
   'spend.each': '{n}⚡ per copy',
+  'spend.today': 'Only what today can reach',
+  'spend.todayHint':
+    'Nodes allow a fixed number of runs a day. This keeps the slots today’s remaining runs could be expected to fill.',
+  'spend.raids': '{n} raid',
+  'spend.raidsPlural': '{n} raids',
+  'spend.raidsNone': 'no raids — you hold it all',
+  'spend.todayNone':
+    'Nothing here can be finished today: what is left needs more runs than the open nodes have. Turn the filter off to see it anyway, or come back when the counts reset.',
   'spend.noPlans': 'No plans yet, so there is nothing to filter to. Showing every unit.',
   'spend.blurb':
-    'Only the slots each unit can fill at the rank it is on now — an upgrade for a later rank raises nothing until you get there. Each row is one such slot, priced whole, because a part-filled slot counts for zero. They are alternatives rather than a list to work through: the budget buys one of them, and the cheapest comes first within each unit. Prices are expected values over published drop rates, so treat this as advice rather than arithmetic.',
+    'Only the slots each unit can fill at the rank it is on now — an upgrade for a later rank raises nothing until you get there. Each row is one such slot, priced whole, because a part-filled slot counts for zero. They are alternatives rather than a list to work through: the budget buys one of them, and the cheapest comes first within each unit. Prices are expected values over published drop rates, so treat this as advice rather than arithmetic. A raid count is what today’s open nodes would take at those rates, counting ingredients you already hold — which is why a crafted item can want fewer runs than its price suggests.',
 
   /* ---- teams ---------------------------------------------------------- */
   'teams.heading': 'Teams',

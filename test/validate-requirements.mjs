@@ -26,6 +26,7 @@ import {
   flattenNeeds,
   farmingCost,
   energyPerCopy,
+  raidsToday,
   levelToCompleteRank,
 } from '../dist/gamedata/index.js';
 
@@ -413,6 +414,97 @@ console.log(`audited ${checked} plans; ${blockedSeen} blocked-item findings veri
     }
   }
   console.log(`farming cost: ${costed} step(s) costed, ${recipesSeen} through recipes  ✓`);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Raids today                                                                */
+/* -------------------------------------------------------------------------- */
+{
+  /*
+   * A raid plan is a claim about a day that has a hard edge: a node allows so
+   * many runs and no more. So the checks are the two ways that claim can be
+   * wrong — spending runs the node does not have, and stopping short of the
+   * copies asked for.
+   */
+  let planned = 0;
+  let stocked = 0;
+  const items = new Map();
+  for (const unit of player.units) {
+    const slots = db.units[unit.id]?.ranks.find((r) => r.rank === unit.rank)?.upgrades ?? [];
+    const filled = new Set(unit.upgrades);
+    slots.forEach((slot, index) => {
+      if (filled.has(index)) return;
+      const upgrade = db.upgrades[slot.upgradeId];
+      items.set(`${unit.id}:${index}`, {
+        who: `${unit.name ?? unit.id} slot ${index + 1}`,
+        item: {
+          kind: 'upgrade',
+          key: `upgrade:${slot.upgradeId}`,
+          ...(upgrade?.rarity !== undefined ? { rarity: upgrade.rarity } : {}),
+        },
+        copies: slot.amount,
+        name: upgrade?.name ?? slot.upgradeId,
+      });
+    });
+  }
+
+  for (const { who, item, copies, name } of items.values()) {
+    const plan = raidsToday(item, copies, db, playerResponse);
+    if (plan === undefined) continue;
+    planned += 1;
+    if (plan.raids === 0) stocked += 1;
+
+    if (plan.raids < 0 || plan.energy < 0 || plan.nodes < 0) {
+      note(`raids: ${who} planned ${plan.raids} raids for ${plan.energy} energy`);
+    }
+    // A directly farmed item is checkable against its own nodes: the runs it
+    // asks for must fit in what is left today, and must be expected to cover
+    // the copies. A crafted one is its ingredients' problem, checked when they
+    // come round in this same loop.
+    const source = itemSource(item, db);
+    if (source.kind !== 'farm') continue;
+    const open = nodeStatuses(source.nodes, playerResponse, db, {
+      kind: item.kind,
+      ...(item.rarity !== undefined ? { rarity: item.rarity } : {}),
+    }).filter((n) => n.unlocked && n.attemptsLeft > 0 && n.dropRate && n.energyCost !== undefined);
+
+    const attempts = open.reduce((n, node) => n + node.attemptsLeft, 0);
+    if (plan.raids > attempts) {
+      note(`raids: ${who} wants ${plan.raids} runs of ${name}, only ${attempts} left today`);
+    }
+    const best = open.reduce((n, node) => Math.max(n, node.dropRate), 0);
+    // Cheapest-per-copy first, so the runs booked can never beat what the best
+    // rate would need — that would mean drops counted twice.
+    if (best > 0 && plan.raids < Math.ceil(copies / best) && plan.raids > 0) {
+      note(`raids: ${who} books ${plan.raids} runs for ${copies}x ${name}, under the ${best} rate`);
+    }
+    const reachable = open.reduce((n, node) => n + node.attemptsLeft * node.dropRate, 0);
+    if (reachable + 1e-9 < copies) {
+      note(`raids: ${who} called reachable, yet today tops out at ${reachable.toFixed(1)} of ${copies}`);
+    }
+  }
+
+  // The edge itself: with the day spent, nothing that has to be farmed today
+  // can be reachable. Anything still reported is being read from a stale
+  // attempt count or is not consulting them at all.
+  const spent = JSON.parse(JSON.stringify(playerResponse));
+  for (const campaign of spent.player.progress.campaigns) {
+    for (const battle of campaign.battles) {
+      battle.attemptsLeft = 0;
+    }
+  }
+  let survived = 0;
+  for (const { item, copies } of items.values()) {
+    const plan = raidsToday(item, copies, db, spent);
+    // Zero raids is not farming: those are the ones already sitting in stock.
+    if (plan !== undefined && plan.raids > 0) survived += 1;
+  }
+  if (survived > 0) {
+    note(`raids: ${survived} slot(s) still farmable with every attempt spent`);
+  }
+  console.log(
+    `raids: ${planned} slot(s) reachable today, ${stocked} needing no raid at all  ✓`,
+  );
 }
 
 if (problems.length === 0) {

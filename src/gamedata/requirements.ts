@@ -561,6 +561,115 @@ export function energyPerCopy(
   return Math.min(...open.map((n) => n.energyPerDrop!));
 }
 
+/**
+ * The raids one slot would cost, and whether today's attempts stretch that far.
+ *
+ * Energy is not the only thing that runs out. Every campaign node allows a
+ * fixed number of runs a day, and a slot that needs six copies of something
+ * that drops one run in four wants twenty-four raids the node may not have
+ * left. A price in energy says nothing about that: it is an average over
+ * unlimited runs, so it happily quotes a figure for work the day cannot hold.
+ *
+ * So this counts runs instead, against the attempts actually remaining. Copies
+ * are taken from the cheapest open node first and each run is credited with
+ * `dropRate` copies, which is the same expected-value arithmetic the prices
+ * use — a forecast, not a promise. A crafted item costs its ingredients'
+ * raids, recursively, since no node drops it.
+ *
+ * `undefined` means today cannot cover it: either nothing is open that drops
+ * the item, or what is open has too few attempts left. That is deliberately
+ * not a large number — "come back tomorrow" is a different answer from
+ * "expensive", and the caller filters on the difference.
+ *
+ * Each call assumes it is the only thing you do today. On a page of
+ * alternatives that is the right assumption — you are going to pick one — but
+ * it does mean two slots drawing on the same node cannot both be believed at
+ * once.
+ */
+export interface RaidPlan {
+  /** Runs to make, summed over every node and every ingredient. */
+  raids: number;
+  /** What those runs cost. Above the expected-value price: a run is indivisible. */
+  energy: number;
+  /** Nodes the raids are spread across. */
+  nodes: number;
+}
+
+export function raidsToday(
+  item: Pick<ItemRequirement, 'kind' | 'key'> & { rarity?: Rarity },
+  copies: number,
+  db: GameDatabase,
+  player: PlayerResponse,
+  /**
+   * Stock, spent as the recursion descends into a recipe.
+   *
+   * Held ingredients are the difference between a recipe you can finish today
+   * and one you cannot, so unlike the energy price — a unit price, which has no
+   * business knowing what you own — this consumes them. `copies` is what you
+   * still need of `item` itself, already net of what you hold of it; the
+   * caller has done that subtraction and doing it again here would credit the
+   * same materials twice.
+   */
+  held: Map<string, number> = ownedByKey(player, db),
+  seen: ReadonlySet<string> = new Set(),
+): RaidPlan | undefined {
+  if (copies <= 0) return { raids: 0, energy: 0, nodes: 0 };
+  if (seen.has(item.key)) return undefined;
+
+  let need = copies;
+  const source = itemSource(item, db);
+
+  if (source.kind === 'craft') {
+    const nested = new Set(seen).add(item.key);
+    const total: RaidPlan = { raids: 0, energy: 0, nodes: 0 };
+    for (const component of source.recipe) {
+      const want = need * component.amount;
+      const have = held.get(component.key) ?? 0;
+      const fromStock = Math.min(have, want);
+      held.set(component.key, have - fromStock);
+      const part = raidsToday(
+        {
+          kind: 'upgrade',
+          key: component.key,
+          ...(component.rarity !== undefined ? { rarity: component.rarity } : {}),
+        },
+        want - fromStock,
+        db,
+        player,
+        held,
+        nested,
+      );
+      if (part === undefined) return undefined;
+      total.raids += part.raids;
+      total.energy += part.energy;
+      total.nodes += part.nodes;
+    }
+    return total;
+  }
+  if (source.kind !== 'farm') return undefined;
+
+  const open = nodeStatuses(source.nodes, player, db, {
+    kind: item.kind,
+    ...(item.rarity !== undefined ? { rarity: item.rarity } : {}),
+  })
+    .filter((n) => n.unlocked && n.attemptsLeft > 0 && n.dropRate && n.energyCost !== undefined)
+    .sort((a, b) => (a.energyPerDrop ?? Infinity) - (b.energyPerDrop ?? Infinity));
+
+  const plan: RaidPlan = { raids: 0, energy: 0, nodes: 0 };
+  for (const node of open) {
+    if (need <= 1e-9) break;
+    // Cheapest per copy first, then whatever the node has left. Runs are whole:
+    // half a raid drops nothing.
+    const runs = Math.min(node.attemptsLeft, Math.ceil(need / node.dropRate!));
+    if (runs <= 0) continue;
+    plan.raids += runs;
+    plan.energy += runs * node.energyCost!;
+    plan.nodes += 1;
+    need -= runs * node.dropRate!;
+  }
+  return need > 1e-9 ? undefined : plan;
+}
+
 /** What is left to do, counted three ways because they answer different questions. */
 export interface FarmingCost {
   /**

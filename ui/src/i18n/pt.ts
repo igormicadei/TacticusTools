@@ -227,9 +227,17 @@ export const PT: Record<keyof typeof EN, string> = {
   'spend.unitBeyond': '{n} espaço fora do alcance',
   'spend.unitBeyondPlural': '{n} espaços fora do alcance',
   'spend.each': '{n}⚡ por cópia',
+  'spend.today': 'Só o que dá para hoje',
+  'spend.todayHint':
+    'Cada nó permite um número fixo de investidas por dia. Isto mantém só os espaços que as investidas restantes de hoje conseguiriam preencher.',
+  'spend.raids': '{n} investida',
+  'spend.raidsPlural': '{n} investidas',
+  'spend.raidsNone': 'sem investidas — você já tem tudo',
+  'spend.todayNone':
+    'Nada aqui dá para terminar hoje: o que falta pede mais investidas do que os nós abertos têm. Desligue o filtro para ver mesmo assim, ou volte quando as contagens reiniciarem.',
   'spend.noPlans': 'Nenhum plano ainda, então não há para o que filtrar. Mostrando todas as unidades.',
   'spend.blurb':
-    'Só os espaços que cada unidade consegue preencher no rank em que está agora — uma melhoria de um rank posterior não aumenta nada até você chegar lá. Cada linha é um desses espaços, precificado inteiro, porque um espaço pela metade vale zero. São alternativas, não uma lista para percorrer: o orçamento compra uma delas, e a mais barata vem primeiro dentro de cada unidade. Os preços são valores esperados sobre as taxas de drop publicadas, então trate isto como conselho, não como aritmética.',
+    'Só os espaços que cada unidade consegue preencher no rank em que está agora — uma melhoria de um rank posterior não aumenta nada até você chegar lá. Cada linha é um desses espaços, precificado inteiro, porque um espaço pela metade vale zero. São alternativas, não uma lista para percorrer: o orçamento compra uma delas, e a mais barata vem primeiro dentro de cada unidade. Os preços são valores esperados sobre as taxas de drop publicadas, então trate isto como conselho, não como aritmética. A contagem de investidas é o que os nós abertos hoje levariam nessas taxas, já contando os ingredientes que você tem — por isso um item forjado pode pedir menos investidas do que o preço sugere.',
 
   /* ---- equipes -------------------------------------------------------- */
   'teams.heading': 'Equipes',

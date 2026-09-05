@@ -24,9 +24,11 @@ import {
   nodeStatuses,
   ownedByKey,
   planCosts,
+  raidsToday,
   type AllocatedItem,
   type ItemRequirement,
   type NodeStatus,
+  type RaidPlan,
   type StepCost,
 } from './requirements.js';
 import type { GameDatabase } from './types.js';
@@ -380,6 +382,14 @@ export interface EnergyCandidate {
   ratio: number;
   /** Where to run, cheapest per copy first. */
   nodes: NodeStatus[];
+  /**
+   * What today's open nodes would take to fill this slot outright.
+   *
+   * Absent when they cannot: a node allows only so many runs a day, and a
+   * price in energy — an average over unlimited runs — cheerfully quotes a
+   * figure for work the day has no attempts left for. See {@link raidsToday}.
+   */
+  today?: RaidPlan;
 }
 
 export interface EnergyPlan {
@@ -425,6 +435,19 @@ export function energyCandidates(
 ): EnergyCandidate[] {
   const owned = ownedByKey(player, db);
   const remaining = new Map(owned);
+  /**
+   * A second ledger, for the raid plans alone.
+   *
+   * Kept apart from `remaining` on purpose. Both spend the same inventory, but
+   * they answer different questions and must not move each other: `remaining`
+   * decides how many copies a slot is still short, which is what the price is
+   * built on, while this one decides whether a recipe's ingredients are already
+   * in hand. Sharing one map would let a recipe eat the materials another
+   * slot's price was quoted from, and the page would show energy figures that
+   * shift for reasons nothing on it explains. Shared *across candidates*
+   * though, since two slots must not both be told they hold the same parts.
+   */
+  const forRaids = new Map(owned);
   const candidates: EnergyCandidate[] = [];
 
   for (const unit of units) {
@@ -456,6 +479,7 @@ export function energyCandidates(
 
       const each = energyPerCopy(item, db, player);
       if (each === undefined) return;
+      const today = raidsToday(item, copies, db, player, forRaids);
 
       const energy = copies * each;
       candidates.push({
@@ -474,6 +498,10 @@ export function energyCandidates(
         energy,
         ratio: gain / energy,
         nodes: rankedNodes(item, db, player),
+        // Raids are costed as though this were the only slot filled today —
+        // which is what the list is, a set of alternatives — but the stock
+        // behind them is shared, since materials are finite and runs are not.
+        ...(today !== undefined ? { today } : {}),
       });
     });
   }

@@ -27,6 +27,7 @@ const ENERGY_KEY = 'tacticus-tools:energy';
 const STAT_KEY = 'tacticus-tools:energyStat';
 const PLANNED_KEY = 'tacticus-tools:energyPlannedOnly';
 const MODE_KEY = 'tacticus-tools:timelineMode';
+const TODAY_KEY = 'tacticus-tools:energyToday';
 
 export function TimelinePage({ db, player }: { db: GameDatabase; player: PlayerResponse }) {
   // Remembered, because the two views answer different questions and a player
@@ -235,6 +236,7 @@ function SpendEnergy({ db, player }: { db: GameDatabase; player: PlayerResponse 
   const [plannedOnly, setPlannedOnly] = useState(
     () => localStorage.getItem(PLANNED_KEY) === '1',
   );
+  const [todayOnly, setTodayOnly] = useState(() => localStorage.getItem(TODAY_KEY) === '1');
 
   const budget = Number(energy) || 0;
   const plans = plansStore.list();
@@ -250,7 +252,7 @@ function SpendEnergy({ db, player }: { db: GameDatabase; player: PlayerResponse 
    * go and fill, and that needs the alternatives side by side with their own
    * prices.
    */
-  const { affordable, beyond, cheapest } = useMemo(() => {
+  const { affordable, beyond, cheapest, hiddenByToday } = useMemo(() => {
     // Per-unit choices override the page-wide one, so a tank can favour health
     // while the same run tops up someone else's damage.
     const perUnit = new Map<string, StatPriority>();
@@ -261,10 +263,14 @@ function SpendEnergy({ db, player }: { db: GameDatabase; player: PlayerResponse 
       ? player.player.units.filter((u) => planned.has(u.id))
       : player.player.units;
 
-    const all = energyCandidates(units, player, db, {
+    const found = energyCandidates(units, player, db, {
       ...(stat ? { priority: stat } : {}),
       perUnit,
     });
+    // Energy is not the only thing that runs out: a node allows so many runs a
+    // day, and a slot needing more of them than are left is not work you can
+    // do tonight however much energy you hold.
+    const all = todayOnly ? found.filter((c) => c.today !== undefined) : found;
     return {
       affordable: all.filter((c) => c.energy <= budget),
       // Nearest misses first, because the list below is cut short and what is
@@ -274,8 +280,11 @@ function SpendEnergy({ db, player }: { db: GameDatabase; player: PlayerResponse 
         (min, c) => (min === undefined ? c.energy : Math.min(min, c.energy)),
         undefined,
       ),
+      // Told apart from an empty roster: "nothing today" and "nothing at all"
+      // want different advice.
+      hiddenByToday: todayOnly ? found.length - all.length : 0,
     };
-  }, [player, db, stat, budget, plannedOnly, plans.length]);
+  }, [player, db, stat, budget, plannedOnly, todayOnly, plans.length]);
 
   return (
     <section className="panel">
@@ -329,6 +338,17 @@ function SpendEnergy({ db, player }: { db: GameDatabase; player: PlayerResponse 
             {t('spend.onlyPlans')}
           </button>
         </div>
+        <label className="switch" title={t('spend.todayHint')}>
+          <input
+            type="checkbox"
+            checked={todayOnly}
+            onChange={(e) => {
+              setTodayOnly(e.target.checked);
+              localStorage.setItem(TODAY_KEY, e.target.checked ? '1' : '0');
+            }}
+          />
+          <span>{t('spend.today')}</span>
+        </label>
       </div>
 
       <p className="small muted" style={{ marginTop: 0 }}>
@@ -343,10 +363,12 @@ function SpendEnergy({ db, player }: { db: GameDatabase; player: PlayerResponse 
       <h3>{tn(budget, 'spend.afford', 'spend.affordPlural', { n: localNumber(budget) })}</h3>
       {affordable.length === 0 ? (
         <div className="empty">
-          {t('spend.affordNone', {
-            n: localNumber(budget),
-            cheapest: cheapest === undefined ? '—' : localNumber(Math.round(cheapest)),
-          })}
+          {beyond.length === 0 && hiddenByToday > 0
+            ? t('spend.todayNone')
+            : t('spend.affordNone', {
+                n: localNumber(budget),
+                cheapest: cheapest === undefined ? '—' : localNumber(Math.round(cheapest)),
+              })}
         </div>
       ) : (
         <ByUnit rows={affordable} db={db} player={player} affordable />
@@ -460,8 +482,15 @@ function CandidateTable({
               <span className="chip ok-chip">
                 {t('spend.gain', { n: row.gain, stat: localStat(row.statType) })}
               </span>
+              {/* What tonight would actually take, when tonight can take it.
+                  The per-copy rate stands in otherwise; it is also on every
+                  node in the detail below. */}
               <span className="muted small">
-                {t('spend.each', { n: row.energyPerCopy.toFixed(1) })}
+                {row.today === undefined
+                  ? t('spend.each', { n: row.energyPerCopy.toFixed(1) })
+                  : row.today.raids === 0
+                    ? t('spend.raidsNone')
+                    : tn(row.today.raids, 'spend.raids', 'spend.raidsPlural')}
               </span>
             </button>
             {isOpen && (
