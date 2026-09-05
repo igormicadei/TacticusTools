@@ -1,7 +1,9 @@
 import { Link } from 'react-router-dom';
 
 import { factionIcon, rankIcon, starIcon, unitIcon } from '../data/icons.ts';
-import { humaniseFaction, rarityLabel, type RosterEntry } from '../data/roster.ts';
+import { humaniseFaction, type RosterEntry } from '../data/roster.ts';
+import { localRarity } from '../i18n/game.ts';
+import { t } from '../i18n/locale.ts';
 import { Icon, useIcons } from './Icon.tsx';
 
 const STATUS_COLOR: Record<RosterEntry['status'], string> = {
@@ -46,7 +48,7 @@ export function UnitCard({ entry }: { entry: RosterEntry }) {
           <div className="sub">
             <Icon src={factionIcon(factionId)} size={13} className="crest" />
             {humaniseFaction(factionId)}
-            {definition?.isMachineOfWar ? ' · Machine of War' : ''}
+            {definition?.isMachineOfWar ? ` · ${t('card.machineOfWar')}` : ''}
           </div>
         </div>
       </div>
@@ -54,19 +56,19 @@ export function UnitCard({ entry }: { entry: RosterEntry }) {
       <div className="meta">
         {unit ? (
           <>
-            <span className="chip">Lv {unit.xpLevel}</span>
+            <span className="chip">{t('card.level', { n: unit.xpLevel })}</span>
             <span className="chip with-icon">
               <Icon src={rankIcon(unit.rank)} size={14} />
-              Rank {unit.rank}
+              {t('card.rank', { n: unit.rank })}
             </span>
             {entry.rarity !== undefined && (
-              <span className="chip rarity">{rarityLabel(entry.rarity)}</span>
+              <span className="chip rarity">{localRarity(entry.rarity)}</span>
             )}
           </>
         ) : entry.status === 'unlockable' ? (
-          <span className="chip">{entry.shards} shards</span>
+          <span className="chip">{t('card.shards', { n: entry.shards })}</span>
         ) : (
-          <span className="chip">Locked</span>
+          <span className="chip">{t('card.locked')}</span>
         )}
       </div>
 

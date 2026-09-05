@@ -7,6 +7,8 @@ import { computeTierStarLevel } from '@lib/gamedata/stats.js';
 import type { GameDatabase, UnitDefinition } from '@lib/gamedata/types.js';
 import type { PlayerResponse, Unit } from '@lib/types/player.js';
 
+import { t, type StringKey } from '../i18n/locale.ts';
+
 /** Whether the player has the unit, has partial shards, or neither. */
 export type OwnershipStatus = 'owned' | 'unlockable' | 'locked';
 
@@ -33,10 +35,14 @@ export interface RosterGroup<T extends string = string> {
   entries: RosterEntry[];
 }
 
-const STATUS_LABELS: Record<OwnershipStatus, string> = {
-  owned: 'Available',
-  unlockable: 'Shards collected',
-  locked: 'Not started',
+/**
+ * Resolved when the group is built, not stored, so the labels follow a language
+ * change like everything else on the page.
+ */
+const STATUS_LABELS: Record<OwnershipStatus, StringKey> = {
+  owned: 'units.status.owned',
+  unlockable: 'units.status.unlockable',
+  locked: 'units.status.locked',
 };
 
 const STATUS_ORDER: OwnershipStatus[] = ['owned', 'unlockable', 'locked'];
@@ -105,7 +111,7 @@ const byName = (a: RosterEntry, b: RosterEntry) => a.name.localeCompare(b.name);
 export function groupByOwnership(entries: RosterEntry[]): RosterGroup<OwnershipStatus>[] {
   return STATUS_ORDER.map((key) => ({
     key,
-    label: STATUS_LABELS[key],
+    label: t(STATUS_LABELS[key]),
     entries: entries.filter((e) => e.status === key).sort(sortWithinOwnership(key)),
   })).filter((group) => group.entries.length > 0);
 }

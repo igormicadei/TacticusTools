@@ -5,6 +5,7 @@ import { loadGameData } from './data/gamedata.ts';
 import { fetchPlayer, storage } from './data/player.ts';
 import { BadgesPage } from './routes/BadgesPage.tsx';
 import { UpgradesPage } from './routes/UpgradesPage.tsx';
+import { currentLang, t, useLang } from './i18n/locale.ts';
 import { PlanDetailPage } from './routes/PlanDetailPage.tsx';
 import { TeamDetailPage } from './routes/TeamDetailPage.tsx';
 import { TeamsPage } from './routes/TeamsPage.tsx';
@@ -27,6 +28,9 @@ import type { PlayerResponse } from '@lib/types/player.js';
 const STALE_AFTER_MS = 2 * 60 * 1000;
 
 export function App() {
+  // Subscribed at the root: a language change has to repaint the whole tree,
+  // and every screen below reads `t` directly rather than through a prop.
+  useLang();
   const [db, setDb] = useState<GameDatabase>();
   const [player, setPlayer] = useState<PlayerResponse | undefined>(() => storage.readPlayer());
   const [fetchedAt, setFetchedAt] = useState<number | undefined>(() => storage.readFetchedAt());
@@ -106,22 +110,22 @@ export function App() {
         <span className="brand">TACTICUS TOOLS</span>
         <nav>
           <NavLink to="/units" className={({ isActive }) => (isActive ? 'active' : '')}>
-            Units
+            {t('nav.units')}
           </NavLink>
           <NavLink to="/plans" className={({ isActive }) => (isActive ? 'active' : '')}>
-            Plans
+            {t('nav.plans')}
           </NavLink>
           <NavLink to="/teams" className={({ isActive }) => (isActive ? 'active' : '')}>
-            Teams
+            {t('nav.teams')}
           </NavLink>
           <NavLink to="/upgrades" className={({ isActive }) => (isActive ? 'active' : '')}>
-            Upgrades
+            {t('nav.upgrades')}
           </NavLink>
           <NavLink to="/badges" className={({ isActive }) => (isActive ? 'active' : '')}>
-            Badges
+            {t('nav.badges')}
           </NavLink>
           <NavLink to="/player" className={({ isActive }) => (isActive ? 'active' : '')}>
-            Player data
+            {t('nav.player')}
           </NavLink>
         </nav>
         <span className="spacer" />
@@ -132,7 +136,10 @@ export function App() {
                 {/* Dropped on a phone, where the nav and the refresh button are
                     the only things worth the width. */}
                 <span className="session-name">
-                  {player.player.details.name} · power {player.player.details.powerLevel}
+                  {t('shell.power', {
+                    name: player.player.details.name,
+                    power: player.player.details.powerLevel,
+                  })}
                 </span>
                 <span className="session-age" title={syncedAtTitle(player, fetchedAt)}>
                   {age(player, fetchedAt)}
@@ -141,16 +148,16 @@ export function App() {
             )}
             {refreshError && (
               <NavLink to="/player" className="chip warn" title={refreshError}>
-                Refresh failed
+                {t('shell.refreshFailed')}
               </NavLink>
             )}
             <button
               className="small"
               onClick={() => void refresh(true)}
               disabled={refreshing}
-              title="Fetch the roster from the API now, ignoring the stored copy"
+              title={t('shell.refreshHint')}
             >
-              {refreshing ? 'Refreshing…' : 'Refresh'}
+              {refreshing ? t('shell.refreshing') : t('shell.refresh')}
             </button>
           </span>
         )}
@@ -158,7 +165,7 @@ export function App() {
 
       <main className="content">
         {error && <div className="notice error">{error}</div>}
-        {!db && !error && <div className="empty">Loading game database…</div>}
+        {!db && !error && <div className="empty">{t('shell.loadingDb')}</div>}
 
         {db && (
           <Routes>
@@ -267,16 +274,19 @@ function age(player: PlayerResponse, fetchedAt: number | undefined): string {
   const syncedAt = (player.metaData.lastUpdatedOn || 0) * 1000 || fetchedAt;
   if (!syncedAt) return '';
   const minutes = Math.floor((Date.now() - syncedAt) / 60000);
-  if (minutes < 1) return 'just now';
-  if (minutes < 60) return `${minutes}m ago`;
+  if (minutes < 1) return t('shell.justNow');
+  if (minutes < 60) return t('shell.minutesAgo', { n: minutes });
   const hours = Math.floor(minutes / 60);
-  return hours < 24 ? `${hours}h ago` : `${Math.floor(hours / 24)}d ago`;
+  return hours < 24
+    ? t('shell.hoursAgo', { n: hours })
+    : t('shell.daysAgo', { n: Math.floor(hours / 24) });
 }
 
 function syncedAtTitle(player: PlayerResponse, fetchedAt: number | undefined): string {
+  const locale = currentLang() === 'pt' ? 'pt-BR' : 'en-GB';
   const synced = player.metaData.lastUpdatedOn
-    ? new Date(player.metaData.lastUpdatedOn * 1000).toLocaleString()
-    : 'unknown';
-  const got = fetchedAt ? new Date(fetchedAt).toLocaleString() : 'unknown';
-  return `Game data as of ${synced}\nFetched ${got}`;
+    ? new Date(player.metaData.lastUpdatedOn * 1000).toLocaleString(locale)
+    : t('shell.unknown');
+  const got = fetchedAt ? new Date(fetchedAt).toLocaleString(locale) : t('shell.unknown');
+  return t('shell.syncedTitle', { synced, got });
 }

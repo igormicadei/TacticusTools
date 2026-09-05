@@ -1,15 +1,21 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
-import { rarityName } from '@lib/gamedata/enums.js';
+
 import { badgeCatalogue, type BadgeEntry, type BadgeUse } from '@lib/gamedata/materials.js';
 import type { GameDatabase } from '@lib/gamedata/types.js';
 import type { PlayerResponse } from '@lib/types/player.js';
 
 import { Icon, useIcons } from '../components/Icon.tsx';
 import { abilityIcon, requirementIcon, unitIcon } from '../data/icons.ts';
+import { localAlliance, localNumber, localRarity } from '../i18n/game.ts';
+import { t, tn } from '../i18n/locale.ts';
 
-const SLOT_LABEL = { active: 'Active', passive: 'Passive', mythic: 'Mythic' } as const;
+const SLOT_LABEL = {
+  active: 'slot.active',
+  passive: 'slot.passive',
+  mythic: 'slot.mythic',
+} as const;
 
 export function BadgesPage({ db, player }: { db: GameDatabase; player: PlayerResponse }) {
   useIcons();
@@ -38,7 +44,7 @@ export function BadgesPage({ db, player }: { db: GameDatabase; player: PlayerRes
   }, [badges]);
 
   if (badges.length === 0) {
-    return <div className="empty">No ability badges in your inventory.</div>;
+    return <div className="empty">{t('badges.none')}</div>;
   }
 
   return (
@@ -46,29 +52,27 @@ export function BadgesPage({ db, player }: { db: GameDatabase; player: PlayerRes
       <div className="toolbar">
         <div className="tabs">
           <button className={nextOnly ? 'active' : ''} onClick={() => setNextOnly(true)}>
-            Next level only
+            {t('badges.nextOnly')}
           </button>
           <button className={nextOnly ? '' : 'active'} onClick={() => setNextOnly(false)}>
-            Every level it covers
+            {t('badges.everyLevel')}
           </button>
         </div>
       </div>
 
       <section className="panel" style={{ marginBottom: 16 }}>
         <p className="small muted" style={{ margin: 0 }}>
-          Badges belong to a grand alliance, not to a unit, which is why the game cannot tell you
-          where one goes — the answer is every ability of every unit on that side. Listed here are
-          only the abilities whose remaining levels actually charge that rarity, with what each
-          level costs. An ability appears under more than one rarity when its ladder crosses from
-          one to the next.
+          {t('badges.blurb')}
         </p>
       </section>
 
       {byAlliance.map(([alliance, rows]) => (
         <section className="group" key={alliance}>
           <div className="group-head">
-            <h2>{alliance}</h2>
-            <span className="pill">{rows.reduce((n, b) => n + b.owned, 0)} held</span>
+            <h2>{localAlliance(alliance)}</h2>
+            <span className="pill">
+              {t('badges.held', { n: rows.reduce((n, b) => n + b.owned, 0) })}
+            </span>
           </div>
           <div className="panel">
             {rows.map((badge) => (
@@ -109,20 +113,26 @@ function BadgeRow({
         <span className="count">{badge.owned}×</span>
         <Icon src={requirementIcon(badge.key)} size={26} className="portrait" reserve />
         <span className="item-name">
-          {rarityName(badge.rarity)} {badge.alliance} badges
+          {t('badges.name', {
+            rarity: localRarity(badge.rarity),
+            alliance: localAlliance(badge.alliance),
+          })}
         </span>
         <span className="row-tail">
           {uses.length === 0 ? (
-            <span className="muted small">nothing to spend these on yet</span>
+            <span className="muted small">{t('badges.nothingToSpend')}</span>
           ) : (
             <>
               <span className="muted small">
-                {uses.length} {nextOnly ? 'ability upgrade' : 'ability'}
-                {uses.length === 1 ? '' : 's'}
+                {nextOnly
+                  ? tn(uses.length, 'badges.upgradeCount', 'badges.upgradeCountPlural')
+                  : tn(uses.length, 'badges.abilityCount', 'badges.abilityCountPlural')}
               </span>
               <span className={`chip${short === 0 ? ' ok-chip' : ''}`}>
-                {need}× {nextOnly ? 'for the next level of each' : 'to finish every level'}
-                {short > 0 ? ` · ${short} short` : ''}
+                {nextOnly
+                  ? t('badges.needNext', { n: need })
+                  : t('badges.needAll', { n: need })}
+                {short > 0 ? t('badges.short', { n: short }) : ''}
               </span>
             </>
           )}
@@ -153,10 +163,7 @@ function BadgeUses({
 }) {
   if (uses.length === 0) {
     return (
-      <p className="source-note muted small">
-        Every ability on this side is either at a level this rarity does not pay for, or already
-        maxed.
-      </p>
+      <p className="source-note muted small">{t('badges.allMaxed')}</p>
     );
   }
 
@@ -194,16 +201,16 @@ function BadgeUses({
                   {use.abilityName}
                 </span>
                 <span className="row-tail">
-                  <span className={`chip slot-${use.slot}`}>{SLOT_LABEL[use.slot]}</span>
+                  <span className={`chip slot-${use.slot}`}>{t(SLOT_LABEL[use.slot])}</span>
                   <span className="muted small">
                     {nextOnly
-                      ? `level ${use.level} → ${use.level + 1}`
-                      : `levels ${use.steps[0]?.from} → ${use.steps.at(-1)?.to}`}
+                      ? t('badges.levelStep', { from: use.level, to: use.level + 1 })
+                      : t('badges.levelRange', {
+                          from: use.steps[0]?.from ?? 0,
+                          to: use.steps.at(-1)?.to ?? 0,
+                        })}
                   </span>
-                  <span
-                    className="muted small"
-                    title="Running total if you spend down this list in order"
-                  >
+                  <span className="muted small" title={t('badges.runningTotal')}>
                     {before} → {running}
                   </span>
                 </span>
@@ -211,7 +218,14 @@ function BadgeUses({
               {!nextOnly && use.steps.length > 1 && (
                 <p className="source-note muted small" style={{ padding: '2px 0 8px 46px' }}>
                   {use.steps
-                    .map((s) => `${s.from}→${s.to}: ${s.badges}× + ${s.gold.toLocaleString()} gold`)
+                    .map((step) =>
+                      t('badges.stepCost', {
+                        from: step.from,
+                        to: step.to,
+                        badges: step.badges,
+                        gold: localNumber(step.gold),
+                      }),
+                    )
                     .join(' · ')}
                 </p>
               )}
@@ -220,8 +234,7 @@ function BadgeUses({
         })}
       </ul>
       <p className="small muted" style={{ margin: '6px 0 0' }}>
-        Badges are pooled, so the running total is what one order of spending would use. Rows past
-        where it passes {owned} are dimmed: they are what your stock does not stretch to.
+        {t('badges.pooled', { owned })}
       </p>
     </div>
   );

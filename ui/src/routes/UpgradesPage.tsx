@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
-import { rankName, rarityName } from '@lib/gamedata/enums.js';
+
 import { levelToCompleteRank } from '@lib/gamedata/plan.js';
 import {
   materialCatalogue,
@@ -16,16 +16,18 @@ import type { GameDatabase } from '@lib/gamedata/types.js';
 import type { PlayerResponse } from '@lib/types/player.js';
 
 import { Icon, useIcons } from '../components/Icon.tsx';
+import { localRank, localRarity, localStat } from '../i18n/game.ts';
+import { t, tn, type StringKey } from '../i18n/locale.ts';
 import { rankIcon, requirementIcon, unitIcon } from '../data/icons.ts';
 
 type View = 'inventory' | 'ranks';
 type Filter = 'stock' | 'all' | 'unused';
 type Scope = 'now' | 'ahead' | 'roster' | 'everyone';
 
-const FILTERS: { key: Filter; label: string; hint: string }[] = [
-  { key: 'stock', label: 'In stock', hint: 'Materials you hold at least one of' },
-  { key: 'all', label: 'Every material', hint: 'The whole table, held or not' },
-  { key: 'unused', label: 'Spent by nothing', hint: 'No rank in the game asks for these' },
+const FILTERS: { key: Filter; label: StringKey; hint: StringKey }[] = [
+  { key: 'stock', label: 'upg.filter.stock', hint: 'upg.filter.stockHint' },
+  { key: 'all', label: 'upg.filter.all', hint: 'upg.filter.allHint' },
+  { key: 'unused', label: 'upg.filter.unused', hint: 'upg.filter.unusedHint' },
 ];
 
 /**
@@ -41,11 +43,11 @@ const FILTERS: { key: Filter; label: string; hint: string }[] = [
  * that rank with that slot still empty. Everything else is a plan; this is a
  * thing to go and do.
  */
-const SCOPES: { key: Scope; label: string; hint: string }[] = [
-  { key: 'now', label: 'Usable now', hint: 'Slots standing empty on units at that rank right now' },
-  { key: 'ahead', label: 'Still ahead', hint: 'Your units, at ranks they have not reached yet' },
-  { key: 'roster', label: 'Your roster', hint: 'Your units, at every rank including ones passed' },
-  { key: 'everyone', label: 'Every unit', hint: 'The whole game, owned or not' },
+const SCOPES: { key: Scope; label: StringKey; hint: StringKey }[] = [
+  { key: 'now', label: 'upg.scope.now', hint: 'upg.scope.nowHint' },
+  { key: 'ahead', label: 'upg.scope.ahead', hint: 'upg.scope.aheadHint' },
+  { key: 'roster', label: 'upg.scope.roster', hint: 'upg.scope.rosterHint' },
+  { key: 'everyone', label: 'upg.scope.everyone', hint: 'upg.scope.everyoneHint' },
 ];
 
 export function UpgradesPage({ db, player }: { db: GameDatabase; player: PlayerResponse }) {
@@ -136,10 +138,10 @@ export function UpgradesPage({ db, player }: { db: GameDatabase; player: PlayerR
       <div className="toolbar">
         <div className="tabs">
           <button className={view === 'inventory' ? 'active' : ''} onClick={() => setView('inventory')}>
-            Where materials go
+            {t('upg.tab.where')}
           </button>
           <button className={view === 'ranks' ? 'active' : ''} onClick={() => setView('ranks')}>
-            Next rank per unit
+            {t('upg.tab.nextRank')}
           </button>
         </div>
         {view === 'inventory' && (
@@ -150,9 +152,9 @@ export function UpgradesPage({ db, player }: { db: GameDatabase; player: PlayerR
                   key={f.key}
                   className={filter === f.key ? 'active' : ''}
                   onClick={() => setFilter(f.key)}
-                  title={f.hint}
+                  title={t(f.hint)}
                 >
-                  {f.label}
+                  {t(f.label)}
                 </button>
               ))}
             </div>
@@ -162,27 +164,27 @@ export function UpgradesPage({ db, player }: { db: GameDatabase; player: PlayerR
                   key={sc.key}
                   className={scope === sc.key ? 'active' : ''}
                   onClick={() => setScope(sc.key)}
-                  title={sc.hint}
+                  title={t(sc.hint)}
                 >
-                  {sc.label}
+                  {t(sc.label)}
                 </button>
               ))}
             </div>
             <input
               className="search"
-              placeholder="Search materials…"
+              placeholder={t('upg.search')}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
             <div className="counts small muted">
               <span className="count">
-                <b>{spendable}</b> spendable now
+                <b>{spendable}</b> {t('upg.count.spendable')}
               </span>
               <span className="count">
-                <b>{held}</b> in stock
+                <b>{held}</b> {t('upg.count.stock')}
               </span>
               <span className="count">
-                <b>{catalogue.length}</b> known
+                <b>{catalogue.length}</b> {t('upg.count.known')}
               </span>
             </div>
           </>
@@ -192,17 +194,10 @@ export function UpgradesPage({ db, player }: { db: GameDatabase; player: PlayerR
       {view === 'inventory' ? (
         <section className="panel">
           <p className="small muted" style={{ marginTop: 0 }}>
-            The game marks a material as “used for ranking up” without saying by whom. This is
-            the rank tables read backwards. A material counts as used whether the rank asks for
-            it outright or forges it into something that is asked for, so a component several
-            recipes deep still shows the ranks it ultimately serves — with the chain that gets
-            it there, and the amount multiplied along it. Scoped by default to what you can
-            spend today — a unit standing at that rank with that upgrade slot still empty —
-            because that is the part you can act on without waiting for anything. Widen it
-            with the buttons above to see the ranks ahead, or the whole game.
+            {t('upg.blurb')}
           </p>
           {rows.length === 0 ? (
-            <div className="empty">Nothing matches “{query}”.</div>
+            <div className="empty">{t('upg.noMatch', { query })}</div>
           ) : (
             <ul className="item-list" style={{ paddingLeft: 0 }}>
               {rows.map((material) => (
@@ -249,31 +244,27 @@ function MaterialRow({
         <span className="item-name">
           {material.name}
           {material.rarity !== undefined && (
-            <span className="muted small"> · {rarityName(material.rarity)}</span>
+            <span className="muted small"> · {localRarity(material.rarity)}</span>
           )}
         </span>
         <span className="row-tail">
           {openNow > 0 && (
             <span
               className={`chip ${spendable ? 'ok-chip' : ''}`}
-              title={
-                spendable
-                  ? 'Slots standing empty right now on units already at that rank'
-                  : 'Slots are open for it, but you hold none'
-              }
+              title={t(spendable ? 'upg.slotsOpenHint' : 'upg.slotsOpenNoneHeld')}
             >
-              {openNow} slot{openNow === 1 ? '' : 's'} open now
+              {tn(openNow, 'upg.slotsOpen', 'upg.slotsOpenPlural')}
             </span>
           )}
           {!material.farmable && (
-            <span className="chip gold" title="No campaign node drops this; it has to be forged.">
-              Forged
+            <span className="chip gold" title={t('upg.forgedHint')}>
+              {t('upg.forged')}
             </span>
           )}
           <span className="muted small">
             {material.uses.length === 0
-              ? 'nothing in scope needs this'
-              : `${material.unitCount} unit${material.unitCount === 1 ? '' : 's'}`}
+              ? t('upg.nothingNeeds')
+              : tn(material.unitCount, 'upg.unitCount', 'upg.unitCountPlural')}
           </span>
         </span>
       </button>
@@ -314,11 +305,7 @@ function MaterialUses({ material }: { material: MaterialEntry & { uses: Availabl
 
   if (byUnit.length === 0) {
     return (
-      <p className="source-note muted small">
-        Nothing in the current scope consumes this, directly or through a recipe. Widen the
-        scope to see whether a unit you do not own, or a rank you have already passed, ever
-        asks for it.
-      </p>
+      <p className="source-note muted small">{t('upg.noUses')}</p>
     );
   }
 
@@ -345,13 +332,6 @@ function MaterialUses({ material }: { material: MaterialEntry & { uses: Availabl
   );
 }
 
-/** What the slot gains, in the game's own words for the stat. */
-const STAT_LABEL: Record<string, string> = {
-  hp: 'health',
-  dmg: 'damage',
-  fixedArmor: 'armour',
-};
-
 /**
  * One place the material goes, and whether it goes there today.
  *
@@ -363,29 +343,31 @@ const STAT_LABEL: Record<string, string> = {
 function UseLine({ use }: { use: AvailableUse }) {
   const gain =
     use.statIncrease !== undefined && use.statType !== undefined
-      ? `+${use.statIncrease} ${STAT_LABEL[use.statType] ?? use.statType}`
+      ? t('upg.gain', { n: use.statIncrease, stat: localStat(use.statType) })
       : undefined;
 
   return (
     <div className={`use-line status-${use.status}`}>
       <Icon src={rankIcon(use.rank)} size={16} reserve />
-      <span className="use-rank">{rankName(use.rank)}</span>
+      <span className="use-rank">{localRank(use.rank)}</span>
       <b>{use.amount}×</b>
-      {use.status === 'now' && <span className="chip ok-chip">fits now</span>}
-      {use.status === 'applied' && <span className="chip">already fitted</span>}
-      {use.status === 'passed' && <span className="chip">rank passed</span>}
+      {use.status === 'now' && <span className="chip ok-chip">{t('upg.fitsNow')}</span>}
+      {use.status === 'applied' && <span className="chip">{t('upg.alreadyFitted')}</span>}
+      {use.status === 'passed' && <span className="chip">{t('upg.rankPassed')}</span>}
       {gain !== undefined && <span className="use-gain">{gain}</span>}
       {use.chain.length === 0 ? (
-        <span className="muted">directly</span>
+        <span className="muted">{t('upg.directly')}</span>
       ) : (
-        <span className="muted">via {use.chain.map((link) => link.name).join(' › ')}</span>
+        <span className="muted">
+          {t('upg.via', { chain: use.chain.map((link) => link.name).join(' › ') })}
+        </span>
       )}
       {use.levelGated && use.levelToComplete !== undefined && (
         <span
           className="muted small"
-          title="A rank's second row of upgrades is level-gated per upgrade, and only the rank's highest threshold is published — so this slot may still be waiting on levels."
+          title={t('upg.levelHint')}
         >
-          needs up to level {use.levelToComplete}
+          {t('upg.needsLevel', { n: use.levelToComplete })}
         </span>
       )}
     </div>
@@ -404,16 +386,12 @@ function NextRanks({
   onToggle: (id: string) => void;
 }) {
   if (ranks.length === 0) {
-    return <div className="empty">No owned unit has a rank left to reach.</div>;
+    return <div className="empty">{t('upg.noRanksLeft')}</div>;
   }
   return (
     <section className="panel">
       <p className="small muted" style={{ marginTop: 0 }}>
-        Everything one more rank costs each unit, primary materials and their recipes together,
-        cheapest first. Slots already filled at the current rank are marked applied — those
-        materials are spent and cannot be moved, so they count as done rather than as something
-        to find. Only the shortfall is expanded into a recipe: what is already in hand does not
-        need making.
+        {t('upg.nextRankBlurb')}
       </p>
       {ranks.map((rank) => (
         <div className="step-block" key={rank.unitId}>
@@ -433,13 +411,13 @@ function NextRanks({
             </Link>
             <span className="muted small row" style={{ gap: 6 }}>
               <Icon src={rankIcon(rank.from)} size={16} reserve />
-              {rankName(rank.from)} →
+              {localRank(rank.from)} →
               <Icon src={rankIcon(rank.to)} size={16} reserve />
-              {rankName(rank.to)}
+              {localRank(rank.to)}
             </span>
             <span style={{ flex: 1 }} />
             <span className={`chip${rank.missing === 0 ? ' ok-chip' : ''}`}>
-              {rank.missing === 0 ? 'Ready' : `${rank.missing} missing`}
+              {rank.missing === 0 ? t('upg.ready') : t('upg.missing', { n: rank.missing })}
             </span>
           </button>
           {open.has(`rank:${rank.unitId}`) && (
@@ -471,14 +449,18 @@ function RankMaterialRow({ material }: { material: RankMaterial }) {
         <span className="item-name">
           {material.name}
           {material.rarity !== undefined && (
-            <span className="muted small"> · {rarityName(material.rarity)}</span>
+            <span className="muted small"> · {localRarity(material.rarity)}</span>
           )}
         </span>
         <span className="row-tail">
           {material.applied > 0 && (
-            <span className="chip ok-chip">{material.applied}× already applied</span>
+            <span className="chip ok-chip">
+              {t('upg.appliedCount', { n: material.applied })}
+            </span>
           )}
-          {!material.farmable && short > 0 && <span className="chip gold">Forged</span>}
+          {!material.farmable && short > 0 && (
+            <span className="chip gold">{t('upg.forged')}</span>
+          )}
         </span>
       </div>
       {material.components.length > 0 && (
@@ -506,13 +488,13 @@ function RankMaterialRow({ material }: { material: RankMaterial }) {
                     {component.chain.length > 0 && (
                       <span className="muted small">
                         {' '}
-                        · via {component.chain.map((l) => l.name).join(' › ')}
+                        · {t('upg.via', { chain: component.chain.map((l) => l.name).join(' › ') })}
                       </span>
                     )}
                   </span>
                   <span className="row-tail">
                     {!component.farmable && componentShort > 0 && (
-                      <span className="chip gold">Forged</span>
+                      <span className="chip gold">{t('upg.forged')}</span>
                     )}
                   </span>
                 </div>

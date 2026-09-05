@@ -9,6 +9,8 @@ import {
   type Credentials,
 } from '../data/player.ts';
 
+import { setLang, t, useLang } from '../i18n/locale.ts';
+
 import type { GameDatabase } from '@lib/gamedata/types.js';
 import type { PlayerResponse } from '@lib/types/player.js';
 
@@ -25,6 +27,7 @@ export function PlayerDataPage({
   onLoaded: (response: PlayerResponse) => void;
   onClear: () => void;
 }) {
+  const lang = useLang();
   const stored = storage.readCredentials();
   const [apiKey, setApiKey] = useState(stored.apiKey ?? '');
   // Read, never written here: the relay comes from the build. Kept in state so
@@ -101,7 +104,20 @@ export function PlayerDataPage({
 
       <div className="panels">
         <section className="panel">
-          <h3>API key</h3>
+          <h3>{t('lang.heading')}</h3>
+          <div className="tabs" style={{ marginBottom: 8 }}>
+            <button className={lang === 'pt' ? 'active' : ''} onClick={() => setLang('pt')}>
+              {t('lang.pt')}
+            </button>
+            <button className={lang === 'en' ? 'active' : ''} onClick={() => setLang('en')}>
+              {t('lang.en')}
+            </button>
+          </div>
+          <p className="small muted" style={{ margin: 0 }}>
+            {t('lang.blurb')}
+          </p>
+
+          <h3 style={{ marginTop: 20 }}>API key</h3>
           <p className="small muted" style={{ marginTop: 0 }}>
             Stored in this browser only, and sent with each request. Get one from the{' '}
             <a

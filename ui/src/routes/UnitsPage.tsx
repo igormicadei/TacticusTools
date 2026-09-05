@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 
 import { UnitCard } from '../components/UnitCard.tsx';
+import { t } from '../i18n/locale.ts';
 import {
   buildRoster,
   groupByFaction,
@@ -45,37 +46,41 @@ export function UnitsPage({ db, player }: { db: GameDatabase; player: PlayerResp
             className={mode === 'ownership' ? 'active' : ''}
             onClick={() => setMode('ownership')}
           >
-            By status
+            {t('units.byStatus')}
           </button>
           <button
             className={mode === 'faction' ? 'active' : ''}
             onClick={() => setMode('faction')}
           >
-            By faction
+            {t('units.byFaction')}
           </button>
         </div>
 
         <input
           className="search"
-          placeholder="Search units or factions…"
+          placeholder={t('units.search')}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
 
         <div className="counts small muted">
           <span className="count">
-            <b style={{ color: 'var(--status-owned)' }}>{counts.owned}</b> available
+            <b style={{ color: 'var(--status-owned)' }}>{counts.owned}</b>{' '}
+            {t('units.available')}
           </span>
           <span className="count">
-            <b style={{ color: 'var(--status-unlockable)' }}>{counts.unlockable}</b> in progress
+            <b style={{ color: 'var(--status-unlockable)' }}>{counts.unlockable}</b>{' '}
+            {t('units.inProgress')}
           </span>
           <span className="count">
-            <b>{counts.locked}</b> not started
+            <b>{counts.locked}</b> {t('units.notStarted')}
           </span>
         </div>
       </div>
 
-      {groups.length === 0 && <div className="empty">No units match “{query}”.</div>}
+      {groups.length === 0 && (
+        <div className="empty">{t('units.noMatch', { query })}</div>
+      )}
 
       {groups.map((group) => (
         <section className="group" key={group.key}>
@@ -99,7 +104,7 @@ function FactionProgress({ entries }: { entries: RosterEntry[] }) {
   const owned = entries.filter((e) => e.status === 'owned').length;
   return (
     <span className="pill" style={{ marginLeft: 'auto' }}>
-      {owned}/{entries.length} available
+      {t('units.factionProgress', { owned, total: entries.length })}
     </span>
   );
 }
