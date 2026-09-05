@@ -2,7 +2,26 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- viewport-fit=cover so a standalone install can paint under the notch;
+         the safe-area insets in the stylesheet keep content clear of it. -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
+    <meta name="description" content="Roster, plans, teams and upgrades for Warhammer 40,000: Tacticus." />
+
+    <!-- Installability. The manifest carries the rest; theme-color is read by
+         the browser chrome itself and has to be here. -->
+    <link rel="manifest" href="%BASE_URL%manifest.webmanifest" />
+    <meta name="theme-color" content="#0a1220" />
+
+    <!-- Safari reads none of the manifest for Add to Home Screen: the name,
+         the icon and the status bar all come from these instead. -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Tacticus" />
+    <link rel="apple-touch-icon" href="%BASE_URL%icons/apple-touch-icon.png" />
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230a1220'/%3E%3Ctext x='16' y='23' font-size='20' text-anchor='middle' fill='%23d4a34a' font-family='sans-serif'%3E%E2%9A%94%3C/text%3E%3C/svg%3E" />
     <title>Tacticus Tools</title>
   </head>

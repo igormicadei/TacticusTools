@@ -10,7 +10,8 @@
     "typecheck": "tsc -b --noEmit",
     "audit:mobile": "node test/audit-mobile.mjs",
     "test:relay": "node test/relay-errors.mjs",
-    "test:i18n": "node test/untranslated.mjs"
+    "test:i18n": "node test/untranslated.mjs",
+    "test:pwa": "node test/pwa.mjs"
   },
   "devDependencies": {
     "@types/react": "^19.2.18",
