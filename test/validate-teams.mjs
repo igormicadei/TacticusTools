@@ -26,7 +26,7 @@ import {
   rarityName,
   Rarity,
   score,
-  campaignAlliances,
+  campaignSides,
   campaignFamily,
   GRAND_ALLIANCE_NAMES,
 } from '../dist/gamedata/index.js';
@@ -452,7 +452,7 @@ const OBJECTIVES = ['health', 'armour', 'damage', 'effective', 'offence', 'defen
    * never be the alliance it spends the campaign shooting at, and the two ends
    * of the same board must never be the same side.
    */
-  const alliances = campaignAlliances(db);
+  const sides = campaignSides(db);
   const roster = buildRosterUnits(player, db);
   const allianceOfFaction = new Map();
   for (const unit of Object.values(db.units)) {
@@ -464,7 +464,8 @@ const OBJECTIVES = ['health', 'armour', 'damage', 'effective', 'offence', 'defen
   const byFamily = new Map();
   for (const campaign of Object.values(db.campaigns)) {
     const name = campaign.name ?? campaign.id;
-    const alliance = alliances.get(campaign.id);
+    const side = sides.get(campaign.id);
+    const alliance = side?.alliance;
     if (alliance === undefined) {
       unresolved.push(name);
       continue;
@@ -528,7 +529,7 @@ const OBJECTIVES = ['health', 'armour', 'damage', 'effective', 'offence', 'defen
   }
 
   console.log(
-    `campaigns: ${alliances.size} sides derived, ${mirrored} mirrored pairs, ` +
+    `campaigns: ${sides.size} sides derived, ${mirrored} mirrored pairs, ` +
       `${filtered} pick(s) within their alliance` +
       (unresolved.length > 0 ? `; unrestricted: ${[...new Set(unresolved)].join(', ')}` : '') +
       '  ✓',

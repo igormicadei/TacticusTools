@@ -293,10 +293,11 @@ export const EN = {
   'td.noCampaign': 'No campaign',
   'td.noNode': 'No node',
   'td.allianceOnly': '{alliance} only',
+  'td.factionOnly': '{faction} only',
   'td.allianceUnknown': 'Any alliance',
   'td.wrongAlliance': 'the node will not take this unit',
   'td.allianceNote':
-    'This campaign is fought by one Grand Alliance, so “fill the squad” only offers units from it. No table publishes that restriction; it is read off the enemies of the campaign’s other side, and campaigns with no other side are left open.',
+    'A campaign node fixes a small cast from the campaign’s own faction and hands back whatever slots are left over to anyone of the same Grand Alliance — so a three-slot board takes that faction alone, and a five-slot board takes two guests. “Fill the squad” obeys whichever applies here. No table publishes any of it: the side is read off the enemies of the campaign’s other side, campaigns with no other side are left open, and the three characters the game names on each small board are not published at all, so their faction is as close as this gets.',
   'td.squad': 'The squad',
   'td.throughNormal': 'Through armour · normal',
   'td.throughAbility': 'Through armour · ability',

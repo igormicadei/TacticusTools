@@ -1025,6 +1025,12 @@ const OPPOSITE_SIDE: Readonly<Record<number, number>> = {
  */
 const FACTION_ALIASES: Readonly<Record<string, string>> = { adeptasororitas: 'sisterhood' };
 
+/**
+ * The battle tables write "Black Legion", the roster writes "BlackLegion".
+ * Same faction, and neither spelling is more correct than the other.
+ */
+export const sameFaction = (a: string, b: string): boolean => foldFaction(a) === foldFaction(b);
+
 /** Case, spacing and punctuation are not part of a faction's identity here. */
 const foldFaction = (name: string): string => {
   const folded = name.replace(/[^a-z0-9]/gi, '').toLowerCase();
@@ -1045,15 +1051,25 @@ export function battleLevelOf(type: CampaignType | undefined): BattleLevel {
 export const isMirrorType = (type: CampaignType | undefined): boolean =>
   type !== undefined && MIRROR_TYPES.has(type);
 
+/** The side a campaign is fought from: its own faction, and that faction's alliance. */
+export interface CampaignSide {
+  /** The faction the campaign stars — Orks for Octarius, Black Legion for Cadia. */
+  faction: string;
+  alliance: GrandAlliance;
+}
+
 /**
- * The Grand Alliance each campaign lets you deploy, by campaign id.
+ * The side each campaign is fought from, by campaign id.
  *
- * Campaigns are alliance-locked: Indomitus is fought by the Imperium, its
- * Mirror by the Xenos who hold the other end of the same board. Neither data
- * source publishes that — no table anywhere says who a node *permits* — so it
- * is derived, from the one place the answer is written down implicitly: the
- * enemies of the opposite side. Whoever you fight in Indomitus Mirror is
- * whoever you play in Indomitus, and that is Ultramarines on every node of it.
+ * Campaigns are faction campaigns: Indomitus is the Ultramarines' war, its
+ * Mirror the Necrons'. Neither data source publishes that — no table anywhere
+ * says who a node *permits* — so it is derived, from the one place the answer
+ * is written down implicitly: the enemies of the opposite side. Whoever you
+ * fight in Indomitus Mirror is whoever you play in Indomitus, and that is
+ * Ultramarines on every node of it.
+ *
+ * Both halves are kept because the game uses both, and which one applies is a
+ * property of the node rather than of the campaign — see {@link BattleBrief.allows}.
  *
  * Deliberately partial. Only a campaign with an opposite side is derived at
  * all: an event campaign has none, and its name is no substitute — the Dark
@@ -1066,7 +1082,7 @@ export const isMirrorType = (type: CampaignType | undefined): boolean =>
  * the player sees the moment they try it, while an invented one hides units
  * they could have brought and says nothing at all.
  */
-export function campaignAlliances(db: GameDatabase): Map<string, GrandAlliance> {
+export function campaignSides(db: GameDatabase): Map<string, CampaignSide> {
   const allianceOfFaction = new Map<string, GrandAlliance>();
   for (const unit of Object.values(db.units)) {
     if (unit.factionId === undefined || unit.grandAlliance === undefined) continue;
@@ -1081,7 +1097,7 @@ export function campaignAlliances(db: GameDatabase): Map<string, GrandAlliance> 
     families.set(family, byType);
   }
 
-  const allowed = new Map<string, GrandAlliance>();
+  const allowed = new Map<string, CampaignSide>();
   for (const byType of families.values()) {
     for (const [type, campaign] of byType) {
       const opposite = byType.get(OPPOSITE_SIDE[type] ?? -1);
@@ -1089,11 +1105,24 @@ export function campaignAlliances(db: GameDatabase): Map<string, GrandAlliance> 
       const faction = mostFoughtFaction(opposite);
       if (faction === undefined) continue;
       const alliance = allianceOfFaction.get(foldFaction(faction));
-      if (alliance !== undefined) allowed.set(campaign.id, alliance);
+      if (alliance !== undefined) allowed.set(campaign.id, { faction, alliance });
     }
   }
   return allowed;
 }
+
+/**
+ * Slots at which a node stops being the campaign's own characters alone.
+ *
+ * A campaign node fixes a small cast — the three who open the campaign, from
+ * its own faction — and hands back whatever slots are left over for anyone of
+ * the same Grand Alliance. So a three-slot board is those three and nobody
+ * else, while a five-slot board takes two guests. The trio itself is not
+ * published anywhere, so the faction they belong to is as close as this gets;
+ * it is far closer than the alliance, which on Octarius Elite would offer
+ * Necrons for a board that only takes Orks.
+ */
+export const GUEST_SLOTS_FROM = 4;
 
 /**
  * The faction a campaign is fought against on most of its nodes.
@@ -1132,9 +1161,23 @@ export class BattleBrief {
   constructor(
     readonly battle: BattleDefinition,
     readonly campaignName: string,
-    /** The alliance this campaign is fought by — see {@link campaignAlliances}. */
-    readonly allowedAlliance?: GrandAlliance,
+    /** The side this campaign is fought from — see {@link campaignSides}. */
+    readonly side?: CampaignSide,
   ) {}
+
+  /** The alliance this campaign is fought by, when it could be derived. */
+  get allowedAlliance(): GrandAlliance | undefined {
+    return this.side?.alliance;
+  }
+
+  /**
+   * The faction this node takes, when it takes only one.
+   *
+   * Set on the small boards, where the campaign's own cast fills every slot.
+   */
+  get requiredFaction(): string | undefined {
+    return this.slots < GUEST_SLOTS_FROM ? this.side?.faction : undefined;
+  }
 
   /** The campaign without the words for its side and level: "Fall of Cadia". */
   get family(): string {
@@ -1166,6 +1209,11 @@ export class BattleBrief {
    * for want of a field rather than for a rule.
    */
   allows(unit: RosterUnit): boolean {
+    if (this.side === undefined) return true;
+    const faction = this.requiredFaction;
+    if (faction !== undefined) {
+      return unit.factionId === 'Unknown' || sameFaction(unit.factionId, faction);
+    }
     const required = this.allowedAllianceName;
     if (required === undefined) return true;
     return unit.alliance === 'Unknown' || unit.alliance === required;
@@ -1251,14 +1299,12 @@ export class BattleBrief {
     // Derived once for the whole database: the answer for a node is a property
     // of its campaign, and working it out per node would redo the same scan of
     // every board seven hundred times over.
-    const alliances = campaignAlliances(db);
+    const sides = campaignSides(db);
     const briefs: BattleBrief[] = [];
     for (const campaign of Object.values(db.campaigns)) {
-      const alliance = alliances.get(campaign.id);
+      const side = sides.get(campaign.id);
       for (const battle of Object.values(campaign.battles)) {
-        briefs.push(
-          new BattleBrief(battle, campaign.name ?? campaign.id, alliance),
-        );
+        briefs.push(new BattleBrief(battle, campaign.name ?? campaign.id, side));
       }
     }
     return briefs;

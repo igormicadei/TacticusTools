@@ -499,7 +499,13 @@ function BattlePanel({ brief, onFill }: { brief: BattleBrief; onFill: () => void
         <span style={{ flex: 1 }} />
         {/* The one rule the node imposes, said plainly — a derived restriction
             that hides units has to be visible enough to argue with. */}
-        {brief.allowedAllianceName ? (
+        {/* Which of the two the node applies is a property of the node: a small
+            board is the campaign's own cast, a big one takes guests. */}
+        {brief.requiredFaction ? (
+          <span className="chip gold">
+            {t('td.factionOnly', { faction: brief.requiredFaction })}
+          </span>
+        ) : brief.allowedAllianceName ? (
           <span className="chip gold">
             {t('td.allianceOnly', { alliance: localAlliance(brief.allowedAllianceName) })}
           </span>
@@ -510,7 +516,7 @@ function BattlePanel({ brief, onFill }: { brief: BattleBrief; onFill: () => void
       </div>
       <p className="small muted" style={{ margin: 0 }}>
         {t('td.nodeBlurb')}
-        {brief.allowedAllianceName ? ` ${t('td.allianceNote')}` : ''}
+        {brief.allowedAlliance !== undefined ? ` ${t('td.allianceNote')}` : ''}
       </p>
     </>
   );

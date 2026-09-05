@@ -287,10 +287,11 @@ export const PT: Record<keyof typeof EN, string> = {
   'td.noCampaign': 'Nenhuma campanha',
   'td.noNode': 'Nenhum nó',
   'td.allianceOnly': 'só {alliance}',
+  'td.factionOnly': 'só {faction}',
   'td.allianceUnknown': 'Qualquer aliança',
   'td.wrongAlliance': 'o nó não aceita esta unidade',
   'td.allianceNote':
-    'Esta campanha é travada por uma única Grande Aliança, então “preencher a equipe” só oferece unidades dela. Nenhuma tabela publica essa restrição; ela é lida a partir dos inimigos do outro lado da campanha, e campanhas sem outro lado ficam abertas.',
+    'Um nó de campanha fixa um elenco pequeno da facção da própria campanha e devolve os espaços que sobram para qualquer um da mesma Grande Aliança — então um nó de três espaços aceita só aquela facção, e um de cinco aceita dois convidados. “Preencher a equipe” obedece o que valer aqui. Nenhuma tabela publica nada disso: o lado é lido a partir dos inimigos do outro lado da campanha, campanhas sem outro lado ficam abertas, e os três personagens que o jogo nomeia em cada nó pequeno não são publicados, então a facção deles é o mais perto que dá para chegar.',
   'td.squad': 'O esquadrão',
   'td.throughNormal': 'Atravessa a armadura · normal',
   'td.throughAbility': 'Atravessa a armadura · habilidade',
