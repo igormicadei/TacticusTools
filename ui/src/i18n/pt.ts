@@ -400,6 +400,95 @@ export const PT: Record<keyof typeof EN, string> = {
   'cost.unpricedHint':
     'Nenhum nó desbloqueado derruba estes e nenhuma receita os faz, então não entram na conta de energia.',
   'cost.nothingLeft': 'Nada a farmar',
+  'cost.slotEnergyHint':
+    'Energia para farmar o que ainda falta para este espaço, no nó mais barato aberto para você. Peças que já estão em mãos não são cobradas de novo.',
+
+  /* ---- links de volta e títulos ---------------------------------------- */
+  'nav.backPlans': '← Todos os planos',
+  'nav.backTeams': '← Todas as equipes',
+  'nav.backUnits': '← Todas as unidades',
+  'nav.viewUnit': 'Ver unidade',
+  'plans.everythingInOrder': 'Tudo em ordem',
+  'plans.none': 'Nenhum plano ainda. Crie um para descobrir o que subir de nível, de rank e ascender, em ordem.',
+  'plans.formBlurb':
+    'Defina só o que te importa. Tudo de que isso depende é calculado e acrescentado para você — um alvo de habilidade puxa o nível do personagem junto, e alvos de nível ou rank puxam a raridade. Cada campo oferece apenas o que está à frente da unidade, já que um alvo que ela já atende não é um plano.',
+  'plan.projected':
+    'Projetado em {rank} com {stars} estrelas (×{multiplier}), sem contar nenhuma melhoria de rank aplicada — alcançar um rank consome as do rank anterior, então um rank recém-alcançado começa vazio. O equipamento não muda.',
+  'plan.orderBlurb':
+    'Cada atributo é empurrado até onde a raridade atual permite antes de ascender, então nada é farmado para um rank que ainda está travado.',
+  'si.dropRatesNote':
+    'As taxas de drop são publicadas por tipo de campanha, não por nó. Uma taxa acima de 100% significa mais de uma cópia por corrida, em média.',
+
+  /* ---- textos da linha do tempo ---------------------------------------- */
+  'timeline.none': 'Nenhum plano ainda. A linha do tempo põe todos os planos em uma ordem só.',
+  'timeline.orderOfWork': 'Ordem do trabalho',
+  'timeline.spendEnergy': 'Gastar energia',
+  'timeline.orderBlurb':
+    'Agrupado por rank, para a tropa subir junto, e dentro de cada rank o mais barato primeiro. Um grupo chamado “já está em” é trabalho que não move o rank — níveis e habilidades de unidades que já estão lá. Uma unidade que precisa de ascensão para alcançar um rank fica atrás das que chegam sem ela — o pacote dela custa mais. O estoque em mãos é distribuído por esta ordem, então duas unidades que querem o mesmo material não contam mais as duas com ele.',
+  'timeline.spendBlurb':
+    'Só os espaços que cada unidade pode preencher no rank em que está agora — uma melhoria de um rank posterior não aumenta nada até você chegar lá. Um espaço é tudo ou nada, então um parcialmente preenchido conta como zero e a quantidade inteira é precificada. Os preços são valores esperados sobre as taxas de drop publicadas, então trate a ordem como conselho, não como aritmética.',
+  'timeline.craftedNote': 'Forjado — o preço acima é o dos ingredientes, farmados no mais barato',
+
+  /* ---- textos de equipe ------------------------------------------------ */
+  'td.objectiveBlurb':
+    'Equipamento concede Crítico e Bloqueio com muito mais frequência do que Vida ou Armadura — 626 níveis de item carregam Chance de Crítico contra 215 com Vida — então um objetivo que lesse só os atributos principais classificaria quase todo item de Crítico como inútil. “Sobreviver” e “Bater mais forte” precificam o que o item de fato faz; os objetivos crus estão aí para quando é isso mesmo que você quer.',
+  'td.workOutLayout': 'Montar uma formação',
+  'td.nodeBlurb':
+    'Nós de campanha não exigem unidades específicas — o jogo não restringe quem você leva — então este é um esquadrão escolhido para sobreviver ao nó. As colunas “neste nó” no seletor são o dano de cada unidade depois da armadura destes inimigos, e é por isso que um atacante Psíquico supera um Físico maior aqui — separado entre a arma que ele usa todo turno e a habilidade que normalmente dá um tiro só.',
+  'teams.throughArmour': 'Atravessa a armadura',
+  'teams.onThisNode': 'Neste nó',
+  'teams.showFewer': 'Ver menos',
+
+  /* ---- textos de detalhe da unidade ------------------------------------- */
+  'ud.shardsUnknown':
+    'A quantidade de fragmentos necessária para desbloquear um personagem não é publicada nas fontes de dados, então nenhum alvo é mostrado.',
+  'ud.levelCapped': 'Nível limitado por esta raridade — ascenda para elevar o limite.',
+  'ud.armourNote':
+    'A armadura subtrai de cada golpe recebido um a um, mas nunca abaixo da parcela de perfuração daquele ataque — contra um ataque totalmente perfurante ela não faz nada. Quanto ela vale depende inteiramente de quem está atirando em você.',
+  'ud.noStatBlock': 'Nenhum bloco de atributos publicado para este rank.',
+  'ud.mythicShards': 'Fragmentos míticos',
+  'ud.noBadges': 'Nenhum emblema em mãos para esta aliança.',
+  'ud.badgesShared': 'Emblemas são compartilhados entre todas as unidades desta aliança.',
+  'ud.traitsNote':
+    'Características são condicionais — a maioria só vale em uma situação específica — então nenhuma delas está embutida nos números acima.',
+  'ud.critNote':
+    'Críticos encadeiam: cada golpe é rolado separadamente e a corrente para no primeiro erro, então com {chance}% de chance de crítico as probabilidades de {odds}. Chance de crítico vale muito mais numa arma de um golpe do que numa de vários.',
+  'ud.critOdds': '{n} crítico {pct}%',
+  'ud.critOddsPlural': '{n} críticos {pct}%',
+
+  /* ---- rótulos dos passos, montados aqui e não na biblioteca ----------- */
+  'step.rank': 'Subir para {to}',
+  'step.level': 'Subir ao nível {to}',
+  'step.ability.active': 'Habilidade ativa até {to}',
+  'step.ability.passive': 'Habilidade passiva até {to}',
+  'step.ability': 'Habilidade até {to}',
+  'step.promotion': 'Promover para {to} estrelas',
+  'step.ascension': 'Ascender para {to}',
+  'timeline.reaching': 'Alcançando {rank}',
+  'timeline.alreadyAtRank': 'Já está em {rank}',
+  'timeline.finishing': 'Ajustes finais',
+  'timeline.ready': 'Pronto',
+  'timeline.missing': 'faltam {n}',
+  'timeline.unreachable': '{n} sem rota',
+  'timeline.stepsAcross': '{steps} passos em {plans} planos',
+  'timeline.triesLeft': 'restam {n} tentativas',
+  'timeline.copiesAt': '{n}× em {node}',
+  'td.node': 'nó {n}',
+  'td.nodeSlots': '{campaign} — nó {node} ({slots} espaços)',
+  'ud.totalXpValue': 'XP total {n}',
+  'ud.toNextValue': '{n} para o próximo nível',
+  'td.totalHpValue': '{n} de vida total',
+  'td.meanArmourValue': '{n} de armadura média',
+  'td.memberStats': '{hp} de vida · {dmg} de dano · {armour} de armadura',
+  'ud.slotLevel': '{slot} · Nv {level}',
+  'td.totalHp': 'vida total',
+  'td.meanArmour': 'armadura média',
+  'td.hp': '{n} de vida',
+  'td.dmg': '{n} de dano',
+  'ud.unknownUnit': 'Unidade desconhecida “{id}”.',
+  'ud.totalXp': 'XP total',
+  'ud.toNextLevel': 'para o próximo nível',
+  'ud.itemLevel': '· Nv {n}',
   'common.atTop': 'já está no topo',
   'common.atCap': 'já está no limite',
   'plans.alreadyMet': 'Esta unidade já atende a esse alvo.',

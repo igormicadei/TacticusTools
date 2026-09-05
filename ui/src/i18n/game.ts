@@ -31,7 +31,7 @@ import {
   type Rarity,
 } from '@lib/gamedata/enums.js';
 
-import { currentLang } from './locale.ts';
+import { currentLang, t } from './locale.ts';
 
 /** Rarity tiers. The Portuguese words used across Brazilian coverage of the game. */
 const RARITY_PT: Record<string, string> = {
@@ -176,4 +176,40 @@ export function localNumber(value: number): string {
  */
 export function localDateTime(ms: number): string {
   return new Date(ms).toLocaleString(pt() ? 'pt-BR' : 'en-GB');
+}
+
+/**
+ * A plan step's label, in the reader's language.
+ *
+ * The library builds an English `label` for its own scripts and validators, and
+ * the UI used to render it directly — which is why every step heading and every
+ * roadmap node stayed English through the translation pass. The structured
+ * fields are the same information without the language baked in, so the label
+ * is rebuilt here instead of translated after the fact.
+ */
+export function localStepLabel(step: {
+  kind: string;
+  to: number;
+  ability?: 'active' | 'passive' | undefined;
+  label: string;
+}): string {
+  switch (step.kind) {
+    case 'rank':
+      return t('step.rank', { to: localRank(step.to) });
+    case 'level':
+      return t('step.level', { to: step.to });
+    case 'ability':
+      return step.ability === 'active'
+        ? t('step.ability.active', { to: step.to })
+        : step.ability === 'passive'
+          ? t('step.ability.passive', { to: step.to })
+          : t('step.ability', { to: step.to });
+    case 'promotion':
+      return t('step.promotion', { to: step.to });
+    case 'ascension':
+      return t('step.ascension', { to: localRarity(step.to) });
+    default:
+      // A kind added to the library and not yet here still reads as something.
+      return step.label;
+  }
 }

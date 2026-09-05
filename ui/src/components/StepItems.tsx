@@ -26,8 +26,8 @@ import type { PlayerResponse, Unit } from '@lib/types/player.js';
 
 import { campaignIcon, requirementIcon, uiIcon } from '../data/icons.ts';
 import { Icon, useIcons } from './Icon.tsx';
-import { PlanCost } from './PlanCost.tsx';
-import { localNumber, localRank, localRarity, localStat } from '../i18n/game.ts';
+import { PlanCost, energyLabel } from './PlanCost.tsx';
+import { localNumber, localRank, localRarity, localStat, localStepLabel } from '../i18n/game.ts';
 import { t, tn } from '../i18n/locale.ts';
 
 type View = 'steps' | 'total';
@@ -127,7 +127,7 @@ export function StepItems({
                 <div className="step-block done" key={step.order}>
                   <div className="step-block-head">
                     <span className="step-num">✓</span>
-                    {step.label}
+                    {localStepLabel(step)}
                     <span className="chip ok-chip" style={{ marginLeft: 8 }}>
                       {t('si.done')}
                     </span>
@@ -141,7 +141,7 @@ export function StepItems({
             <div className="step-block" key={step.order}>
               <div className="step-block-head">
                 <span className="step-num">{step.order}</span>
-                {step.label}
+                {localStepLabel(step)}
                 {stepGold > 0 && (
                   <span className="chip gold" style={{ marginLeft: 8 }}>
                     {t('si.goldChip', { n: localNumber(stepGold) })}
@@ -149,7 +149,7 @@ export function StepItems({
                 )}
                 {(costByStep.get(step.order)?.energy ?? 0) > 0 && (
                   <span className="chip energy" style={{ marginLeft: 8 }} title={t('cost.energyHint')}>
-                    {t('cost.energy', { n: localNumber(costByStep.get(step.order)!.energy) })}
+                    {t('cost.energy', { n: energyLabel(costByStep.get(step.order)!.energy) })}
                   </span>
                 )}
               </div>
@@ -306,7 +306,7 @@ function BySlot({ items }: { items: AllocatedItem[] }) {
   if (groups.slots.length === 0 && groups.loose.length === 0) {
     return (
       <p className="muted small" style={{ margin: '4px 0 0 30px' }}>
-        Everything this step needs is already in hand.
+        {t('si.allInHand')}
       </p>
     );
   }
@@ -363,7 +363,7 @@ function FlatList({ needs }: { needs: FlatNeed[] }) {
   if (needs.length === 0) {
     return (
       <p className="muted small" style={{ margin: '4px 0 0 30px' }}>
-        Nothing left to farm here.
+        {t('si.nothingLeft')}
       </p>
     );
   }
@@ -415,6 +415,19 @@ export function ItemRow({
 }) {
   useIcons();
   const blocked = isUnfarmable(item, db, player);
+  /*
+   * What this one slot costs to finish.
+   *
+   * Costed the same way the step total is — through `farmingCost`, which
+   * flattens the recipe and prices only the shortfall — so the rows add up to
+   * the figure on the step heading. Pricing the whole recipe per copy instead
+   * would double-charge for ingredients already in the inventory and leave the
+   * rows summing to more than the total above them.
+   */
+  const energy = useMemo(
+    () => farmingCost([item as AllocatedItem], db, player).energy,
+    [item, db, player],
+  );
   // Covered by stock, but with no source to replace it: worth spending
   // carefully, since there is nowhere to farm more.
   const finite = !blocked && item.covered > 0 && isUnobtainable(item, db, player);
@@ -460,6 +473,11 @@ export function ItemRow({
         </span>
         <span className="row-tail">
           <SlotNote slots={item.slots} />
+          {energy > 0 && (
+            <span className="chip energy" title={t('cost.slotEnergyHint')}>
+              {t('cost.energy', { n: energyLabel(energy) })}
+            </span>
+          )}
           {forge !== undefined && <ForgeChip ready={forge} />}
           {blocked && <span className="chip warn">{t('si.nothingUnlocked')}</span>}
           {finite && (
@@ -773,8 +791,7 @@ function NodeTable({ nodes }: { nodes: ReturnType<typeof nodeStatuses> }) {
       </table>
       </div>
       <p className="small muted" style={{ margin: '6px 0 0' }}>
-        Drop rates are published per campaign type, not per node. A rate above
-        100% means more than one copy per run on average.
+        {t('si.dropRatesNote')}
       </p>
     </div>
   );

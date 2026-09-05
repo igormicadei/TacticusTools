@@ -4,6 +4,18 @@ import { localNumber } from '../i18n/game.ts';
 import { t, tn } from '../i18n/locale.ts';
 
 /**
+ * Energy as a whole number, for display.
+ *
+ * The library keeps it exact so that a total and the rows beneath it are the
+ * same arithmetic; rounding belongs here, once, at the last moment. Values
+ * below one still round up: "0 ⚡" beside something you have not got yet reads
+ * as free, which is the one thing it is not.
+ */
+export function energyLabel(energy: number): string {
+  return localNumber(energy < 1 ? Math.ceil(energy) : Math.round(energy));
+}
+
+/**
  * What a plan still costs, in the three units that answer different questions.
  *
  * The chip this replaced read "5 items missing", which was a count of copies of
@@ -35,7 +47,7 @@ export function PlanCost({ cost }: { cost: FarmingCost }) {
       )}
       {cost.energy > 0 && (
         <span className="chip energy" title={t('cost.energyHint')}>
-          {t('cost.energy', { n: localNumber(cost.energy) })}
+          {t('cost.energy', { n: energyLabel(cost.energy) })}
         </span>
       )}
       {/* Said out loud rather than folded in: an item with no open node is not

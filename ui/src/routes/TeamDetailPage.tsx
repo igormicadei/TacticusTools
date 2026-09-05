@@ -22,7 +22,7 @@ import { Icon, useIcons } from '../components/Icon.tsx';
 import { campaignIcon, rankIcon, rarityIcon, requirementIcon, unitIcon } from '../data/icons.ts';
 import { teamsStore } from '../data/teams.ts';
 import { RosterPicker, humanise } from './TeamsPage.tsx';
-import { localRank, localRarity } from '../i18n/game.ts';
+import { localNumber, localRank, localRarity } from '../i18n/game.ts';
 import { t, tn, type StringKey } from '../i18n/locale.ts';
 
 const RARITIES: Rarity[] = [
@@ -73,7 +73,7 @@ export function TeamDetailPage({ db, player }: { db: GameDatabase; player: Playe
     return (
       <>
         <Link to="/teams" className="back">
-          ← All teams
+          {t('nav.backTeams')}
         </Link>
         <div className="empty">{t('td.gone')}</div>
       </>
@@ -111,7 +111,7 @@ export function TeamDetailPage({ db, player }: { db: GameDatabase; player: Playe
   return (
     <>
       <Link to="/teams" className="back">
-        ← All teams
+        {t('nav.backTeams')}
       </Link>
 
       <div className="detail-head">
@@ -160,7 +160,7 @@ export function TeamDetailPage({ db, player }: { db: GameDatabase; player: Playe
               <option value="">{t('td.noNode')}</option>
               {battles.map((b) => (
                 <option key={b.battle.key} value={b.battle.key}>
-                  {b.campaignName} — node {b.battle.nodeNumber} ({b.slots} slots)
+                  {t('td.nodeSlots', { campaign: b.campaignName, node: b.battle.nodeNumber, slots: b.slots })}
                 </option>
               ))}
             </select>
@@ -198,11 +198,7 @@ export function TeamDetailPage({ db, player }: { db: GameDatabase; player: Playe
       <section className="panel" style={{ marginBottom: 16 }}>
         <h3>{t('td.optimise')}</h3>
         <p className="small muted" style={{ marginTop: 0 }}>
-          Equipment grants Crit and Block far more often than Health or Armour — 626 item levels
-          carry Crit Chance against 215 carrying Health — so an objective that read only the
-          headline stats would rate almost every Crit item as worthless. “Survive” and “Hit
-          hardest” fold Block and Crit in at their own odds; the other two are the raw stat, for
-          when that is what you actually want.
+          {t('td.objectiveBlurb')}
         </p>
         <div className="form-grid">
           <label>
@@ -228,7 +224,7 @@ export function TeamDetailPage({ db, player }: { db: GameDatabase; player: Playe
         </div>
         <div className="row">
           <button className="primary" onClick={optimiseItems} disabled={members.length === 0}>
-            Work out a layout
+            {t('td.workOutLayout')}
           </button>
           {layout && (
             <button className="small" onClick={() => setLayout(undefined)}>
@@ -334,8 +330,12 @@ function BattlePanel({ brief, onFill }: { brief: BattleBrief; onFill: () => void
         </b>
         <span className="chip">{brief.slots} slots</span>
         <span className="chip">{brief.enemyCount} enemies</span>
-        <span className="chip">{brief.enemyHealth.toLocaleString()} total HP</span>
-        <span className="chip">{brief.meanEnemyArmour.toFixed(0)} mean armour</span>
+        <span className="chip">
+                {t('td.totalHpValue', { n: localNumber(brief.enemyHealth) })}
+              </span>
+        <span className="chip">
+                {t('td.meanArmourValue', { n: brief.meanEnemyArmour.toFixed(0) })}
+              </span>
         {brief.enemyFactions.map((faction) => (
           <span className="chip" key={faction}>
             {faction}
@@ -345,11 +345,7 @@ function BattlePanel({ brief, onFill }: { brief: BattleBrief; onFill: () => void
         <button onClick={onFill}>{t('td.fillFromNode')}</button>
       </div>
       <p className="small muted" style={{ margin: 0 }}>
-        Campaign nodes name no required units — the game does not restrict who you deploy — so
-        this picks the {brief.slots} that land the most through this board’s armour while
-        surviving it. The “on this node” columns in the picker are each unit’s damage after these
-        enemies’ armour, which is why a Psychic attacker outranks a bigger Physical one here —
-        split into the weapon it swings every turn and the ability it usually gets one shot of.
+        {t('td.nodeBlurb')}
       </p>
     </>
   );
@@ -384,9 +380,11 @@ function MemberRow({
             <Icon src={rankIcon(member.effective.rank)} size={18} reserve />
           </span>
           <span className="muted small">
-            {member.stats?.health.toLocaleString()} HP ·{' '}
-            {member.stats?.damage.toLocaleString()} dmg ·{' '}
-            {member.stats?.armour.toLocaleString()} armour
+            {t('td.memberStats', {
+              hp: localNumber(member.stats?.health ?? 0),
+              dmg: localNumber(member.stats?.damage ?? 0),
+              armour: localNumber(member.stats?.armour ?? 0),
+            })}
           </span>
           {!brief && (
             <span className="muted small" title={t('td.throughHint')}>

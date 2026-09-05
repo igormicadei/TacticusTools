@@ -59,7 +59,7 @@ export function PlansPage({ db, player }: { db: GameDatabase; player: PlayerResp
         <span style={{ flex: 1 }} />
         {plans.length > 0 && (
           <Link className="chip" to="/plans/timeline">
-            Everything in order
+            {t('plans.everythingInOrder')}
           </Link>
         )}
         <button
@@ -79,7 +79,7 @@ export function PlansPage({ db, player }: { db: GameDatabase; player: PlayerResp
 
       {plans.length === 0 && !creating && (
         <div className="empty">
-          No plans yet. Create one to work out what to level, rank and ascend, in order.
+          {t('plans.none')}
         </div>
       )}
 
@@ -250,10 +250,7 @@ export function PlanForm({
     <section className="panel" style={{ marginBottom: 24 }}>
       <h3>{existing ? t('common.editPlan') : t('common.newPlan')}</h3>
       <p className="small muted" style={{ marginTop: 0 }}>
-        Set only what you care about. Anything else it depends on is worked out and added
-        for you — an ability target pulls the character level with it, and level or rank
-        targets pull rarity. Each field offers only what lies ahead of the unit, since a
-        target it already meets is not a plan.
+        {t('plans.formBlurb')}
       </p>
 
       <div className="form-grid">

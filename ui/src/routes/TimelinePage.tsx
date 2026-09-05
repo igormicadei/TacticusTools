@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
-import { rankName, rarityName } from '@lib/gamedata/enums.js';
+
 import { currentState, markProgress, resolvePlan } from '@lib/gamedata/plan.js';
 import { nodeStatuses } from '@lib/gamedata/requirements.js';
 import {
@@ -19,6 +19,7 @@ import { ItemRow, toggleOpen } from '../components/StepItems.tsx';
 import { plansStore } from '../data/plans.ts';
 import { rankIcon, unitIcon } from '../data/icons.ts';
 import { Icon, useIcons } from '../components/Icon.tsx';
+import { localRank, localRarity, localStepLabel } from '../i18n/game.ts';
 import { t } from '../i18n/locale.ts';
 
 type Mode = 'order' | 'energy';
@@ -62,10 +63,10 @@ export function TimelinePage({ db, player }: { db: GameDatabase; player: PlayerR
     return (
       <>
         <Link to="/plans" className="back">
-          ← All plans
+          {t('nav.backPlans')}
         </Link>
         <div className="empty">
-          No plans yet. The timeline puts every plan into one running order.
+          {t('timeline.none')}
         </div>
       </>
     );
@@ -74,23 +75,25 @@ export function TimelinePage({ db, player }: { db: GameDatabase; player: PlayerR
   return (
     <>
       <Link to="/plans" className="back">
-        ← All plans
+        {t('nav.backPlans')}
       </Link>
 
       <div className="detail-head">
         <div>
           <h1>{t('timeline.heading')}</h1>
           <div className="muted">
-            {timeline.bundles.length} steps across {plansById.size} plan
-            {plansById.size === 1 ? '' : 's'}
+            {t('timeline.stepsAcross', {
+              steps: timeline.bundles.length,
+              plans: plansById.size,
+            })}
           </div>
         </div>
         <div className="tabs" style={{ marginLeft: 'auto' }}>
           <button className={mode === 'order' ? 'active' : ''} onClick={() => setMode('order')}>
-            Order of work
+            {t('timeline.orderOfWork')}
           </button>
           <button className={mode === 'energy' ? 'active' : ''} onClick={() => setMode('energy')}>
-            Spend energy
+            {t('timeline.spendEnergy')}
           </button>
         </div>
       </div>
@@ -142,10 +145,10 @@ function OrderOfWork({
       headings.set(
         bundle.sortRank,
         reaches
-          ? `Reaching ${rankName(bundle.sortRank)}`
+          ? t('timeline.reaching', { rank: localRank(bundle.sortRank) })
           : // Nothing here moves the rank: this is level and ability work by
             // units already standing at it.
-            t('timeline.alreadyAt', { label: rankName(bundle.sortRank) }),
+            t('timeline.alreadyAtRank', { rank: localRank(bundle.sortRank) }),
       );
     }
   }
@@ -154,12 +157,7 @@ function OrderOfWork({
   return (
     <section className="panel">
       <p className="small muted" style={{ marginTop: 0 }}>
-        Grouped by rank, so the roster comes up together, and within a rank the
-        cheapest first. A group named “already at” is work that does not move the
-        rank — levels and abilities for units standing there already. A unit needing an ascension to reach a rank
-        sorts behind units that can reach it without one — its bundle costs more.
-        Held stock is spread across this order, so two units wanting the same material
-        no longer both count it as theirs.
+        {t('timeline.orderBlurb')}
       </p>
 
       {bundles.map((bundle) => {
@@ -189,15 +187,15 @@ function OrderOfWork({
                   {bundle.unitName}
                 </Link>
                 <span className="muted small">
-                  {bundle.steps.map((s) => s.label).join(' · ')}
+                  {bundle.steps.map((step) => localStepLabel(step)).join(' · ')}
                 </span>
                 <span style={{ flex: 1 }} />
                 <span className="row-tail">
                   {bundle.unreachable > 0 && (
-                    <span className="chip warn">{bundle.unreachable} unreachable</span>
+                    <span className="chip warn">{t('timeline.unreachable', { n: bundle.unreachable })}</span>
                   )}
                   <span className={`chip${bundle.missing === 0 ? ' ok-chip' : ''}`}>
-                    {bundle.missing === 0 ? 'Ready' : `${bundle.missing} missing`}
+                    {bundle.missing === 0 ? t('timeline.ready') : t('timeline.missing', { n: bundle.missing })}
                   </span>
                 </span>
               </button>
@@ -287,11 +285,7 @@ function SpendEnergy({ db, player }: { db: GameDatabase; player: PlayerResponse 
       </div>
 
       <p className="small muted" style={{ marginTop: 0 }}>
-        Only the slots each unit can fill at the rank it is on now — an upgrade for a
-        later rank raises nothing until you get there. A slot is all or nothing, so a
-        part-filled one counts for zero and the whole quantity is priced. Prices are
-        expected values over published drop rates, so treat the order as advice rather
-        than arithmetic. Your energy is not in the API; type it above.
+        {t('timeline.spendBlurb')} Your energy is not in the API; type it above.
       </p>
 
       {picks.length === 0 ? (
@@ -348,14 +342,17 @@ function CandidateTable({
                 </Link>
                 <span className="muted"> · {row.itemName}</span>
                 {row.rarity !== undefined && (
-                  <span className="muted small"> · {rarityName(row.rarity)}</span>
+                  <span className="muted small"> · {localRarity(row.rarity)}</span>
                 )}
               </span>
               <span className="chip ok-chip">
                 +{row.gain} {STAT_LABEL[row.stat].toLowerCase()}
               </span>
               <span className="muted small">
-                {row.copies}× at {row.energyPerCopy.toFixed(1)}⚡
+                {t('timeline.copiesAt', {
+                  n: row.copies,
+                  node: `${row.energyPerCopy.toFixed(1)}⚡`,
+                })}
               </span>
             </button>
             {isOpen && (
@@ -378,11 +375,11 @@ function CandidateTable({
                           className={node.unlocked ? '' : 'locked'}
                         >
                           <td>{node.campaignName}</td>
-                          <td className="muted">node {node.nodeNumber}</td>
+                          <td className="muted">{t('si.node', { n: node.nodeNumber })}</td>
                           <td>
                             {node.unlocked ? (
                               node.attemptsLeft > 0 ? (
-                                <span className="ok">{node.attemptsLeft} tries left</span>
+                                <span className="ok">{t('timeline.triesLeft', { n: node.attemptsLeft })}</span>
                               ) : (
                                 <span className="muted">{t('timeline.noneLeftToday')}</span>
                               )
@@ -405,7 +402,7 @@ function CandidateTable({
                 </div>
                 {row.nodes.length === 0 && (
                   <p className="muted small" style={{ margin: 0 }}>
-                    Crafted — the price above is its ingredients, farmed at their cheapest
+                    {t('timeline.craftedNote')}
                     open nodes.
                   </p>
                 )}

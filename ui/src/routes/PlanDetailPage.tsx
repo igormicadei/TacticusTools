@@ -13,6 +13,7 @@ import { plansStore } from '../data/plans.ts';
 import { unitIcon } from '../data/icons.ts';
 import { Icon, useIcons } from '../components/Icon.tsx';
 import { describeTarget, PlanForm } from './PlansPage.tsx';
+import { localRank } from '../i18n/game.ts';
 import { t } from '../i18n/locale.ts';
 
 export function PlanDetailPage({ db, player }: { db: GameDatabase; player: PlayerResponse }) {
@@ -43,7 +44,7 @@ export function PlanDetailPage({ db, player }: { db: GameDatabase; player: Playe
     return (
       <>
         <Link to="/plans" className="back">
-          ← All plans
+          {t('nav.backPlans')}
         </Link>
         <div className="empty">{t('plan.gone')}</div>
       </>
@@ -61,7 +62,7 @@ export function PlanDetailPage({ db, player }: { db: GameDatabase; player: Playe
   return (
     <>
       <Link to="/plans" className="back">
-        ← All plans
+        {t('nav.backPlans')}
       </Link>
 
       <div className="detail-head">
@@ -72,7 +73,7 @@ export function PlanDetailPage({ db, player }: { db: GameDatabase; player: Playe
         </div>
         <div className="row wrap" style={{ marginLeft: 'auto' }}>
           <Link className="chip" to={`/units/${encodeURIComponent(unit.id)}`}>
-            View unit
+            {t('nav.viewUnit')}
           </Link>
           <span className="chip">
             {left === 0
@@ -123,10 +124,11 @@ export function PlanDetailPage({ db, player }: { db: GameDatabase; player: Playe
               <Delta label={t('common.armour')} from={now.armour} to={then.armour} />
             </div>
             <p className="small muted" style={{ marginBottom: 0 }}>
-              Projected at {rankName(plan.final.rank)} with {then.starLevel ?? 0} stars
-              (×{then.starMultiplier.toFixed(2)}), counting no rank upgrades applied —
-              reaching a rank consumes the previous rank's, so a newly reached rank starts
-              empty. Equipment is unchanged.
+              {t('plan.projected', {
+                rank: localRank(plan.final.rank),
+                stars: then.starLevel ?? 0,
+                multiplier: then.starMultiplier.toFixed(2),
+              })}
             </p>
           </>
         )}
@@ -135,8 +137,7 @@ export function PlanDetailPage({ db, player }: { db: GameDatabase; player: Playe
       <section className="panel">
         <h3>{t('plan.orderOfWork')}</h3>
         <p className="small muted" style={{ marginTop: 0 }}>
-          Each attribute is pushed as far as the current rarity allows before ascending, so
-          nothing is farmed for a rank that is still gated.
+          {t('plan.orderBlurb')}
         </p>
         <PlanRoadmap steps={plan.steps} />
 

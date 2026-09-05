@@ -56,17 +56,57 @@ for await (const file of walk(SRC)) {
   const source = await readFile(file, 'utf8');
   const lines = source.split('\n');
 
+  // Comment blocks are tracked across lines, not judged one line at a time: a
+  // JSX comment's middle lines look exactly like prose, and one that explains
+  // why a string was removed will quote the string.
+  let inBlock = false;
+
   lines.forEach((line, i) => {
-    const code = line.replace(/\/\/.*$/, '');
-    // A line inside a block comment is documentation, not UI.
-    if (/^\s*\*/.test(code) || /^\s*\/\*/.test(code)) return;
+    const opens = /\{?\/\*/.test(line);
+    const closes = /\*\/\}?/.test(line);
+    if (inBlock) {
+      if (closes) inBlock = false;
+      return;
+    }
+    if (opens && !closes) {
+      inBlock = true;
+      return;
+    }
+    // A single-line comment, or the tail of a doc comment.
+    const code = line.replace(/\/\/.*$/, '').replace(/\{?\/\*.*?\*\/\}?/g, '');
+    if (/^\s*\*/.test(code)) return;
 
     // A line that is a type signature or an expression happens to contain
     // ">...<" too. Prose does not carry these.
     if (/[:;=]\s*$|\)\s*(:|=>)|\bas\s+(Promise|Record|const)\b/.test(code)) return;
 
-    // Text sitting between JSX tags.
-    for (const m of code.matchAll(/>([^<>{}]+)</g)) {
+    // Text on a line of its own, between tags that are on other lines. This
+    // was the check's blind spot: it only ever looked between a ">" and a "<"
+    // on the same line, so a link whose label sat on its own line — which is
+    // how the formatter writes anything long — was invisible to it.
+    const bare = code.trim();
+    // Prose reads like prose: words separated by spaces, no quoting, none of
+    // the punctuation an expression continued across lines carries.
+    const looksLikeCode =
+      /[<>{}();=]|\?\?|\?\.|=>|['"`]/.test(bare) ||
+      /^[?:.&|]/.test(bare) ||
+      /^(import|export|from|const|let|var|return|type|interface|await|async)\b/.test(bare) ||
+      bare.endsWith(',') ||
+      bare.endsWith(':') ||
+      /^[\w.[\]]+$/.test(bare);
+    const words = bare.split(/\s+/).filter((w) => /^[A-Za-z][A-Za-z'’-]*$/.test(w));
+    if (bare.length > 0 && !looksLikeCode && words.length >= 2 && isProse(bare)) {
+      findings.push({ file, line: i + 1, text: bare, how: 'jsx-line' });
+    }
+
+    // Text sitting between JSX tags, or beside an interpolation. The second
+    // case is the one that hid "{n} missing": the words never sit between two
+    // angle brackets, they sit between a brace and one.
+    for (const m of code.matchAll(/[>}]([^<>{}]+)[<{]/g)) {
+      // A fragment of an expression can sit between the same delimiters — an
+      // attribute, a catch clause, the tail of a template literal. Prose does
+      // not carry these characters.
+      if (/[=()$!'"`]/.test(m[1])) continue;
       if (isProse(m[1])) findings.push({ file, line: i + 1, text: m[1].trim(), how: 'jsx-text' });
     }
     // Rendered attributes.

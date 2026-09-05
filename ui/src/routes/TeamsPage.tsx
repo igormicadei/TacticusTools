@@ -291,11 +291,11 @@ export function RosterPicker({
                 Armour
               </th>
               <th colSpan={2} style={{ textAlign: 'center' }}>
-                Through armour
+                {t('teams.throughArmour')}
               </th>
               {brief && (
                 <th colSpan={2} style={{ textAlign: 'center' }}>
-                  On this node
+                  {t('teams.onThisNode')}
                 </th>
               )}
             </tr>
@@ -431,7 +431,7 @@ function ChipFilter({
       )}
       {open && options.length > 8 && (
         <button className="chip toggle" onClick={() => setOpen(false)}>
-          Show fewer
+          {t('teams.showFewer')}
         </button>
       )}
     </div>

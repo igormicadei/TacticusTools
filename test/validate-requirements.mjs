@@ -385,6 +385,19 @@ console.log(`audited ${checked} plans; ${blockedSeen} blocked-item findings veri
         }
       }
       if (needs.some((n) => n.via.length > 0)) recipesSeen += 1;
+      // A slot's cost and the step's total are shown one above the other, so
+      // the rows have to add up to the heading. They only do while the figure
+      // stays exact: rounding inside the costing made 19 of these disagree by
+      // one, which is small, visible, and corrosive to numbers that are exact
+      // everywhere else.
+      const perRow = step.items.reduce(
+        (n, it) => n + farmingCost([it], db, playerResponse).energy,
+        0,
+      );
+      if (Math.abs(perRow - cost.energy) > 1e-9) {
+        note(`${unit.name}: rows cost ${perRow} but the step says ${cost.energy}`);
+      }
+
       // And the exclusion has to be real, not just smaller: no XP may survive.
       if (flattenNeeds(step.items).some((n) => n.kind === 'xp') && cost.copies > 0) {
         const xp = flattenNeeds(step.items)

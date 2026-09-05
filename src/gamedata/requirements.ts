@@ -580,6 +580,11 @@ export interface FarmingCost {
    *
    * A floor, not a forecast: drop rates are averages, so this is what the
    * farming costs if every run drops at the published rate.
+   *
+   * Exact, not rounded. Rounding here would be rounding in the middle of an
+   * arithmetic the reader can see: a caller that costs six slots separately and
+   * shows a total above them would print six figures that do not add up to it.
+   * Round once, where it is displayed.
    */
   energy: number;
   /** Copies with no route at all, which are excluded from {@link energy}. */
@@ -624,7 +629,7 @@ export function farmingCost(
     else energy += each * need.amount;
   }
 
-  return { slots, distinct: needs.length, copies, energy: Math.round(energy), unpriced };
+  return { slots, distinct: needs.length, copies, energy, unpriced };
 }
 
 /** Roll every step's items into one list per item. */

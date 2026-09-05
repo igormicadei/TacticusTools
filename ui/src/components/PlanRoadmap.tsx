@@ -1,3 +1,4 @@
+import { localRank, localRarity } from '../i18n/game.ts';
 import { t } from '../i18n/locale.ts';
 import { useState } from 'react';
 
@@ -36,11 +37,11 @@ const laneOf = (step: PlanStep): number =>
 function markLabel(step: PlanStep): string {
   switch (step.kind) {
     case 'ascension':
-      return step.label.replace(/^Ascend to /, '');
+      return localRarity(step.to);
     case 'promotion':
       return `★${step.to}`;
     case 'rank':
-      return step.label.replace(/^Rank up to /, '');
+      return localRank(step.to);
     case 'level':
       return `Lv ${step.to}`;
     default:

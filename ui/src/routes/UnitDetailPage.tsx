@@ -21,7 +21,7 @@ import {
 } from '../data/icons.ts';
 import { Icon, useIcons } from '../components/Icon.tsx';
 import { localAlliance, localDamage, localNumber, localRank, localRarity } from '../i18n/game.ts';
-import { t, type StringKey } from '../i18n/locale.ts';
+import { t, tn, type StringKey } from '../i18n/locale.ts';
 
 /**
  * Make game-config text readable.
@@ -63,9 +63,9 @@ export function UnitDetailPage({
     return (
       <>
         <Link to="/units" className="back">
-          ← All units
+          {t('nav.backUnits')}
         </Link>
-        <div className="empty">Unknown unit “{unitId}”.</div>
+        <div className="empty">{t('ud.unknownUnit', { id: unitId })}</div>
       </>
     );
   }
@@ -75,7 +75,7 @@ export function UnitDetailPage({
   return (
     <>
       <Link to="/units" className="back">
-        ← All units
+        {t('nav.backUnits')}
       </Link>
 
       <div className="detail-head">
@@ -141,8 +141,7 @@ function NotOwned({ entry }: { entry: ReturnType<typeof buildRoster>[number] }) 
           : t('ud.noShards')}{' '}
         {/* The unlock threshold is its own value in the game's progression panel
             and no data source publishes it, so no target is shown here. */}
-        The number of shards needed to unlock a character is not published in the
-        data sources, so no target is shown.
+        {t('ud.shardsUnknown')}
       </p>
       {entry.definition && (
         <dl className="kv">
@@ -205,8 +204,10 @@ function Progress({ unit, db }: { unit: Unit; db: GameDatabase }) {
 
       <div style={{ marginTop: 12 }}>
         <div className="row small muted" style={{ justifyContent: 'space-between' }}>
-          <span>Total XP {unit.xp.toLocaleString()}</span>
-          {next && <span>{(next.totalXp - unit.xp).toLocaleString()} to next level</span>}
+          <span>{t('ud.totalXpValue', { n: localNumber(unit.xp) })}</span>
+          {next && (
+            <span>{t('ud.toNextValue', { n: localNumber(next.totalXp - unit.xp) })}</span>
+          )}
         </div>
         <div className="bar">
           <span style={{ width: `${pct}%` }} />
@@ -214,7 +215,7 @@ function Progress({ unit, db }: { unit: Unit; db: GameDatabase }) {
       </div>
       {cap !== undefined && unit.xpLevel >= cap && (
         <p className="small" style={{ color: 'var(--accent)', marginBottom: 0 }}>
-          Level capped at this rarity — ascend to raise the cap.
+          {t('ud.levelCapped')}
         </p>
       )}
     </section>
@@ -304,15 +305,12 @@ function Attributes({ unit, db }: { unit: Unit; db: GameDatabase }) {
             .
           </p>
           <p className="small muted" style={{ marginTop: 0, marginBottom: 0 }}>
-            Armour subtracts from each incoming hit one for one, but never below that
-            hit's pierce floor — so against a 100% pierce attack, Psychic or Direct, it
-            does nothing at all. How much it is worth depends entirely on what is
-            shooting at you.
+            {t('ud.armourNote')}
           </p>
         </>
       ) : (
         <p className="muted small" style={{ margin: 0 }}>
-          No stat block published for this rank.
+          {t('ud.noStatBlock')}
         </p>
       )}
 
@@ -448,7 +446,7 @@ function Equipment({ unit, db }: { unit: Unit; db: GameDatabase }) {
                 {item.name ?? def?.name ?? item.id}
               </strong>
               <span className="chip">
-                {item.slotId} · Lv {item.level}
+                {t('ud.slotLevel', { slot: item.slotId, level: item.level })}
                 {def ? ` / ${def.levels.length}` : ''}
               </span>
             </div>
@@ -502,7 +500,7 @@ function Shards({
         <dd>{unit.shards.toLocaleString()}</dd>
         <dt className="row">
           <Icon src={requirementIcon(`shard:${unit.id}:mythic`)} size={20} className="portrait" />
-          Mythic shards
+          {t('ud.mythicShards')}
         </dt>
         <dd>{unit.mythicShards.toLocaleString()}</dd>
         <dt>{t('ud.starLevel')}</dt>
@@ -543,7 +541,7 @@ function Badges({ unit, player }: { unit: Unit; player: PlayerResponse }) {
       <h3>{t('ud.abilityBadges', { alliance: alliance ?? t('ud.unknownAlliance') })}</h3>
       {!badges || badges.length === 0 ? (
         <p className="muted small" style={{ margin: 0 }}>
-          No badges held for this alliance.
+          {t('ud.noBadges')}
         </p>
       ) : (
         <dl className="kv">
@@ -563,7 +561,7 @@ function Badges({ unit, player }: { unit: Unit; player: PlayerResponse }) {
         </dl>
       )}
       <p className="small muted" style={{ marginBottom: 0 }}>
-        Badges are shared across every unit of this alliance.
+        {t('ud.badgesShared')}
       </p>
     </section>
   );
@@ -576,8 +574,7 @@ function Traits({ unit, db }: { unit: Unit; db: GameDatabase }) {
     <section className="panel">
       <h3>{t('ud.traits')}</h3>
       <p className="small muted" style={{ marginTop: 0 }}>
-        Traits are conditional — most apply only in a particular situation — so none
-        of them is folded into the figures above.
+        {t('ud.traitsNote')}
       </p>
       {traits.map((trait) => (
         <div className="list-item" key={trait.id}>
@@ -682,12 +679,14 @@ function Attacks({ unit, db }: { unit: Unit; db: GameDatabase }) {
 
       {combat.critChain && (
         <p className="small muted" style={{ marginBottom: 0 }}>
-          Crits chain: each hit is rolled separately and the chain stops at the first
-          failure, so at {combat.critChain.chance}% crit chance the odds of{' '}
-          {combat.critChain.perAttack
-            .map((p, i) => `${i + 1} crit${i === 0 ? '' : 's'} ${(p * 100).toFixed(1)}%`)
-            .join(', ')}
-          . Crit chance is worth far more on a one-hit weapon than a multi-hit one.
+          {t('ud.critNote', {
+            chance: combat.critChain.chance,
+            odds: combat.critChain.perAttack
+              .map((p, i) =>
+                tn(i + 1, 'ud.critOdds', 'ud.critOddsPlural', { pct: (p * 100).toFixed(1) }),
+              )
+              .join(', '),
+          })}
         </p>
       )}
     </section>

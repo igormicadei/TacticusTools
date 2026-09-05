@@ -406,6 +406,95 @@ export const EN = {
   'cost.unpricedHint':
     'No unlocked node drops these and no recipe makes them, so they are not in the energy figure.',
   'cost.nothingLeft': 'Nothing left to farm',
+  'cost.slotEnergyHint':
+    'Energy to farm what is still missing for this slot, at the cheapest node open to you. Parts already in hand are not charged for again.',
+
+  /* ---- back links and headings ---------------------------------------- */
+  'nav.backPlans': '← All plans',
+  'nav.backTeams': '← All teams',
+  'nav.backUnits': '← All units',
+  'nav.viewUnit': 'View unit',
+  'plans.everythingInOrder': 'Everything in order',
+  'plans.none': 'No plans yet. Create one to work out what to level, rank and ascend, in order.',
+  'plans.formBlurb':
+    'Set only what you care about. Anything else it depends on is worked out and added for you — an ability target pulls the character level with it, and level or rank targets pull rarity. Each field offers only what lies ahead of the unit, since a target it already meets is not a plan.',
+  'plan.projected':
+    'Projected at {rank} with {stars} stars (×{multiplier}), counting no rank upgrades applied — reaching a rank consumes the previous rank’s, so a newly reached rank starts empty. Equipment is unchanged.',
+  'plan.orderBlurb':
+    'Each attribute is pushed as far as the current rarity allows before ascending, so nothing is farmed for a rank that is still gated.',
+  'si.dropRatesNote':
+    'Drop rates are published per campaign type, not per node. A rate above 100% means more than one copy per run on average.',
+
+  /* ---- timeline prose -------------------------------------------------- */
+  'timeline.none': 'No plans yet. The timeline puts every plan into one running order.',
+  'timeline.orderOfWork': 'Order of work',
+  'timeline.spendEnergy': 'Spend energy',
+  'timeline.orderBlurb':
+    'Grouped by rank, so the roster comes up together, and within a rank the cheapest first. A group named “already at” is work that does not move the rank — levels and abilities for units standing there already. A unit needing an ascension to reach a rank sorts behind units that can reach it without one — its bundle costs more. Held stock is spread across this order, so two units wanting the same material no longer both count it as theirs.',
+  'timeline.spendBlurb':
+    'Only the slots each unit can fill at the rank it is on now — an upgrade for a later rank raises nothing until you get there. A slot is all or nothing, so a part-filled one counts for zero and the whole quantity is priced. Prices are expected values over published drop rates, so treat the order as advice rather than arithmetic.',
+  'timeline.craftedNote': 'Crafted — the price above is its ingredients, farmed at their cheapest',
+
+  /* ---- team prose ------------------------------------------------------ */
+  'td.objectiveBlurb':
+    'Equipment grants Crit and Block far more often than Health or Armour — 626 item levels carry Crit Chance against 215 carrying Health — so an objective that read only the headline stats would rate almost every Crit item as worthless. “Survive” and “Hit hardest” price what the item actually does; the raw ones are there for when that is what you actually want.',
+  'td.workOutLayout': 'Work out a layout',
+  'td.nodeBlurb':
+    'Campaign nodes name no required units — the game does not restrict who you deploy — so this is a squad picked for surviving it. The “on this node” columns in the picker are each unit’s damage after these enemies’ armour, which is why a Psychic attacker outranks a bigger Physical one here — split into the weapon it swings every turn and the ability it usually gets one shot of.',
+  'teams.throughArmour': 'Through armour',
+  'teams.onThisNode': 'On this node',
+  'teams.showFewer': 'Show fewer',
+
+  /* ---- unit detail prose ------------------------------------------------ */
+  'ud.shardsUnknown':
+    'The number of shards needed to unlock a character is not published in the data sources, so no target is shown.',
+  'ud.levelCapped': 'Level capped at this rarity — ascend to raise the cap.',
+  'ud.armourNote':
+    'Armour subtracts from each incoming hit one for one, but never below that attack’s pierce share — against a fully piercing attack it does nothing at all. How much it is worth depends entirely on what is shooting at you.',
+  'ud.noStatBlock': 'No stat block published for this rank.',
+  'ud.mythicShards': 'Mythic shards',
+  'ud.noBadges': 'No badges held for this alliance.',
+  'ud.badgesShared': 'Badges are shared across every unit of this alliance.',
+  'ud.traitsNote':
+    'Traits are conditional — most apply only in a particular situation — so none of them is folded into the figures above.',
+  'ud.critNote':
+    'Crits chain: each hit is rolled separately and the chain stops at the first failure, so at {chance}% crit chance the odds of {odds}. Crit chance is worth far more on a one-hit weapon than a multi-hit one.',
+  'ud.critOdds': '{n} crit {pct}%',
+  'ud.critOddsPlural': '{n} crits {pct}%',
+
+  /* ---- plan step labels, built here rather than in the library --------- */
+  'step.rank': 'Rank up to {to}',
+  'step.level': 'Level to {to}',
+  'step.ability.active': 'Active ability to {to}',
+  'step.ability.passive': 'Passive ability to {to}',
+  'step.ability': 'Ability to {to}',
+  'step.promotion': 'Promote to {to} stars',
+  'step.ascension': 'Ascend to {to}',
+  'timeline.reaching': 'Reaching {rank}',
+  'timeline.alreadyAtRank': 'Already at {rank}',
+  'timeline.finishing': 'Finishing touches',
+  'timeline.ready': 'Ready',
+  'timeline.missing': '{n} missing',
+  'timeline.unreachable': '{n} unreachable',
+  'timeline.stepsAcross': '{steps} steps across {plans} plans',
+  'timeline.triesLeft': '{n} tries left',
+  'timeline.copiesAt': '{n}× at {node}',
+  'td.node': 'node {n}',
+  'td.nodeSlots': '{campaign} — node {node} ({slots} slots)',
+  'ud.totalXpValue': 'Total XP {n}',
+  'ud.toNextValue': '{n} to next level',
+  'td.totalHpValue': '{n} total HP',
+  'td.meanArmourValue': '{n} mean armour',
+  'td.memberStats': '{hp} HP · {dmg} dmg · {armour} armour',
+  'ud.slotLevel': '{slot} · Lv {level}',
+  'td.totalHp': 'total HP',
+  'td.meanArmour': 'mean armour',
+  'td.hp': '{n} HP',
+  'td.dmg': '{n} dmg',
+  'ud.unknownUnit': 'Unknown unit “{id}”.',
+  'ud.totalXp': 'Total XP',
+  'ud.toNextLevel': 'to next level',
+  'ud.itemLevel': '· Lv {n}',
   'common.atTop': 'already at the top',
   'common.atCap': 'already at the cap',
   'plans.alreadyMet': 'This unit already meets that target.',
