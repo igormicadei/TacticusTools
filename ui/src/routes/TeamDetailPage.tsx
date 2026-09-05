@@ -35,6 +35,10 @@ import { t, tn, type StringKey } from '../i18n/locale.ts';
 /** Standard, then harder. The data's enum order does not read as a difficulty. */
 const LEVEL_ORDER: readonly BattleLevel[] = ['Standard', 'Elite', 'Extremis'];
 
+/** `Slot2` is the data's word for it; "slot 2" is the player's. */
+const slotLabel = (slotId: string): string =>
+  t('td.slotNumber', { n: Number(slotId.replace(/\D+/g, '')) || slotId });
+
 const RARITIES: Rarity[] = [
   Rarity.Common,
   Rarity.Uncommon,
@@ -193,6 +197,7 @@ export function TeamDetailPage({ db, player }: { db: GameDatabase; player: Playe
                 member={member}
                 brief={brief}
                 assignments={layout?.filter((a) => a.unitId === member.id) ?? []}
+                nameOf={(id) => roster.find((u) => u.id === id)?.name ?? id}
                 onRemove={() => toggleMember(member.id)}
               />
             ))}
@@ -233,7 +238,7 @@ export function TeamDetailPage({ db, player }: { db: GameDatabase; player: Playe
           </button>
           {layout && (
             <button className="small" onClick={() => setLayout(undefined)}>
-              Clear
+              {t('td.clearLayout')}
             </button>
           )}
           {layout && (
@@ -244,7 +249,16 @@ export function TeamDetailPage({ db, player }: { db: GameDatabase; player: Playe
             </span>
           )}
         </div>
-        {layout && layout.length > 0 && <LayoutTable layout={layout} db={db} roster={roster} />}
+        {layout && layout.length > 0 && (
+          <>
+            {layout.some((a) => a.takenFrom) && (
+              <p className="small muted" style={{ margin: '0 0 8px' }}>
+                {t('td.swapNote')}
+              </p>
+            )}
+            <LayoutTable layout={layout} db={db} roster={roster} />
+          </>
+        )}
       </section>
 
       <RosterPicker
@@ -506,11 +520,13 @@ function MemberRow({
   member,
   brief,
   assignments,
+  nameOf,
   onRemove,
 }: {
   member: RosterUnit;
   brief: BattleBrief | undefined;
   assignments: Assignment[];
+  nameOf: (id: string) => string;
   onRemove: () => void;
 }) {
   return (
@@ -584,12 +600,21 @@ function MemberRow({
                   {a.item.name}
                   <span className="muted small">
                     {' '}
-                    lv {a.item.level} · {a.slotId}
+                    {t('td.itemLevel', { n: a.item.level })} · {slotLabel(a.slotId)}
                     {a.replaces && t('td.replacing', { name: a.replaces.name, level: a.replaces.level })}
                   </span>
+                  {a.takenFrom && (
+                    <span className="muted small">
+                      {' · '}
+                      {t('td.takeOff', {
+                        unit: nameOf(a.takenFrom.unitId),
+                        slot: slotLabel(a.takenFrom.slotId),
+                      })}
+                    </span>
+                  )}
                 </span>
                 <span className="row-tail">
-                  <span className="chip ok-chip">+{Math.round(a.gain).toLocaleString()}</span>
+                  <span className="chip ok-chip">+{localNumber(Math.round(a.gain))}</span>
                 </span>
               </div>
             </li>
@@ -610,6 +635,13 @@ function LayoutTable({
   roster: RosterUnit[];
 }) {
   const nameOf = (id: string) => roster.find((u) => u.id === id)?.name ?? id;
+  /** A donor slot no later line puts anything back into. */
+  const leftBare = (a: Assignment): boolean =>
+    a.takenFrom !== undefined &&
+    !layout.some(
+      (other) =>
+        other.unitId === a.takenFrom!.unitId && other.slotId === a.takenFrom!.slotId,
+    );
   return (
     <div className="table-wrap">
       <table className="steps stacked">
@@ -633,16 +665,35 @@ function LayoutTable({
                 {humanise(db.items[a.item.id]?.itemType ?? a.slotId)}
               </td>
               <td data-label={t('td.equip')}>
-                {a.item.name} <span className="muted">lv {a.item.level}</span>
+                {a.item.name}{' '}
+                <span className="muted">{t('td.itemLevel', { n: a.item.level })}</span>
               </td>
               <td data-label={t('td.insteadOf')} className="muted">
-                {a.replaces ? `${a.replaces.name} lv ${a.replaces.level}` : 'nothing'}
+                {a.replaces
+                  ? `${a.replaces.name} ${t('td.itemLevel', { n: a.replaces.level })}`
+                  : t('td.wearingNothing')}
               </td>
               <td data-label={t('td.gain')} style={{ textAlign: 'right' }}>
-                +{Math.round(a.gain).toLocaleString()}
+                +{localNumber(Math.round(a.gain))}
               </td>
+              {/* Where the copy comes from. When it is off a team-mate this is
+                  an instruction — strip that slot first — and the plan owes the
+                  player a line putting something back, or a warning that there
+                  is nothing to put. */}
               <td data-label={t('td.currentlyOn')} className="muted">
-                {a.item.wornBy ? nameOf(a.item.wornBy) : 'inventory'}
+                {a.takenFrom ? (
+                  <>
+                    {t('td.takeOff', {
+                      unit: nameOf(a.takenFrom.unitId),
+                      slot: slotLabel(a.takenFrom.slotId),
+                    })}
+                    {leftBare(a) && <span className="chip warn">{t('td.leavesBare')}</span>}
+                  </>
+                ) : a.item.wornBy ? (
+                  nameOf(a.item.wornBy)
+                ) : (
+                  t('td.fromInventory')
+                )}
               </td>
             </tr>
           ))}

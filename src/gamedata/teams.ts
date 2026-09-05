@@ -603,7 +603,22 @@ export interface Assignment {
   item: PoolItem;
   /** What the unit wears there now, when anything. */
   replaces?: { id: string; name: string; level: number };
-  /** Gain in the objective, in the objective's own units. */
+  /**
+   * The team-mate this copy comes off, and the slot it leaves bare.
+   *
+   * Absent when the copy was loose. Present, it is half the plan: a move that
+   * strips somebody is only worth making if you know who, and which slot of
+   * theirs is now waiting on a later line.
+   */
+  takenFrom?: { unitId: UnitId; slotId: string; loss: number };
+  /**
+   * Change in the objective, across the whole squad.
+   *
+   * Net, not the receiver's own gain: an item taken off a team-mate costs what
+   * they lose by not wearing it, and a move that reads as +414 on one unit can
+   * leave the squad worse off. Summed over the plan this is what the squad
+   * actually gains.
+   */
   gain: number;
 }
 
@@ -686,6 +701,11 @@ export class EquipmentPool {
     return this.items.reduce((n, item) => n + item.count, 0);
   }
 
+  /** Every copy the pool holds, for a caller doing its own bookkeeping. */
+  get all(): readonly PoolItem[] {
+    return this.items;
+  }
+
   /** Everything in the pool a unit is allowed to put in a given slot. */
   candidatesFor(unit: RosterUnit, slotId: string): PoolItem[] {
     const definition = unit.definition;
@@ -762,81 +782,207 @@ export class ItemOptimiser {
   ) {}
 
   optimise(units: readonly RosterUnit[]): Assignment[] {
-    const spent = new Map<string, number>();
-    const taken = new Set<string>();
-    const assignments: Assignment[] = [];
-    const worn = new Map<string, UnitItem>();
+    const inSet = new Map(units.map((unit) => [unit.id, unit]));
+    const slotsOf = (unit: RosterUnit): string[] =>
+      (unit.definition?.itemSlots ?? []).map((_, index) => `Slot${index + 1}`);
+    const at = (unitId: string, slotId: string): string => `${unitId}:${slotId}`;
+
+    /*
+     * Who is wearing what, right now, as the plan is built.
+     *
+     * The optimiser used to reason about the units' starting kit and a pool of
+     * spare copies, which works only until it takes a copy off a team-mate: the
+     * copy is one thing, and the hole it leaves is another, and the pool knew
+     * nothing about the hole. So the state here is the *layout* — every slot of
+     * every unit, moved as the plan moves it — and a move off a team-mate is a
+     * move between two slots rather than a withdrawal from a stack.
+     */
+    const layout = new Map<string, UnitItem | undefined>();
     for (const unit of units) {
-      for (const item of unit.effective.items) worn.set(`${unit.id}:${item.slotId}`, item);
+      for (const slotId of slotsOf(unit)) {
+        layout.set(at(unit.id, slotId), unit.effective.items.find((i) => i.slotId === slotId));
+      }
     }
 
-    for (;;) {
-      let best: Assignment | undefined;
+    // Copies nobody in the squad is wearing: the inventory, and — under the
+    // widest scope — whatever the rest of the roster has on. Those cost
+    // nothing to take, since nothing here is optimising them.
+    const loose: { item: PoolItem; left: number }[] = [];
+    for (const entry of this.pool.all) {
+      if (entry.wornBy !== undefined && inSet.has(entry.wornBy)) continue;
+      loose.push({ item: entry, left: entry.count });
+    }
 
-      for (const unit of units) {
-        const slots = unit.definition?.itemSlots ?? [];
-        slots.forEach((_, index) => {
-          const slotId = `Slot${index + 1}`;
-          if (taken.has(`${unit.id}:${slotId}`)) return;
-          const current = worn.get(`${unit.id}:${slotId}`);
-          const baseline = this.scoreWith(unit, slotId, current);
+    const cache = new Map<string, number>();
+    const scoreOf = (unit: RosterUnit): number => {
+      const hit = cache.get(unit.id);
+      if (hit !== undefined) return hit;
+      const value = this.scoreWearing(unit, slotsOf(unit).map((s) => layout.get(at(unit.id, s))));
+      cache.set(unit.id, value);
+      return value;
+    };
+    const scoreIf = (unit: RosterUnit, slotId: string, item: UnitItem | undefined): number =>
+      this.scoreWearing(
+        unit,
+        slotsOf(unit).map((s) => (s === slotId ? item : layout.get(at(unit.id, s)))),
+      );
 
-          for (const candidate of this.pool.candidatesFor(unit, slotId)) {
-            const key = `${candidate.id}@${candidate.level}`;
-            if ((spent.get(key) ?? 0) >= this.countOf(candidate)) continue;
-            const gain =
-              this.scoreWith(unit, slotId, {
-                slotId,
-                id: candidate.id,
-                level: candidate.level,
-              } as UnitItem) - baseline;
-            if (gain > (best?.gain ?? 0)) {
+    const assignments: Assignment[] = [];
+    // Every accepted move raises the squad's total, which is bounded, so this
+    // terminates on its own; the cap is a guard against a scoring quirk making
+    // a cycle look profitable, not part of the reasoning.
+    const cap = units.length * 6 * 4 + 16;
+
+    for (let round = 0; round < cap; round += 1) {
+      let best:
+        | { assignment: Assignment; source: { kind: 'loose'; index: number } | { kind: 'worn'; donor: RosterUnit; slotId: string } }
+        | undefined;
+
+      for (const receiver of units) {
+        for (const slotId of slotsOf(receiver)) {
+          const current = layout.get(at(receiver.id, slotId));
+
+          for (const candidate of this.pool.candidatesFor(receiver, slotId)) {
+            if (current && current.id === candidate.id && current.level === candidate.level) continue;
+            const wearing: UnitItem = {
+              slotId,
+              id: candidate.id,
+              level: candidate.level,
+            } as UnitItem;
+            const gained = scoreIf(receiver, slotId, wearing) - scoreOf(receiver);
+
+            // A spare copy first: stripping a team-mate is a cost, and there is
+            // no reason to pay it while an identical copy is lying loose.
+            const spare = loose.findIndex(
+              (entry) =>
+                entry.left > 0 &&
+                entry.item.id === candidate.id &&
+                entry.item.level === candidate.level,
+            );
+            if (spare >= 0) {
+              if (gained > (best?.assignment.gain ?? 0)) {
+                best = {
+                  assignment: this.move(receiver, slotId, loose[spare]!.item, current, gained),
+                  source: { kind: 'loose', index: spare },
+                };
+              }
+              continue;
+            }
+
+            // Otherwise it has to come off somebody, and what they lose counts
+            // against what the receiver gains. This is the whole point: a
+            // headline gain of +414 on one unit is not a gain at all if it
+            // guts another.
+            const donor = this.wearerOf(candidate, units, layout, at, slotsOf, receiver);
+            if (!donor) continue;
+            const lost = scoreOf(donor.unit) - scoreIf(donor.unit, donor.slotId, undefined);
+            const net = gained - lost;
+            if (net > (best?.assignment.gain ?? 0)) {
               best = {
-                unitId: unit.id,
-                slotId,
-                item: candidate,
-                ...(current
-                  ? {
-                      replaces: {
-                        id: current.id,
-                        name: this.db.items[current.id]?.name ?? current.id,
-                        level: current.level,
-                      },
-                    }
-                  : {}),
-                gain,
+                assignment: {
+                  ...this.move(receiver, slotId, candidate, current, net),
+                  takenFrom: { unitId: donor.unit.id, slotId: donor.slotId, loss: lost },
+                },
+                source: { kind: 'worn', donor: donor.unit, slotId: donor.slotId },
               };
             }
           }
-        });
+        }
       }
 
       if (!best) break;
-      assignments.push(best);
-      taken.add(`${best.unitId}:${best.slotId}`);
-      const key = `${best.item.id}@${best.item.level}`;
-      spent.set(key, (spent.get(key) ?? 0) + 1);
-      worn.set(`${best.unitId}:${best.slotId}`, {
-        slotId: best.slotId,
-        id: best.item.id,
-        level: best.item.level,
+      const { assignment, source } = best;
+      const receiver = inSet.get(assignment.unitId)!;
+
+      // What the receiver takes off is not destroyed — it goes back on the pile,
+      // and a later round can put it on whoever the move left bare.
+      const displaced = layout.get(at(assignment.unitId, assignment.slotId));
+      if (displaced) {
+        const spec = this.db.items[displaced.id];
+        if (spec) {
+          loose.push({
+            item: {
+              id: displaced.id,
+              name: spec.name,
+              level: displaced.level,
+              rarity: spec.rarity,
+              itemType: spec.itemType,
+              count: 1,
+            },
+            left: 1,
+          });
+        }
+      }
+
+      if (source.kind === 'loose') {
+        loose[source.index]!.left -= 1;
+      } else {
+        layout.set(at(source.donor.id, source.slotId), undefined);
+        cache.delete(source.donor.id);
+      }
+      layout.set(at(assignment.unitId, assignment.slotId), {
+        slotId: assignment.slotId,
+        id: assignment.item.id,
+        level: assignment.item.level,
       } as UnitItem);
+      cache.delete(receiver.id);
+      assignments.push(assignment);
     }
 
     return assignments;
   }
 
-  /** Total copies of one item at one level the pool holds. */
-  private countOf(item: PoolItem): number {
-    return item.count;
+  /** The team-mate wearing this copy, if any is — read from the live layout. */
+  private wearerOf(
+    candidate: PoolItem,
+    units: readonly RosterUnit[],
+    layout: ReadonlyMap<string, UnitItem | undefined>,
+    at: (unitId: string, slotId: string) => string,
+    slotsOf: (unit: RosterUnit) => string[],
+    receiver: RosterUnit,
+  ): { unit: RosterUnit; slotId: string } | undefined {
+    for (const unit of units) {
+      // Shuffling a unit's own two slots is left alone: both ends move at once,
+      // and pricing it one slot at a time would misreport it.
+      if (unit.id === receiver.id) continue;
+      for (const slotId of slotsOf(unit)) {
+        const worn = layout.get(at(unit.id, slotId));
+        if (worn && worn.id === candidate.id && worn.level === candidate.level) {
+          return { unit, slotId };
+        }
+      }
+    }
+    return undefined;
   }
 
-  /** The unit's score with one slot swapped, everything else held still. */
-  private scoreWith(unit: RosterUnit, slotId: string, item: UnitItem | undefined): number {
-    const items = unit.effective.items.filter((worn) => worn.slotId !== slotId);
-    if (item) items.push(item);
-    const swapped = new RosterUnit({ ...unit.effective, items }, this.db);
-    return score(swapped, this.objective);
+  private move(
+    receiver: RosterUnit,
+    slotId: string,
+    item: PoolItem,
+    current: UnitItem | undefined,
+    gain: number,
+  ): Assignment {
+    return {
+      unitId: receiver.id,
+      slotId,
+      item,
+      ...(current
+        ? {
+            replaces: {
+              id: current.id,
+              name: this.db.items[current.id]?.name ?? current.id,
+              level: current.level,
+            },
+          }
+        : {}),
+      gain,
+    };
+  }
+
+  /** A unit's score wearing exactly this kit, everything else held still. */
+  private scoreWearing(unit: RosterUnit, items: readonly (UnitItem | undefined)[]): number {
+    const worn = items.filter((item): item is UnitItem => item !== undefined);
+    return score(new RosterUnit({ ...unit.effective, items: worn }, this.db), this.objective);
   }
 }
 

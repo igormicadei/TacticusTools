@@ -25,6 +25,7 @@ import {
   rankName,
   rarityName,
   Rarity,
+  score,
   campaignAlliances,
   campaignFamily,
   GRAND_ALLIANCE_NAMES,
@@ -308,9 +309,90 @@ const OBJECTIVES = ['health', 'armour', 'damage', 'effective', 'offence', 'defen
         note(`${scope}: booster offered to a ${rarityName(unit.stats?.rarity)} unit`);
       }
     }
+    /*
+     * The plan has to be worth what it says it is.
+     *
+     * This is the check the optimiser used to fail. It would take a copy off a
+     * squad member to put it on another, count only what the receiver gained,
+     * and never take the item off the donor at all — so it advertised +414 on
+     * a swap that left the squad barely better and one unit's slot bare. Here
+     * the plan is replayed onto the squad and the real total is compared with
+     * the total it claims.
+     */
+    for (const objective of OBJECTIVES) {
+      const plan = new ItemOptimiser(pool, db, objective).optimise(members);
+      if (plan.length === 0) continue;
+      const before = members.reduce((n, u) => n + score(u, objective), 0);
+      const worn = new Map(members.map((u) => [u.id, [...u.effective.items]]));
+
+      for (const move of plan) {
+        if (move.takenFrom) {
+          const donor = worn.get(move.takenFrom.unitId);
+          if (!donor) {
+            note(`${scope}/${objective}: takes from ${move.takenFrom.unitId}, who is not in the squad`);
+            continue;
+          }
+          const had = donor.find((i) => i.slotId === move.takenFrom.slotId);
+          if (!had || had.id !== move.item.id || had.level !== move.item.level) {
+            note(
+              `${scope}/${objective}: says ${move.item.name} lv${move.item.level} comes off ` +
+                `${move.takenFrom.unitId} ${move.takenFrom.slotId}, which holds ` +
+                `${had ? `${had.id} lv${had.level}` : 'nothing'}`,
+            );
+          }
+          worn.set(move.takenFrom.unitId, donor.filter((i) => i.slotId !== move.takenFrom.slotId));
+        }
+        const mine = worn.get(move.unitId) ?? [];
+        const current = mine.find((i) => i.slotId === move.slotId);
+        const claimed = move.replaces;
+        if (Boolean(current) !== Boolean(claimed)) {
+          note(`${scope}/${objective}: ${move.unitId} ${move.slotId} replaces disagrees with the layout`);
+        }
+        worn.set(move.unitId, [
+          ...mine.filter((i) => i.slotId !== move.slotId),
+          { slotId: move.slotId, id: move.item.id, level: move.item.level },
+        ]);
+      }
+
+      const after = members.reduce(
+        (n, u) => n + score(new RosterUnit({ ...u.effective, items: worn.get(u.id) }, db), objective),
+        0,
+      );
+      const claimed = plan.reduce((n, m) => n + m.gain, 0);
+      if (Math.abs(after - before - claimed) > 0.5) {
+        note(
+          `${scope}/${objective}: plan claims ${claimed.toFixed(1)} but the squad moves ` +
+            `${(after - before).toFixed(1)}`,
+        );
+      }
+
+      // And the finished layout has to be one the player could actually wear.
+      const held = new Map();
+      for (const entry of pool.all) {
+        const key = `${entry.id}@${entry.level}`;
+        held.set(key, (held.get(key) ?? 0) + entry.count);
+      }
+      const inUse = new Map();
+      for (const [unitId, items] of worn) {
+        const seen = new Set();
+        for (const item of items) {
+          if (seen.has(item.slotId)) note(`${scope}/${objective}: ${unitId} wears two things in ${item.slotId}`);
+          seen.add(item.slotId);
+          const key = `${item.id}@${item.level}`;
+          inUse.set(key, (inUse.get(key) ?? 0) + 1);
+        }
+      }
+      for (const [key, count] of inUse) {
+        if (count > (held.get(key) ?? 0)) {
+          note(`${scope}/${objective}: layout wears ${count} of ${key}, the pool holds ${held.get(key) ?? 0}`);
+        }
+      }
+    }
+
     console.log(
       `optimiser (${scope}): pool of ${pool.size}, ${assignments.length} swap(s) across ` +
-        `${OBJECTIVES.length} objectives, all legal, none double-spent  ✓`,
+        `${OBJECTIVES.length} objectives, all legal, none double-spent, ` +
+        `each plan worth what it claims  ✓`,
     );
   }
 }
