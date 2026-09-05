@@ -507,6 +507,126 @@ export function flattenNeeds(items: readonly AllocatedItem[]): FlatNeed[] {
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/* What a plan costs in energy                                                */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Energy per copy at the cheapest node the player can actually run.
+ *
+ * "Can actually run" is the whole point: a locked node's price is not a price
+ * the player can pay, so an item farmable only behind locked content costs
+ * nothing here and is reported as unpriced instead. A crafted item costs what
+ * its ingredients cost, recursively, since there is no node that drops it.
+ *
+ * `undefined` means no route at all, which is a different thing from expensive
+ * and is deliberately not collapsed into a large number — averaging it into a
+ * total would quietly turn "you cannot get this" into "this costs a lot".
+ */
+export function energyPerCopy(
+  item: Pick<ItemRequirement, 'kind' | 'key'> & { rarity?: Rarity },
+  db: GameDatabase,
+  player: PlayerResponse,
+  seen: ReadonlySet<string> = new Set(),
+): number | undefined {
+  if (seen.has(item.key)) return undefined;
+  const source = itemSource(item, db);
+
+  if (source.kind === 'craft') {
+    const nested = new Set(seen).add(item.key);
+    let total = 0;
+    for (const component of source.recipe) {
+      const each = energyPerCopy(
+        {
+          kind: 'upgrade',
+          key: component.key,
+          ...(component.rarity !== undefined ? { rarity: component.rarity } : {}),
+        },
+        db,
+        player,
+        nested,
+      );
+      if (each === undefined) return undefined;
+      total += each * component.amount;
+    }
+    return total;
+  }
+  if (source.kind !== 'farm') return undefined;
+
+  const open = nodeStatuses(source.nodes, player, db, {
+    kind: item.kind,
+    ...(item.rarity !== undefined ? { rarity: item.rarity } : {}),
+  }).filter((n) => n.unlocked && n.energyPerDrop !== undefined);
+  if (open.length === 0) return undefined;
+  return Math.min(...open.map((n) => n.energyPerDrop!));
+}
+
+/** What is left to do, counted three ways because they answer different questions. */
+export interface FarmingCost {
+  /**
+   * Upgrade slots still to fill.
+   *
+   * The unit of work the game itself shows. A plan's remaining effort is more
+   * honestly a number of slots than a number of items: six materials that fill
+   * one slot are one thing to do, not six.
+   */
+  slots: number;
+  /** Distinct base materials still to find. Experience is not one of them. */
+  distinct: number;
+  /** Copies of those, summed — the number of drops to farm. */
+  copies: number;
+  /**
+   * Energy those copies cost at the cheapest node currently open.
+   *
+   * A floor, not a forecast: drop rates are averages, so this is what the
+   * farming costs if every run drops at the published rate.
+   */
+  energy: number;
+  /** Copies with no route at all, which are excluded from {@link energy}. */
+  unpriced: number;
+}
+
+/**
+ * Cost a set of allocated requirements in slots, drops and energy.
+ *
+ * Built on {@link flattenNeeds} rather than on the requirements directly,
+ * because "how much is left" asked at a campaign screen means base materials:
+ * a plan that wants two Anointed Auxiliary Cores wants no such drop from any
+ * node, it wants the twelve things they are forged from.
+ */
+export function farmingCost(
+  items: readonly AllocatedItem[],
+  db: GameDatabase,
+  player: PlayerResponse,
+): FarmingCost {
+  let slots = 0;
+  for (const item of items) {
+    if (item.applied) continue;
+    slots += item.slots?.length ?? 0;
+  }
+
+  // Experience is measured in points, not in things picked up, so counting it
+  // here would put five figures of "drops to farm" on a card and drown the
+  // number that means something. Levels are their own step in the plan and are
+  // shown as XP there.
+  const needs = flattenNeeds(items).filter((need) => need.kind !== 'xp');
+  let copies = 0;
+  let energy = 0;
+  let unpriced = 0;
+  for (const need of needs) {
+    copies += need.amount;
+    const each = energyPerCopy(
+      { kind: need.kind, key: need.key, ...(need.rarity !== undefined ? { rarity: need.rarity } : {}) },
+      db,
+      player,
+    );
+    if (each === undefined) unpriced += need.amount;
+    else energy += each * need.amount;
+  }
+
+  return { slots, distinct: needs.length, copies, energy: Math.round(energy), unpriced };
+}
+
 /** Roll every step's items into one list per item. */
 export function aggregate(
   costs: StepCost[],

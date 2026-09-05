@@ -12,6 +12,7 @@ import { plansStore, type StoredPlan } from '../data/plans.ts';
 import { unitIcon } from '../data/icons.ts';
 import { Icon, useIcons } from '../components/Icon.tsx';
 import { localRank, localRarity } from '../i18n/game.ts';
+import { PlanCost } from '../components/PlanCost.tsx';
 import { t } from '../i18n/locale.ts';
 
 export function PlansPage({ db, player }: { db: GameDatabase; player: PlayerResponse }) {
@@ -109,12 +110,11 @@ export function PlansPage({ db, player }: { db: GameDatabase; player: PlayerResp
                       ? t('common.complete')
                       : t('common.stepsLeft', { n: left, total: plan.steps.length })}
                   </span>
-                  {summary && summary.missing > 0 && (
-                    <span className="chip">{summary.missing} items missing</span>
-                  )}
-                  {summary && summary.unreachable > 0 && (
-                    <span className="chip warn">{summary.unreachable} unreachable</span>
-                  )}
+                  {/* No "unreachable" chip beside this: it counted copies of
+                      the named requirements with no route, which is the same
+                      idea as "with no route" below but measured before recipes
+                      are resolved — two different numbers for one fact. */}
+                  {summary && <PlanCost cost={summary.cost} />}
                   {plan.blocked && <span className="chip">{t('common.blocked')}</span>}
                 </div>
               </Link>

@@ -24,6 +24,8 @@ import {
   canForge,
   itemSources,
   flattenNeeds,
+  farmingCost,
+  energyPerCopy,
   levelToCompleteRank,
 } from '../dist/gamedata/index.js';
 
@@ -329,6 +331,75 @@ console.log(`audited ${checked} plans; ${blockedSeen} blocked-item findings veri
     }
   }
   console.log(`flattening: ${flattened} base need(s) from ${expanded} recipe(s)  ✓`);
+}
+
+/* ---- costing a plan in slots, drops and energy ---------------------------- */
+{
+  // The three figures answer different questions and must not drift into each
+  // other. The one that actually misled before was a count of copies of the
+  // *named* requirements, which is smaller than the drops to farm whenever any
+  // recipe is involved — so that relation is asserted rather than assumed.
+  let costed = 0;
+  let recipesSeen = 0;
+  for (const unit of player.units) {
+    const plan = resolvePlan(unit, { rank: Math.min(19, unit.rank + 2) }, db);
+    if (plan.steps.length === 0) continue;
+    const owned = ownedByKey(playerResponse, db);
+    for (const step of allocateHoldings(planCosts(unit, plan, db), owned, db)) {
+      const cost = farmingCost(step.items, db, playerResponse);
+      costed += 1;
+
+      // XP is deliberately not a drop; the cost figures exclude it.
+      const needs = flattenNeeds(step.items).filter((n) => n.kind !== 'xp');
+      if (cost.distinct !== needs.length) {
+        note(`${unit.name}: distinct ${cost.distinct} but flattenNeeds gave ${needs.length}`);
+      }
+      const copies = needs.reduce((n, x) => n + x.amount, 0);
+      if (cost.copies !== copies) note(`${unit.name}: copies ${cost.copies} but needs sum to ${copies}`);
+
+      // Slots are the open slots of the step's own requirements, never the
+      // applied ones — a filled slot is not work left to do.
+      const open = step.items
+        .filter((i) => !i.applied)
+        .reduce((n, i) => n + (i.slots?.length ?? 0), 0);
+      if (cost.slots !== open) note(`${unit.name}: slots ${cost.slots} but ${open} are open`);
+      if (step.items.some((i) => i.applied && (i.slots ?? []).length > 0) && step.step.kind === 'rank') {
+        // Applied requirements do carry slots; they must simply not be counted.
+        if (cost.slots >= step.items.reduce((n, i) => n + (i.slots?.length ?? 0), 0) && open > 0) {
+          note(`${unit.name}: applied slots leaked into the count`);
+        }
+      }
+
+      if (cost.energy < 0 || cost.copies < 0 || cost.unpriced < 0) {
+        note(`${unit.name}: negative figure in ${JSON.stringify(cost)}`);
+      }
+      // Anything priced must have a route; anything unpriced must not.
+      for (const need of needs) {
+        const each = energyPerCopy(
+          { kind: need.kind, key: need.key, ...(need.rarity !== undefined ? { rarity: need.rarity } : {}) },
+          db,
+          playerResponse,
+        );
+        if (each !== undefined && !(each > 0)) {
+          note(`${unit.name}: ${need.name} priced at ${each}, which is not a cost`);
+        }
+      }
+      if (needs.some((n) => n.via.length > 0)) recipesSeen += 1;
+      // And the exclusion has to be real, not just smaller: no XP may survive.
+      if (flattenNeeds(step.items).some((n) => n.kind === 'xp') && cost.copies > 0) {
+        const xp = flattenNeeds(step.items)
+          .filter((n) => n.kind === 'xp')
+          .reduce((n, x) => n + x.amount, 0);
+        if (cost.copies >= xp) note(`${unit.name}: ${xp} XP looks counted among ${cost.copies} drops`);
+      }
+
+      // Every unpriced copy is a copy, so it can never exceed the total.
+      if (cost.unpriced > cost.copies) {
+        note(`${unit.name}: ${cost.unpriced} unpriced of only ${cost.copies} copies`);
+      }
+    }
+  }
+  console.log(`farming cost: ${costed} step(s) costed, ${recipesSeen} through recipes  ✓`);
 }
 
 if (problems.length === 0) {

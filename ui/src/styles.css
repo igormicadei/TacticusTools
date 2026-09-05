@@ -420,6 +420,9 @@ table.steps tr:last-child td { border-bottom: none; }
 .chip.warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 45%, transparent); }
 .chip.caution { color: var(--caution); border-color: color-mix(in srgb, var(--caution) 45%, transparent); }
 .chip.gold { color: var(--gold-5); border-color: var(--gold-2); }
+/* Energy is a cost like gold, but a different currency and a different
+ * decision — gold you have or you do not, energy comes back on a clock. */
+.chip.energy { color: var(--n-9); border-color: var(--n-6); font-variant-numeric: tabular-nums; }
 .chip.ok-chip { color: var(--status-owned); border-color: color-mix(in srgb, var(--status-owned) 45%, transparent); }
 .item-row.applied .item-name { color: var(--text-secondary); }
 .item-head.static:hover { background: none; }

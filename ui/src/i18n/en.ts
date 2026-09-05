@@ -390,6 +390,22 @@ export const EN = {
   'common.savePlan': 'Save plan',
   'common.createPlan': 'Create plan',
   'common.stepsLeft': '{n} of {total} steps left',
+
+  /* ---- what a plan still costs ---------------------------------------- */
+  'cost.slots': '{n} slot to fill',
+  'cost.slotsPlural': '{n} slots to fill',
+  'cost.slotsHint': 'Upgrade slots still empty across this plan',
+  'cost.toFarm': '{n} drop to farm',
+  'cost.toFarmPlural': '{n} drops to farm',
+  'cost.toFarmHint':
+    'Base materials, with every recipe resolved down to what a node actually drops — {distinct} different ones',
+  'cost.energy': '{n} ⚡',
+  'cost.energyHint':
+    'At the cheapest node open to you for each material. A floor, not a forecast: drop rates are averages.',
+  'cost.unpriced': '{n} with no route',
+  'cost.unpricedHint':
+    'No unlocked node drops these and no recipe makes them, so they are not in the energy figure.',
+  'cost.nothingLeft': 'Nothing left to farm',
   'common.atTop': 'already at the top',
   'common.atCap': 'already at the cap',
   'plans.alreadyMet': 'This unit already meets that target.',

@@ -5,6 +5,7 @@ import {
   aggregate,
   allocateHoldings,
   canForge,
+  farmingCost,
   flattenNeeds,
   isUnfarmable,
   isUnobtainable,
@@ -25,6 +26,7 @@ import type { PlayerResponse, Unit } from '@lib/types/player.js';
 
 import { campaignIcon, requirementIcon, uiIcon } from '../data/icons.ts';
 import { Icon, useIcons } from './Icon.tsx';
+import { PlanCost } from './PlanCost.tsx';
 import { localNumber, localRank, localRarity, localStat } from '../i18n/game.ts';
 import { t, tn } from '../i18n/locale.ts';
 
@@ -62,7 +64,7 @@ export function StepItems({
   // opening it must not close the parent that renders it.
   const [open, setOpen] = useState<ReadonlySet<string>>(() => new Set());
 
-  const { steps, totals, gold, goldByStep, allItems } = useMemo(() => {
+  const { steps, totals, gold, goldByStep, allItems, cost, costByStep } = useMemo(() => {
     // Finished steps cost nothing more, and pricing them against the unit's
     // present state would invent needs it has already met.
     const remaining = { ...plan, steps: plan.steps.filter((step) => !step.done) };
@@ -78,6 +80,13 @@ export function StepItems({
       // total is built from: pooling after flattening, so a base material
       // wanted by two steps reads as one line.
       allItems: allocated.flatMap((s) => s.items),
+      // What the whole plan costs to farm, and what each step costs on its own.
+      // Per step as well as in total because the totals answer "is this worth
+      // starting" and the per-step figures answer "what does tonight cost".
+      cost: farmingCost(allocated.flatMap((s) => s.items), db, player),
+      costByStep: new Map(
+        allocated.map((s) => [s.step.order, farmingCost(s.items, db, player)]),
+      ),
     };
   }, [unit, plan, db, player]);
 
@@ -100,6 +109,7 @@ export function StepItems({
             {t('si.total')}
           </button>
         </div>
+        <PlanCost cost={cost} />
         <label className="switch" title={t('si.flattenHint')}>
           <input type="checkbox" checked={flat} onChange={(e) => setFlat(e.target.checked)} />
           <span>{t('si.flatten')}</span>
@@ -135,6 +145,11 @@ export function StepItems({
                 {stepGold > 0 && (
                   <span className="chip gold" style={{ marginLeft: 8 }}>
                     {t('si.goldChip', { n: localNumber(stepGold) })}
+                  </span>
+                )}
+                {(costByStep.get(step.order)?.energy ?? 0) > 0 && (
+                  <span className="chip energy" style={{ marginLeft: 8 }} title={t('cost.energyHint')}>
+                    {t('cost.energy', { n: localNumber(costByStep.get(step.order)!.energy) })}
                   </span>
                 )}
               </div>

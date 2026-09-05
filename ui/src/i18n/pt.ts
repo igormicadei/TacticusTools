@@ -384,6 +384,22 @@ export const PT: Record<keyof typeof EN, string> = {
   'common.savePlan': 'Salvar plano',
   'common.createPlan': 'Criar plano',
   'common.stepsLeft': 'faltam {n} de {total} passos',
+
+  /* ---- o que ainda custa um plano -------------------------------------- */
+  'cost.slots': '{n} espaço a preencher',
+  'cost.slotsPlural': '{n} espaços a preencher',
+  'cost.slotsHint': 'Espaços de melhoria ainda vazios neste plano',
+  'cost.toFarm': '{n} drop a farmar',
+  'cost.toFarmPlural': '{n} drops a farmar',
+  'cost.toFarmHint':
+    'Materiais base, com toda receita resolvida até o que um nó realmente derruba — {distinct} diferentes',
+  'cost.energy': '{n} ⚡',
+  'cost.energyHint':
+    'No nó mais barato aberto para você em cada material. Um piso, não uma previsão: as taxas de drop são médias.',
+  'cost.unpriced': '{n} sem rota',
+  'cost.unpricedHint':
+    'Nenhum nó desbloqueado derruba estes e nenhuma receita os faz, então não entram na conta de energia.',
+  'cost.nothingLeft': 'Nada a farmar',
   'common.atTop': 'já está no topo',
   'common.atCap': 'já está no limite',
   'plans.alreadyMet': 'Esta unidade já atende a esse alvo.',

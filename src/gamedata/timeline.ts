@@ -14,6 +14,10 @@ import type { UnitId } from './ids.js';
 import { battleKey } from './ids.js';
 import type { EvolutionPlan, PlanStep } from './plan.js';
 import {
+  energyPerCopy,
+  farmingCost,
+  flattenNeeds,
+  type FarmingCost,
   allocateHoldings,
   isUnfarmable,
   itemSource,
@@ -134,10 +138,19 @@ export interface TimelineBundle {
 }
 
 export interface PlanSummary {
+  /**
+   * Copies of the *named* requirements still short.
+   *
+   * Kept, but not what a card should lead with: it is neither the number of
+   * slots the game shows nor the number of drops to farm, so read on its own
+   * it answers a question nobody asked. See {@link PlanSummary.cost}.
+   */
   missing: number;
   unreachable: number;
   bundles: number;
   gold: number;
+  /** Slots to fill, drops to farm, and what those cost in energy. */
+  cost: FarmingCost;
 }
 
 export interface Timeline {
@@ -233,6 +246,9 @@ export function buildTimeline(
   const remaining = new Map(owned);
   const bundles: TimelineBundle[] = [];
   const byPlan = new Map<string, PlanSummary>();
+  // Distinct materials cannot be summed across bundles — the same ore appears
+  // in several — so the union is collected here and counted at the end.
+  const materialsByPlan = new Map<string, Set<string>>();
 
   for (const entry of pending) {
     const allocated = allocateHoldings(entry.costs, remaining, db);
@@ -278,12 +294,35 @@ export function buildTimeline(
       unreachable,
     });
 
-    const summary = byPlan.get(entry.plan.id) ?? { missing: 0, unreachable: 0, bundles: 0, gold: 0 };
+    // Costed per bundle and summed, not costed once over the whole plan: the
+    // holdings pool is spent as the timeline walks it, so a later bundle's
+    // shortfall already accounts for what an earlier one took.
+    const cost = farmingCost(items, db, player);
+    const summary = byPlan.get(entry.plan.id) ?? {
+      missing: 0,
+      unreachable: 0,
+      bundles: 0,
+      gold: 0,
+      cost: { slots: 0, distinct: 0, copies: 0, energy: 0, unpriced: 0 },
+    };
     summary.missing += missing;
     summary.unreachable += unreachable;
     summary.bundles += 1;
     summary.gold += gold;
+    summary.cost.slots += cost.slots;
+    summary.cost.copies += cost.copies;
+    summary.cost.energy += cost.energy;
+    summary.cost.unpriced += cost.unpriced;
     byPlan.set(entry.plan.id, summary);
+
+    const seen = materialsByPlan.get(entry.plan.id) ?? new Set<string>();
+    for (const need of flattenNeeds(items)) seen.add(need.key);
+    materialsByPlan.set(entry.plan.id, seen);
+  }
+
+  for (const [planId, materials] of materialsByPlan) {
+    const summary = byPlan.get(planId);
+    if (summary) summary.cost.distinct = materials.size;
   }
 
   return { bundles, byPlan };
@@ -340,47 +379,6 @@ export interface EnergyPlan {
   energyUsed: number;
   energyBudget: number;
   gain: number;
-}
-
-/**
- * Energy per copy at the cheapest node the player can actually run.
- *
- * A crafted item costs what its ingredients cost; `undefined` means no route,
- * which is different from expensive and is reported as such rather than as a
- * large number.
- */
-function energyPerCopy(
-  item: Pick<ItemRequirement, 'kind' | 'key'> & { rarity?: Rarity },
-  db: GameDatabase,
-  player: PlayerResponse,
-  seen: ReadonlySet<string> = new Set(),
-): number | undefined {
-  if (seen.has(item.key)) return undefined;
-  const source = itemSource(item, db);
-
-  if (source.kind === 'craft') {
-    const nested = new Set(seen).add(item.key);
-    let total = 0;
-    for (const component of source.recipe) {
-      const each = energyPerCopy(
-        { kind: 'upgrade', key: component.key, ...(component.rarity !== undefined ? { rarity: component.rarity } : {}) },
-        db,
-        player,
-        nested,
-      );
-      if (each === undefined) return undefined;
-      total += each * component.amount;
-    }
-    return total;
-  }
-  if (source.kind !== 'farm') return undefined;
-
-  const open = nodeStatuses(source.nodes, player, db, {
-    kind: item.kind,
-    ...(item.rarity !== undefined ? { rarity: item.rarity } : {}),
-  }).filter((n) => n.unlocked && n.energyPerDrop !== undefined);
-  if (open.length === 0) return undefined;
-  return Math.min(...open.map((n) => n.energyPerDrop!));
 }
 
 /** Nodes for an item, cheapest per copy first, unlocked ones ahead of locked. */
