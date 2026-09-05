@@ -193,6 +193,17 @@ export const PT: Record<keyof typeof EN, string> = {
   'why.rankRequiresRarity': 'o rank {rank} exige {rarity}',
   'common.edit': 'Editar',
   'common.delete': 'Excluir',
+  'common.stars': 'Estrelas',
+  'plans.starsOption': '{rarity} · {stars} estrelas',
+  'plans.targetLevel': 'nível {n}',
+  'plans.targetActive': 'ativa {n}',
+  'plans.targetPassive': 'passiva {n}',
+  'plans.targetStars': '{n} estrelas',
+  'plans.noTarget': 'Nenhum alvo definido',
+  'plans.previewSteps': '{n} passo — exige {target}.',
+  'plans.previewStepsPlural': '{n} passos — exige {target}.',
+  'plans.starsHint':
+    'Cada estrela multiplica a vida, o dano e a armadura base por mais 10% antes de somar as melhorias de rank, então valem um plano só delas. Pedir um degrau dentro da raridade atual não faz a unidade ascender.',
 
   /* ---- linha do tempo -------------------------------------------------- */
   'timeline.heading': 'Tudo, em ordem',
@@ -474,6 +485,16 @@ export const PT: Record<keyof typeof EN, string> = {
   'ud.armourNote':
     'A armadura subtrai de cada golpe recebido um a um, mas nunca abaixo da parcela de perfuração daquele ataque — contra um ataque totalmente perfurante ela não faz nada. Quanto ela vale depende inteiramente de quem está atirando em você.',
   'ud.noStatBlock': 'Nenhum bloco de atributos publicado para este rank.',
+  'ud.statsBase': 'Base {hp}/{dmg}/{arm} × {multiplier} ({stars} estrelas acumuladas, +10% cada)',
+  'ud.statsRankUpgrades': ', depois +{hp}/{dmg}/{arm} de {applied} das {available} melhorias de rank',
+  'ud.statsEquipment': ', mais {parts} do equipamento, que fica fora do multiplicador',
+  'ud.statsEquipHealth': '+{n} de vida',
+  'ud.statsEquipArmour': '+{n} de armadura',
+  'ud.and': ' e ',
+  'ud.rarityAbilitiesNote':
+    'A raridade adiciona +20% por nível aos valores das habilidades, não a estes — estrelas escalam os atributos da unidade, a raridade escala as habilidades dela, e os dois nunca se cruzam.',
+  'td.slots': '{n} espaços',
+  'td.enemies': '{n} inimigos',
   'ud.mythicShards': 'Fragmentos míticos',
   'ud.noBadges': 'Nenhum emblema em mãos para esta aliança.',
   'ud.badgesShared': 'Emblemas são compartilhados entre todas as unidades desta aliança.',

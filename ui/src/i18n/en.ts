@@ -199,6 +199,17 @@ export const EN = {
   'why.rankRequiresRarity': 'rank {rank} requires {rarity}',
   'common.edit': 'Edit',
   'common.delete': 'Delete',
+  'common.stars': 'Stars',
+  'plans.starsOption': '{rarity} · {stars} stars',
+  'plans.targetLevel': 'level {n}',
+  'plans.targetActive': 'active {n}',
+  'plans.targetPassive': 'passive {n}',
+  'plans.targetStars': '{n} stars',
+  'plans.noTarget': 'No target set',
+  'plans.previewSteps': '{n} step — requires {target}.',
+  'plans.previewStepsPlural': '{n} steps — requires {target}.',
+  'plans.starsHint':
+    'Each star multiplies base health, damage and armour by a further 10% before rank upgrades are added, so they are worth planning for on their own. Asking for a rung inside the current rarity does not ascend the unit.',
 
   /* ---- timeline ------------------------------------------------------- */
   'timeline.heading': 'Everything, in order',
@@ -480,6 +491,16 @@ export const EN = {
   'ud.armourNote':
     'Armour subtracts from each incoming hit one for one, but never below that attack’s pierce share — against a fully piercing attack it does nothing at all. How much it is worth depends entirely on what is shooting at you.',
   'ud.noStatBlock': 'No stat block published for this rank.',
+  'ud.statsBase': 'Base {hp}/{dmg}/{arm} × {multiplier} ({stars} cumulative stars, +10% each)',
+  'ud.statsRankUpgrades': ', then +{hp}/{dmg}/{arm} from {applied} of {available} rank upgrades',
+  'ud.statsEquipment': ', plus {parts} from equipment, which lands outside the multiplier',
+  'ud.statsEquipHealth': '+{n} health',
+  'ud.statsEquipArmour': '+{n} armour',
+  'ud.and': ' and ',
+  'ud.rarityAbilitiesNote':
+    'Rarity adds +20% per tier to ability values, not to these — stars scale a unit’s stats, rarity scales its abilities, and the two never cross.',
+  'td.slots': '{n} slots',
+  'td.enemies': '{n} enemies',
   'ud.mythicShards': 'Mythic shards',
   'ud.noBadges': 'No badges held for this alliance.',
   'ud.badgesShared': 'Badges are shared across every unit of this alliance.',

@@ -16,6 +16,8 @@ import {
   currentState,
   maxRankForRarity,
   maxLevelForRarity,
+  projectedStats,
+  computeUnitStats,
 } from '../dist/gamedata/index.js';
 
 const args = process.argv.slice(2);
@@ -183,6 +185,68 @@ if (certus) {
   const plan = resolvePlan(certus, { rank: 15, activeAbilityLevel: 40, rarity: 4 }, db);
   console.log(`\nCertus -> rank 15, active 40, Legendary (${plan.steps.length} steps):`);
   for (const s of plan.steps) console.log(`  ${String(s.order).padStart(2)}. ${s.label}`);
+}
+
+/* ---- a projection keeps what the unit does not spend ---------------------- */
+{
+  // Ranking up consumes the rank's slots, so a projection past a rank-up must
+  // drop the applied upgrades. A plan that does not move the rank must keep
+  // them — clearing them there reported the unit weaker than it is today and
+  // turned a real gain into a loss on screen.
+  let sameRank = 0;
+  let ranked = 0;
+  for (const unit of player.units) {
+    if ((unit.upgrades ?? []).length === 0) continue;
+    const today = computeUnitStats(unit, db);
+
+    const starsOnly = resolvePlan(unit, { progressionIndex: unit.progressionIndex + 1 }, db);
+    if (starsOnly.final.rank === unit.rank && starsOnly.steps.length > 0) {
+      const after = projectedStats(unit, starsOnly, db);
+      sameRank += 1;
+      if (after.health < today.health) {
+        note(`${unit.name}: stars-only plan projects ${after.health} health, below today's ${today.health}`);
+      }
+    }
+
+    const rankUp = resolvePlan(unit, { rank: Math.min(19, unit.rank + 1) }, db);
+    if (rankUp.final.rank > unit.rank) {
+      ranked += 1;
+      const bare = computeUnitStats({ ...unit, rank: rankUp.final.rank, progressionIndex: rankUp.final.progressionIndex, xpLevel: rankUp.final.xpLevel, upgrades: [] }, db);
+      const after = projectedStats(unit, rankUp, db);
+      if (after.health !== bare.health) {
+        note(`${unit.name}: rank-up projection ${after.health} is not the empty-slot figure ${bare.health}`);
+      }
+    }
+  }
+  console.log(`projection: ${sameRank} star-only kept their upgrades, ${ranked} rank-ups dropped them  ✓`);
+}
+
+/* ---- a star target stands on its own ------------------------------------- */
+{
+  // Stars are worth buying for their own sake, so asking for them must not
+  // quietly ascend the unit to a rarity it was not asked to reach.
+  let planned = 0;
+  for (const unit of player.units) {
+    // The payload does not carry rarity, so it comes off the ladder — reading
+    // `unit.rarity` here made every unit look Common and this check ran on
+    // nothing at all while reporting a pass.
+    const rarity = db.progressionRequirements.find(
+      (r) => r.progressionIndex === unit.progressionIndex,
+    )?.rarity;
+    if (rarity === undefined) continue;
+    const band = db.progressionRequirements.filter((r) => r.rarity === rarity);
+    const top = band.reduce((n, r) => Math.max(n, r.progressionIndex), -1);
+    if (top <= unit.progressionIndex) continue;
+    const plan = resolvePlan(unit, { progressionIndex: top }, db);
+    planned += 1;
+    if (plan.steps.some((s) => s.kind === 'ascension')) {
+      note(`${unit.name}: a star target inside its own band still ascended`);
+    }
+    if (plan.final.progressionIndex < top) {
+      note(`${unit.name}: asked for rung ${top}, plan reaches ${plan.final.progressionIndex}`);
+    }
+  }
+  console.log(`star targets: ${planned} reached without ascending  ✓`);
 }
 
 /* ---- every reason carries both of its forms ------------------------------ */

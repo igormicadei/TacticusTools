@@ -14,7 +14,7 @@ import { Icon, useIcons } from '../components/Icon.tsx';
 import { localRank, localRarity } from '../i18n/game.ts';
 import { PlanCost } from '../components/PlanCost.tsx';
 import { ProjectedStats } from '../components/ProjectedStats.tsx';
-import { t } from '../i18n/locale.ts';
+import { t, tn } from '../i18n/locale.ts';
 
 export function PlansPage({ db, player }: { db: GameDatabase; player: PlayerResponse }) {
   useIcons();
@@ -182,20 +182,36 @@ export function PlansPage({ db, player }: { db: GameDatabase; player: PlayerResp
   );
 }
 
-export function describeTarget(target: {
-  rarity?: number;
-  rank?: number;
-  xpLevel?: number;
-  activeAbilityLevel?: number;
-  passiveAbilityLevel?: number;
-}): string {
+export function describeTarget(
+  target: {
+    rarity?: number;
+    rank?: number;
+    xpLevel?: number;
+    activeAbilityLevel?: number;
+    passiveAbilityLevel?: number;
+    progressionIndex?: number;
+  },
+  db?: GameDatabase,
+): string {
   const parts: string[] = [];
   if (target.rarity !== undefined) parts.push(localRarity(target.rarity));
+  // Named by the stars it grants rather than by its index, which means nothing
+  // outside this codebase.
+  if (target.progressionIndex !== undefined) {
+    const rung = db?.progressionRequirements.find(
+      (r) => r.progressionIndex === target.progressionIndex,
+    );
+    parts.push(t('plans.targetStars', { n: rung?.starLevel ?? target.progressionIndex }));
+  }
   if (target.rank !== undefined) parts.push(localRank(target.rank));
-  if (target.xpLevel !== undefined) parts.push(`level ${target.xpLevel}`);
-  if (target.activeAbilityLevel !== undefined) parts.push(`active ${target.activeAbilityLevel}`);
-  if (target.passiveAbilityLevel !== undefined) parts.push(`passive ${target.passiveAbilityLevel}`);
-  return parts.length > 0 ? parts.join(' · ') : 'No target set';
+  if (target.xpLevel !== undefined) parts.push(t('plans.targetLevel', { n: target.xpLevel }));
+  if (target.activeAbilityLevel !== undefined) {
+    parts.push(t('plans.targetActive', { n: target.activeAbilityLevel }));
+  }
+  if (target.passiveAbilityLevel !== undefined) {
+    parts.push(t('plans.targetPassive', { n: target.passiveAbilityLevel }));
+  }
+  return parts.length > 0 ? parts.join(' · ') : t('plans.noTarget');
 }
 
 /**
@@ -218,12 +234,12 @@ export function PlanForm({
 }) {
   const field = (value: number | undefined) => (value === undefined ? '' : String(value));
   const [unitId, setUnitId] = useState(existing?.unitId ?? units[0]?.id ?? '');
-  const [name, setName] = useState(existing?.name ?? '');
   const [rarity, setRarity] = useState(field(existing?.target.rarity));
   const [rank, setRank] = useState(field(existing?.target.rank));
   const [xpLevel, setXpLevel] = useState(field(existing?.target.xpLevel));
   const [active, setActive] = useState(field(existing?.target.activeAbilityLevel));
   const [passive, setPassive] = useState(field(existing?.target.passiveAbilityLevel));
+  const [stars, setStars] = useState(field(existing?.target.progressionIndex));
   const [priority, setPriority] = useState<StatPriority | ''>(existing?.priority ?? '');
 
   const num = (v: string) => (v === '' ? undefined : Number(v));
@@ -233,6 +249,7 @@ export function PlanForm({
     ...(xpLevel !== '' ? { xpLevel: num(xpLevel)! } : {}),
     ...(active !== '' ? { activeAbilityLevel: num(active)! } : {}),
     ...(passive !== '' ? { passiveAbilityLevel: num(passive)! } : {}),
+    ...(stars !== '' ? { progressionIndex: num(stars)! } : {}),
   };
   const empty = Object.keys(target).length === 0;
   const unit = units.find((u) => u.id === unitId);
@@ -260,6 +277,28 @@ export function PlanForm({
     return options;
   };
 
+  /**
+   * Rungs of the promotion ladder above where the unit stands.
+   *
+   * Offered as rungs rather than as a star count because the two are not the
+   * same: an ascension rung and the promotion below it can carry the same
+   * number of stars, so a count alone would not say which is meant. Each option
+   * is labelled the way the game shows it — the rarity it sits in and the stars
+   * it grants.
+   */
+  const starOptions = (() => {
+    const from = now?.progressionIndex ?? 0;
+    const rungs = db.progressionRequirements
+      .filter((r) => r.progressionIndex > from)
+      .sort((a, b) => a.progressionIndex - b.progressionIndex);
+    const chosen = stars === '' ? undefined : Number(stars);
+    if (chosen !== undefined && !rungs.some((r) => r.progressionIndex === chosen)) {
+      const stored = db.progressionRequirements.find((r) => r.progressionIndex === chosen);
+      if (stored) rungs.unshift(stored);
+    }
+    return rungs;
+  })();
+
   const rarityOptions = above(held, Rarity.Mythic, rarity);
   const rankOptions = above(now?.rank, 19, rank);
   const levelOptions = above(now?.xpLevel, maxLevel, xpLevel);
@@ -275,6 +314,7 @@ export function PlanForm({
     setXpLevel('');
     setActive('');
     setPassive('');
+    setStars('');
   };
 
   return (
@@ -294,16 +334,6 @@ export function PlanForm({
               </option>
             ))}
           </select>
-        </label>
-
-        <label>
-          <span>{t('common.name')}</span>
-          <input
-            type="text"
-            placeholder={t('plans.unitName')}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
         </label>
 
         <label>
@@ -327,6 +357,25 @@ export function PlanForm({
             {rarityOptions.map((r) => (
               <option value={r} key={r}>
                 {localRarity(r)}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label title={t('plans.starsHint')}>
+          <span>{t('common.stars')}</span>
+          <select
+            value={stars}
+            onChange={(e) => setStars(e.target.value)}
+            disabled={starOptions.length === 0}
+          >
+            <option value="">{starOptions.length === 0 ? t('common.atTop') : '—'}</option>
+            {starOptions.map((rung) => (
+              <option value={rung.progressionIndex} key={rung.progressionIndex}>
+                {t('plans.starsOption', {
+                  rarity: localRarity(rung.rarity),
+                  stars: rung.starLevel ?? 0,
+                })}
               </option>
             ))}
           </select>
@@ -387,7 +436,9 @@ export function PlanForm({
             ? preview.blocked
             : preview.steps.length === 0
               ? t('plans.alreadyMet')
-              : `${preview.steps.length} steps — requires ${describeTarget(preview.resolved)}.`}
+              : tn(preview.steps.length, 'plans.previewSteps', 'plans.previewStepsPlural', {
+                  target: describeTarget(preview.resolved, db),
+                })}
         </p>
       )}
 
@@ -395,12 +446,14 @@ export function PlanForm({
         className="primary"
         disabled={!unitId || empty}
         onClick={() => {
-          const trimmed = name.trim();
           const fields = {
             unitId,
             target,
             priority: priority === '' ? undefined : priority,
-            ...(trimmed ? { name: trimmed } : { name: undefined }),
+            // A plan is a plan for one unit, so the unit's own name is the only
+            // name it needs. Cleared on save so a name typed by an older build
+            // does not linger under a field that no longer exists.
+            name: undefined,
           };
           if (existing) {
             plansStore.update(existing.id, fields);
@@ -412,7 +465,6 @@ export function PlanForm({
                 target,
                 ...(unit ? { origin: currentState(unit, db) } : {}),
                 ...(priority ? { priority } : {}),
-                ...(trimmed ? { name: trimmed } : {}),
               }).id,
             );
           }

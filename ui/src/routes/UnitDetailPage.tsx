@@ -280,28 +280,34 @@ function Attributes({ unit, db }: { unit: Unit; db: GameDatabase }) {
             </div>
           </div>
           <p className="small muted" style={{ marginBottom: 0 }}>
-            Base {stats.base.health}/{stats.base.damage}/{stats.base.armour} × 
-            {stats.starMultiplier.toFixed(2)} ({stats.starLevel ?? 0} cumulative stars, +10%
-            each)
-            {stats.rankUpgradesApplied > 0 && (
-              <>
-                , then +{stats.rankUpgrades.health}/{stats.rankUpgrades.damage}/
-                {stats.rankUpgrades.armour} from {stats.rankUpgradesApplied} of{' '}
-                {stats.rankUpgradesAvailable} rank upgrades
-              </>
-            )}
-            {(stats.equipment.health > 0 || stats.equipment.armour > 0) && (
-              <>
-                , plus{' '}
-                {[
-                  stats.equipment.health > 0 ? `+${stats.equipment.health} health` : undefined,
-                  stats.equipment.armour > 0 ? `+${stats.equipment.armour} armour` : undefined,
+            {t('ud.statsBase', {
+              hp: stats.base.health,
+              dmg: stats.base.damage,
+              arm: stats.base.armour,
+              multiplier: stats.starMultiplier.toFixed(2),
+              stars: stats.starLevel ?? 0,
+            })}
+            {stats.rankUpgradesApplied > 0 &&
+              t('ud.statsRankUpgrades', {
+                hp: stats.rankUpgrades.health,
+                dmg: stats.rankUpgrades.damage,
+                arm: stats.rankUpgrades.armour,
+                applied: stats.rankUpgradesApplied,
+                available: stats.rankUpgradesAvailable,
+              })}
+            {(stats.equipment.health > 0 || stats.equipment.armour > 0) &&
+              t('ud.statsEquipment', {
+                parts: [
+                  stats.equipment.health > 0
+                    ? t('ud.statsEquipHealth', { n: stats.equipment.health })
+                    : undefined,
+                  stats.equipment.armour > 0
+                    ? t('ud.statsEquipArmour', { n: stats.equipment.armour })
+                    : undefined,
                 ]
                   .filter(Boolean)
-                  .join(' and ')}{' '}
-                from equipment, which lands outside the multiplier
-              </>
-            )}
+                  .join(t('ud.and')),
+              })}
             .
           </p>
           <p className="small muted" style={{ marginTop: 0, marginBottom: 0 }}>
@@ -345,8 +351,7 @@ function Attributes({ unit, db }: { unit: Unit; db: GameDatabase }) {
         </dl>
       )}
       <p className="small muted" style={{ marginBottom: 0 }}>
-        Rarity adds +20% per tier to <em>ability</em> values, not to these — stars scale
-        a unit's stats, rarity scales its abilities, and the two never cross.
+        {t('ud.rarityAbilitiesNote')}
       </p>
     </section>
   );

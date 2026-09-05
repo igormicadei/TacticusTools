@@ -80,6 +80,20 @@ const LEVEL_TO_COMPLETE_RANK: readonly (number | undefined)[] = [
  * `undefined` where the game publishes no threshold, in which case the level is
  * treated as no obstacle rather than guessed at.
  */
+/**
+ * Cumulative stars at a rung of the ladder.
+ *
+ * The rung index and the star count are not the same number — an ascension and
+ * the promotion below it can carry the same stars — so a step that says
+ * "promote to N stars" has to read N off the table rather than use the index.
+ */
+function starsAt(progressionIndex: number, db: GameDatabase): number {
+  return (
+    db.progressionRequirements.find((r) => r.progressionIndex === progressionIndex)?.starLevel ??
+    progressionIndex
+  );
+}
+
 export function levelToCompleteRank(rank: Rank): number | undefined {
   return LEVEL_TO_COMPLETE_RANK[rank];
 }
@@ -165,6 +179,21 @@ export interface EvolutionTarget {
   xpLevel?: number;
   activeAbilityLevel?: number;
   passiveAbilityLevel?: number;
+  /**
+   * A rung of the promotion/ascension ladder to reach, as a
+   * `progressionRequirements` index.
+   *
+   * Stars are worth planning for on their own: each one multiplies base health,
+   * damage and armour by a further 10% before rank upgrades are added, which is
+   * why a six-star unit hits for half again what a bare one does. Without this
+   * they could only be bought as a side effect of ascending, since that is the
+   * one thing that forces them.
+   *
+   * An index rather than a star count because the ladder is not one-to-one: the
+   * rung that ascends to a rarity and the promotion below it can carry the same
+   * star level, so a count alone does not say which one is meant.
+   */
+  progressionIndex?: number;
 }
 
 export type PlanStepKind = 'promotion' | 'ascension' | 'rank' | 'level' | 'ability';
@@ -270,6 +299,7 @@ function resolveTarget(
     target.passiveAbilityLevel ?? 0,
   );
   const rank = Math.max(target.rank ?? 0, current.rank) as Rank;
+  const progressionIndex = Math.max(target.progressionIndex ?? 0, current.progressionIndex);
 
   let level = Math.max(target.xpLevel ?? 0, current.xpLevel);
   if (abilityMax > level) {
@@ -301,11 +331,17 @@ function resolveTarget(
     return { resolved: {}, blocked: `No rarity allows rank ${rank}.`, reasons };
   }
 
+  // A rung of the ladder sits inside a rarity band, so asking for it asks for
+  // that rarity too — the same way a level or a rank does.
+  const neededForProgression =
+    db.progressionRequirements.find((r) => r.progressionIndex === progressionIndex)?.rarity ?? 0;
+
   let rarity = Math.max(
     target.rarity ?? 0,
     current.rarity ?? 0,
     neededForLevel,
     neededForRank,
+    neededForProgression,
   ) as Rarity;
 
   if (rarity > (target.rarity ?? current.rarity ?? 0)) {
@@ -335,6 +371,7 @@ function resolveTarget(
         target.passiveAbilityLevel ?? 0,
         current.passiveAbilityLevel,
       ),
+      progressionIndex,
     },
     reasons,
   };
@@ -378,6 +415,7 @@ export function resolvePlan(
   const wantActive = resolved.activeAbilityLevel ?? current.activeAbilityLevel;
   const wantPassive = resolved.passiveAbilityLevel ?? current.passiveAbilityLevel;
   const wantRarity = resolved.rarity ?? current.rarity ?? 0;
+  const wantProgression = resolved.progressionIndex ?? current.progressionIndex;
 
   // Bounded to keep a rule change from spinning: far more iterations than the
   // 20 ranks, 50 levels and 6 rarities could ever need.
@@ -519,8 +557,30 @@ export function resolvePlan(
       state.xpLevel < wantLevel ||
       state.activeAbilityLevel < wantActive ||
       state.passiveAbilityLevel < wantPassive ||
-      (state.rarity ?? 0) < wantRarity;
+      (state.rarity ?? 0) < wantRarity ||
+      state.progressionIndex < wantProgression;
     if (!needsMore) break;
+
+    /*
+     * Stars asked for on their own, within the rarity already held.
+     *
+     * Buying them does not need an ascension, so this comes before the
+     * ascension path rather than through it: a plan for five stars at Rare
+     * should not quietly ascend the unit to Epic to get there.
+     */
+    const ascendsAt = firstIndexOfRarity(((state.rarity ?? 0) + 1) as Rarity, db);
+    const topOfBand = ascendsAt === undefined ? wantProgression : ascendsAt - 1;
+    if (state.progressionIndex < Math.min(wantProgression, topOfBand)) {
+      const from = state.progressionIndex;
+      state.progressionIndex = Math.min(wantProgression, topOfBand);
+      push({
+        kind: 'promotion',
+        label: `Promote to ${starsAt(state.progressionIndex, db)} stars`,
+        from,
+        to: state.progressionIndex,
+      });
+      continue;
+    }
 
     const nextRarity = ((state.rarity ?? 0) + 1) as Rarity;
     const ascendAt = firstIndexOfRarity(nextRarity, db);
@@ -544,7 +604,7 @@ export function resolvePlan(
       state.progressionIndex = ascendAt - 1;
       push({
         kind: 'promotion',
-        label: `Promote to ${state.progressionIndex} stars`,
+        label: `Promote to ${starsAt(state.progressionIndex, db)} stars`,
         from,
         to: state.progressionIndex,
         reason: `needed before ascending to ${rarityName(nextRarity)}`,
@@ -631,10 +691,17 @@ export function projectedStatsAt(
     rank: state.rank,
     xpLevel: state.xpLevel,
     progressionIndex: state.progressionIndex,
-    // No rank upgrades applied. Reaching a rank consumes the previous rank's,
-    // so a newly reached rank starts empty — projecting with the unit's current
-    // upgrades would credit it with slots it is about to spend.
-    upgrades: [],
+    /*
+     * Applied upgrades survive only while the rank does.
+     *
+     * Ranking up consumes the rank's six slots, so the unit arrives at the next
+     * rank with none applied and projecting with the current ones would credit
+     * it twice. But a plan that does not move the rank — stars on their own,
+     * levels, abilities — leaves those slots exactly where they are, and
+     * clearing them there would report a unit weaker than it is today and turn
+     * a real gain into an apparent loss.
+     */
+    upgrades: state.rank === unit.rank ? unit.upgrades : [],
   };
   return computeUnitStats(projected, db);
 }

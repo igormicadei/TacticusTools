@@ -195,6 +195,36 @@ const routes = [
 
 const report = [];
 const broken = [];
+
+/*
+ * English left showing on a Portuguese page.
+ *
+ * Every earlier check read the source, and each one had a blind spot the next
+ * one found — text on its own line, text beside an interpolation, a label built
+ * in the library. This reads the rendered page instead, which has no blind
+ * spots by construction: whatever is on screen is what it sees.
+ *
+ * The word list is deliberately short and made only of English function words
+ * that cannot appear inside a Warhammer name. Unit, faction, ability and item
+ * names stay English on purpose, so "Storm Of Wrath" and "Box of Ammo" must not
+ * trip it — which rules out "of" and every other word a name might contain.
+ */
+const ENGLISH_TELLS = [
+  'the', 'with', 'your', 'you', 'already', 'nothing', 'every', 'needs',
+  'missing', 'slots', 'level to', 'rank up', 'steps left',
+];
+
+/*
+ * Text the app does not own, and must not be judged for.
+ *
+ * Unit, faction, ability and item names stay English deliberately — "The
+ * Phoenix Ascendant" is what the player's own game calls it. Trait and ability
+ * descriptions come verbatim from the game data, which publishes only English.
+ * And a shell command is a shell command. Each of these is read off the page by
+ * the class it renders under, so the scan looks only at what the app wrote.
+ */
+const NOT_OURS = '.item-name, .name, .unit-name, .desc, .cmd, .use-unit, .card-title-cell';
+const leaks = new Map();
 for (const [name, hash] of routes) {
   await page.goto(`http://127.0.0.1:${PORT}${BASE}${hash}`);
   await page.reload({ waitUntil: 'domcontentloaded' });
@@ -227,6 +257,26 @@ for (const [name, hash] of routes) {
     broken.push(name);
   }
 
+  if (LANG === 'pt') {
+    const text = await page.evaluate((skip) => {
+      // Clone so the page itself is untouched, then drop the parts whose words
+      // belong to the game rather than to the app.
+      const copy = document.body.cloneNode(true);
+      for (const el of copy.querySelectorAll(skip)) el.remove();
+      return copy.innerText;
+    }, NOT_OURS);
+    for (const tell of ENGLISH_TELLS) {
+      const re = new RegExp(`(^|[^\\p{L}])${tell}([^\\p{L}]|$)`, 'iu');
+      if (!re.test(text)) continue;
+      // Report the phrase around it, so a finding names something findable.
+      const at = text.search(new RegExp(`(^|[^\\p{L}])${tell}([^\\p{L}]|$)`, 'iu'));
+      const snippet = text.slice(Math.max(0, at - 40), at + 60).replace(/\s+/g, ' ').trim();
+      const list = leaks.get(name) ?? [];
+      list.push(`"${tell}" in …${snippet}…`);
+      leaks.set(name, list);
+    }
+  }
+
   const result = await OVERFLOW();
   const height = await page.evaluate(() => document.documentElement.scrollHeight);
 
@@ -253,6 +303,17 @@ const bad = report.filter((r) => r.overflows);
 console.log(bad.length === 0 ? 'every route fits the viewport' : `${bad.length} route(s) scroll sideways: ${bad.map((r) => r.name).join(', ')}`);
 const totalCulprits = report.reduce((n, r) => n + r.culprits.length, 0);
 console.log(`${totalCulprits} element(s) over-wide across ${report.length} routes`);
+if (LANG === 'pt') {
+  const total = [...leaks.values()].reduce((n, l) => n + l.length, 0);
+  if (total === 0) {
+    console.log('no English left on the Portuguese pages');
+  } else {
+    console.log(`\n${total} English phrase(s) still showing in Portuguese:`);
+    for (const [route, found] of leaks) {
+      for (const one of found.slice(0, 3)) console.log(`  ${route}: ${one}`);
+    }
+  }
+}
 if (broken.length > 0) {
   console.error(`${broken.length} route(s) never rendered: ${broken.join(', ')} — build with BASE_PATH set to match the deploy path`);
 }
@@ -261,4 +322,5 @@ await browser.close();
 server.close();
 
 // A page that scrolls sideways is a defect, not a note, so this exits non-zero.
-process.exit(bad.length === 0 && broken.length === 0 ? 0 : 1);
+const leaked = [...leaks.values()].reduce((n, l) => n + l.length, 0);
+process.exit(bad.length === 0 && broken.length === 0 && leaked === 0 ? 0 : 1);

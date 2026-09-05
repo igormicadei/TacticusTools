@@ -328,8 +328,8 @@ function BattlePanel({ brief, onFill }: { brief: BattleBrief; onFill: () => void
         <b>
           {brief.campaignName} node {brief.battle.nodeNumber}
         </b>
-        <span className="chip">{brief.slots} slots</span>
-        <span className="chip">{brief.enemyCount} enemies</span>
+        <span className="chip">{t('td.slots', { n: brief.slots })}</span>
+        <span className="chip">{t('td.enemies', { n: brief.enemyCount })}</span>
         <span className="chip">
                 {t('td.totalHpValue', { n: localNumber(brief.enemyHealth) })}
               </span>
