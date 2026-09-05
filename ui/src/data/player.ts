@@ -14,6 +14,8 @@
 
 import type { PlayerResponse } from '@lib/types/player.js';
 
+import { t } from '../i18n/locale.ts';
+
 const KEYS = {
   player: 'tacticus-tools:player',
   apiKey: 'tacticus-tools:apiKey',
@@ -146,14 +148,14 @@ export function assertPlayerResponse(value: unknown): PlayerResponse {
   const player = body?.player;
   if (!player || typeof player !== 'object') {
     throw new InvalidPlayerDataError(
-      'No "player" object found — expected the response from /api/v1/player.',
+      t('err.noPlayerObject'),
     );
   }
   if (!Array.isArray(player.units)) {
-    throw new InvalidPlayerDataError('The "player" object has no "units" array.');
+    throw new InvalidPlayerDataError(t('err.noUnits'));
   }
   if (!player.inventory || !Array.isArray(player.inventory.shards)) {
-    throw new InvalidPlayerDataError('The "player" object has no inventory shards.');
+    throw new InvalidPlayerDataError(t('err.noShards'));
   }
   return body as PlayerResponse;
 }
@@ -218,7 +220,7 @@ async function relayAnsweredWithoutCors(base: string): Promise<boolean> {
  */
 export async function fetchPlayer(credentials: Credentials): Promise<PlayerResponse> {
   const apiKey = credentials.apiKey?.trim();
-  if (!apiKey) throw new PlayerFetchError('No API key saved.');
+  if (!apiKey) throw new PlayerFetchError(t('err.noApiKey'));
 
   const base = credentials.relayUrl?.trim().replace(/\/+$/, '') || TACTICUS_API_ORIGIN;
   const direct = base === TACTICUS_API_ORIGIN;
@@ -233,29 +235,16 @@ export async function fetchPlayer(credentials: Credentials): Promise<PlayerRespo
     });
   } catch {
     if (direct) {
-      throw new PlayerFetchError(
-        'The browser blocked the request. This is a browser rule, not a limit on your ' +
-          'machine — the API sends no CORS headers, so a page cannot read its reply. Run ' +
-          '`node relay/local-relay.mjs` and set http://localhost:8787 as the relay URL.',
-      );
+      throw new PlayerFetchError(t('err.browserBlocked'));
     }
     // Something is there, answering without CORS headers: on a Cloudflare relay
     // that is what running out of the day's free requests looks like from here.
     if (await relayAnsweredWithoutCors(base)) {
       throw new PlayerFetchError(
-        `The relay answered, but not in a way the browser will show a page. The usual ` +
-          `cause is the free hosting tier's daily request limit — Cloudflare Workers ` +
-          `allow 100,000 a day and then serve their own error page until the count ` +
-          `resets at 00:00 UTC, about ${hoursUntilUtcMidnight()}h from now. Nothing is ` +
-          `broken and nothing is being charged; it starts working again on its own. ` +
-          `If it is still refusing after the reset, open ${base}/health in a browser — ` +
-          `a relay that is running answers there with a small JSON object.`,
+        t('err.relayLimited', { hours: hoursUntilUtcMidnight(), base }),
       );
     }
-    throw new PlayerFetchError(
-      `Could not reach the relay at ${base}. Nothing answered at all, so check the URL, ` +
-        `your connection, and that the relay is still deployed.`,
-    );
+    throw new PlayerFetchError(t('err.relayUnreachable', { base }));
   }
 
   if (!response.ok) {
@@ -270,30 +259,26 @@ export async function fetchPlayer(credentials: Credentials): Promise<PlayerRespo
       // RELAY_KEY set. Say that, since the fix is one variable in a dashboard
       // and the relay's own wording ("set it on the Player data page") now
       // points at a field that no longer exists.
-      throw new PlayerFetchError(
-        'The relay still requires a relay key, but this app no longer sends one. ' +
-          'Delete the RELAY_KEY variable on the Worker (Settings → Variables) and ' +
-          'it will start answering again.',
-        response.status,
-      );
+      throw new PlayerFetchError(t('err.relayKeyStillSet'), response.status);
     }
     if (body?.type === 'ORIGIN_NOT_ALLOWED') {
       throw new PlayerFetchError(
-        body.detail ?? 'The relay refused this site. Add this origin to its allowed list.',
+        body.detail ?? t('err.originNotAllowed'),
         response.status,
       );
     }
     if (response.status === 403) {
       throw new PlayerFetchError(
-        'The API rejected that key (403). Check it, and that it has the Player scope.',
+        t('err.apiRejectedKey'),
         403,
       );
     }
     throw new PlayerFetchError(
-      `Request failed: HTTP ${response.status}` +
-        (body?.type ? ` (${body.type})` : '') +
-        (body?.detail ? ` — ${body.detail}` : '') +
-        '.',
+      t('err.requestFailed', {
+        status: response.status,
+        type: body?.type ? ` (${body.type})` : '',
+        detail: body?.detail ? ` — ${body.detail}` : '',
+      }),
       response.status,
     );
   }

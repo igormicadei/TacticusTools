@@ -85,12 +85,16 @@ await page.route('https://www.tacticuscodex.com/**', async (route) => {
 
 await page.goto(`http://127.0.0.1:${PORT}${BASE}`);
 const roster = JSON.parse(player).player.units;
+const LANG = process.env.LANG_UNDER_TEST ?? 'pt';
 await page.evaluate(
-  ([p, plans, teams]) => {
+  ([p, plans, teams, lang]) => {
     localStorage.setItem('tacticus-tools:player', p);
     localStorage.setItem('tacticus-tools:fetchedAt', String(Date.now()));
     localStorage.setItem('tacticus-tools:plans', plans);
     localStorage.setItem('tacticus-tools:teams', teams);
+    // Portuguese is the default; set explicitly so a run is reproducible and
+    // so the English layout can be measured too.
+    localStorage.setItem('tacticus-tools:lang', lang);
   },
   [
     player,
@@ -112,6 +116,7 @@ await page.evaluate(
         createdAt: Date.now(),
       },
     ]),
+    LANG,
   ],
 );
 await page.reload({ waitUntil: 'domcontentloaded' });

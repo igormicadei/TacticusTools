@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
-import { rankName, rarityName, Rarity } from '@lib/gamedata/enums.js';
+import {  Rarity } from '@lib/gamedata/enums.js';
 import { currentState, markProgress, resolvePlan } from '@lib/gamedata/plan.js';
 import { computeUnitStats } from '@lib/gamedata/stats.js';
 import { buildTimeline, type StatPriority } from '@lib/gamedata/timeline.js';
@@ -11,6 +11,8 @@ import type { PlayerResponse } from '@lib/types/player.js';
 import { plansStore, type StoredPlan } from '../data/plans.ts';
 import { unitIcon } from '../data/icons.ts';
 import { Icon, useIcons } from '../components/Icon.tsx';
+import { localRank, localRarity } from '../i18n/game.ts';
+import { t } from '../i18n/locale.ts';
 
 export function PlansPage({ db, player }: { db: GameDatabase; player: PlayerResponse }) {
   useIcons();
@@ -52,7 +54,7 @@ export function PlansPage({ db, player }: { db: GameDatabase; player: PlayerResp
   return (
     <>
       <div className="toolbar">
-        <h2 style={{ margin: 0, fontSize: 18 }}>Evolution plans</h2>
+        <h2 style={{ margin: 0, fontSize: 18 }}>{t('plans.heading')}</h2>
         <span style={{ flex: 1 }} />
         {plans.length > 0 && (
           <Link className="chip" to="/plans/timeline">
@@ -66,7 +68,7 @@ export function PlansPage({ db, player }: { db: GameDatabase; player: PlayerResp
             setCreating((v) => !v);
           }}
         >
-          {creating ? 'Cancel' : 'New plan'}
+          {creating ? 'Cancel' : t('common.newPlan')}
         </button>
       </div>
 
@@ -103,7 +105,9 @@ export function PlansPage({ db, player }: { db: GameDatabase; player: PlayerResp
                 </div>
                 <div className="meta">
                   <span className="chip">
-                    {done ? 'Complete' : `${left} of ${plan.steps.length} steps left`}
+                    {done
+                      ? t('common.complete')
+                      : t('common.stepsLeft', { n: left, total: plan.steps.length })}
                   </span>
                   {summary && summary.missing > 0 && (
                     <span className="chip">{summary.missing} items missing</span>
@@ -111,7 +115,7 @@ export function PlansPage({ db, player }: { db: GameDatabase; player: PlayerResp
                   {summary && summary.unreachable > 0 && (
                     <span className="chip warn">{summary.unreachable} unreachable</span>
                   )}
-                  {plan.blocked && <span className="chip">Blocked</span>}
+                  {plan.blocked && <span className="chip">{t('common.blocked')}</span>}
                 </div>
               </Link>
               <div className="row" style={{ marginTop: 10 }}>
@@ -155,8 +159,8 @@ export function describeTarget(target: {
   passiveAbilityLevel?: number;
 }): string {
   const parts: string[] = [];
-  if (target.rarity !== undefined) parts.push(rarityName(target.rarity));
-  if (target.rank !== undefined) parts.push(rankName(target.rank));
+  if (target.rarity !== undefined) parts.push(localRarity(target.rarity));
+  if (target.rank !== undefined) parts.push(localRank(target.rank));
   if (target.xpLevel !== undefined) parts.push(`level ${target.xpLevel}`);
   if (target.activeAbilityLevel !== undefined) parts.push(`active ${target.activeAbilityLevel}`);
   if (target.passiveAbilityLevel !== undefined) parts.push(`passive ${target.passiveAbilityLevel}`);
@@ -244,7 +248,7 @@ export function PlanForm({
 
   return (
     <section className="panel" style={{ marginBottom: 24 }}>
-      <h3>{existing ? 'Edit plan' : 'New plan'}</h3>
+      <h3>{existing ? t('common.editPlan') : t('common.newPlan')}</h3>
       <p className="small muted" style={{ marginTop: 0 }}>
         Set only what you care about. Anything else it depends on is worked out and added
         for you — an ability target pulls the character level with it, and level or rank
@@ -254,7 +258,7 @@ export function PlanForm({
 
       <div className="form-grid">
         <label>
-          <span>Unit</span>
+          <span>{t('common.unit')}</span>
           <select value={unitId} onChange={(e) => onUnit(e.target.value)}>
             {units.map((u) => (
               <option value={u.id} key={u.id}>
@@ -265,57 +269,57 @@ export function PlanForm({
         </label>
 
         <label>
-          <span>Name</span>
+          <span>{t('common.name')}</span>
           <input
             type="text"
-            placeholder="Unit name"
+            placeholder={t('plans.unitName')}
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
         </label>
 
         <label>
-          <span>Favour</span>
+          <span>{t('common.favour')}</span>
           <select
             value={priority}
             onChange={(e) => setPriority(e.target.value as StatPriority | '')}
-            title="Which attribute to favour for this unit when spending energy"
+            title={t('plans.favourHint')}
           >
-            <option value="">No preference</option>
-            <option value="health">Health</option>
-            <option value="damage">Damage</option>
-            <option value="armour">Armour</option>
+            <option value="">{t('plans.noPreference')}</option>
+            <option value="health">{t('common.health')}</option>
+            <option value="damage">{t('common.damage')}</option>
+            <option value="armour">{t('common.armour')}</option>
           </select>
         </label>
 
         <label>
-          <span>Rarity</span>
+          <span>{t('common.rarity')}</span>
           <select value={rarity} onChange={(e) => setRarity(e.target.value)} disabled={rarityOptions.length === 0}>
-            <option value="">{rarityOptions.length === 0 ? 'already at the top' : '—'}</option>
+            <option value="">{rarityOptions.length === 0 ? t('common.atTop') : '—'}</option>
             {rarityOptions.map((r) => (
               <option value={r} key={r}>
-                {rarityName(r)}
+                {localRarity(r)}
               </option>
             ))}
           </select>
         </label>
 
         <label>
-          <span>Rank</span>
+          <span>{t('common.rank')}</span>
           <select value={rank} onChange={(e) => setRank(e.target.value)} disabled={rankOptions.length === 0}>
-            <option value="">{rankOptions.length === 0 ? 'already at the top' : '—'}</option>
+            <option value="">{rankOptions.length === 0 ? t('common.atTop') : '—'}</option>
             {rankOptions.map((r) => (
               <option value={r} key={r}>
-                {rankName(r)}
+                {localRank(r)}
               </option>
             ))}
           </select>
         </label>
 
         <label>
-          <span>Level</span>
+          <span>{t('common.level')}</span>
           <select value={xpLevel} onChange={(e) => setXpLevel(e.target.value)} disabled={levelOptions.length === 0}>
-            <option value="">{levelOptions.length === 0 ? 'already at the cap' : '—'}</option>
+            <option value="">{levelOptions.length === 0 ? t('common.atCap') : '—'}</option>
             {levelOptions.map((n) => (
               <option value={n} key={n}>
                 {n}
@@ -325,9 +329,9 @@ export function PlanForm({
         </label>
 
         <label>
-          <span>Active ability</span>
+          <span>{t('plans.activeAbility')}</span>
           <select value={active} onChange={(e) => setActive(e.target.value)} disabled={activeOptions.length === 0}>
-            <option value="">{activeOptions.length === 0 ? 'already at the cap' : '—'}</option>
+            <option value="">{activeOptions.length === 0 ? t('common.atCap') : '—'}</option>
             {activeOptions.map((n) => (
               <option value={n} key={n}>
                 {n}
@@ -337,9 +341,9 @@ export function PlanForm({
         </label>
 
         <label>
-          <span>Passive ability</span>
+          <span>{t('plans.passiveAbility')}</span>
           <select value={passive} onChange={(e) => setPassive(e.target.value)} disabled={passiveOptions.length === 0}>
-            <option value="">{passiveOptions.length === 0 ? 'already at the cap' : '—'}</option>
+            <option value="">{passiveOptions.length === 0 ? t('common.atCap') : '—'}</option>
             {passiveOptions.map((n) => (
               <option value={n} key={n}>
                 {n}
@@ -354,7 +358,7 @@ export function PlanForm({
           {preview.blocked
             ? preview.blocked
             : preview.steps.length === 0
-              ? 'This unit already meets that target.'
+              ? t('plans.alreadyMet')
               : `${preview.steps.length} steps — requires ${describeTarget(preview.resolved)}.`}
         </p>
       )}
@@ -386,7 +390,7 @@ export function PlanForm({
           }
         }}
       >
-        {existing ? 'Save plan' : 'Create plan'}
+        {existing ? t('common.savePlan') : t('common.createPlan')}
       </button>
     </section>
   );

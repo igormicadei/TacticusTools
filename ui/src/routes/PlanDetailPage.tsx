@@ -13,6 +13,7 @@ import { plansStore } from '../data/plans.ts';
 import { unitIcon } from '../data/icons.ts';
 import { Icon, useIcons } from '../components/Icon.tsx';
 import { describeTarget, PlanForm } from './PlansPage.tsx';
+import { t } from '../i18n/locale.ts';
 
 export function PlanDetailPage({ db, player }: { db: GameDatabase; player: PlayerResponse }) {
   useIcons();
@@ -44,7 +45,7 @@ export function PlanDetailPage({ db, player }: { db: GameDatabase; player: Playe
         <Link to="/plans" className="back">
           ← All plans
         </Link>
-        <div className="empty">That plan no longer matches a unit in your roster.</div>
+        <div className="empty">{t('plan.gone')}</div>
       </>
     );
   }
@@ -74,10 +75,12 @@ export function PlanDetailPage({ db, player }: { db: GameDatabase; player: Playe
             View unit
           </Link>
           <span className="chip">
-            {left === 0 ? 'Complete' : `${left} of ${plan.steps.length} steps left`}
+            {left === 0
+              ? t('common.complete')
+              : t('common.stepsLeft', { n: left, total: plan.steps.length })}
           </span>
           <button className="small" onClick={() => setEditing((v) => !v)}>
-            {editing ? 'Cancel' : 'Edit plan'}
+            {editing ? t('common.cancel') : t('common.editPlan')}
           </button>
         </div>
       </div>
@@ -102,22 +105,22 @@ export function PlanDetailPage({ db, player }: { db: GameDatabase; player: Playe
       ))}
 
       <section className="panel" style={{ marginBottom: 16 }}>
-        <h3>After the plan</h3>
+        <h3>{t('plan.afterPlan')}</h3>
         <div className="stat-grid">
-          <Delta label="Rarity" from={rarityName(plan.current.rarity ?? 0)} to={rarityName(plan.final.rarity ?? 0)} />
-          <Delta label="Rank" from={rankName(plan.current.rank)} to={rankName(plan.final.rank)} />
-          <Delta label="Level" from={plan.current.xpLevel} to={plan.final.xpLevel} />
-          <Delta label="Active" from={plan.current.activeAbilityLevel} to={plan.final.activeAbilityLevel} />
-          <Delta label="Passive" from={plan.current.passiveAbilityLevel} to={plan.final.passiveAbilityLevel} />
+          <Delta label={t('common.rarity')} from={rarityName(plan.current.rarity ?? 0)} to={rarityName(plan.final.rarity ?? 0)} />
+          <Delta label={t('common.rank')} from={rankName(plan.current.rank)} to={rankName(plan.final.rank)} />
+          <Delta label={t('common.level')} from={plan.current.xpLevel} to={plan.final.xpLevel} />
+          <Delta label={t('common.active')} from={plan.current.activeAbilityLevel} to={plan.final.activeAbilityLevel} />
+          <Delta label={t('common.passive')} from={plan.current.passiveAbilityLevel} to={plan.final.passiveAbilityLevel} />
         </div>
 
         {now && then && (
           <>
-            <h3 style={{ marginTop: 20 }}>Attributes</h3>
+            <h3 style={{ marginTop: 20 }}>{t('plan.attributes')}</h3>
             <div className="stat-grid">
-              <Delta label="Health" from={now.health} to={then.health} />
-              <Delta label="Damage" from={now.damage} to={then.damage} />
-              <Delta label="Armour" from={now.armour} to={then.armour} />
+              <Delta label={t('common.health')} from={now.health} to={then.health} />
+              <Delta label={t('common.damage')} from={now.damage} to={then.damage} />
+              <Delta label={t('common.armour')} from={now.armour} to={then.armour} />
             </div>
             <p className="small muted" style={{ marginBottom: 0 }}>
               Projected at {rankName(plan.final.rank)} with {then.starLevel ?? 0} stars
@@ -130,7 +133,7 @@ export function PlanDetailPage({ db, player }: { db: GameDatabase; player: Playe
       </section>
 
       <section className="panel">
-        <h3>Order of work</h3>
+        <h3>{t('plan.orderOfWork')}</h3>
         <p className="small muted" style={{ marginTop: 0 }}>
           Each attribute is pushed as far as the current rarity allows before ascending, so
           nothing is farmed for a rank that is still gated.
@@ -142,9 +145,9 @@ export function PlanDetailPage({ db, player }: { db: GameDatabase; player: Playe
             <table className="steps stacked">
               <thead>
                 <tr>
-                  <th>Step</th>
-                  <th>From → to</th>
-                  <th>Why</th>
+                  <th>{t('common.step')}</th>
+                  <th>{t('common.fromTo')}</th>
+                  <th>{t('common.why')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -154,10 +157,10 @@ export function PlanDetailPage({ db, player }: { db: GameDatabase; player: Playe
                       <span className="step-order muted">{s.done ? '✓' : s.order}</span>
                       {s.label}
                     </td>
-                    <td data-label="From → to" className="muted">
+                    <td data-label={t('common.fromTo')} className="muted">
                       {s.from} → {s.to}
                     </td>
-                    <td data-label="Why" className="muted small">
+                    <td data-label={t('common.why')} className="muted small">
                       {s.reason ?? '—'}
                     </td>
                   </tr>

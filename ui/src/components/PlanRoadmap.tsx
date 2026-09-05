@@ -1,3 +1,4 @@
+import { t } from '../i18n/locale.ts';
 import { useState } from 'react';
 
 import type { PlanStep, PlanStepKind } from '@lib/gamedata/plan.js';
@@ -51,7 +52,7 @@ export function PlanRoadmap({ steps }: { steps: PlanStep[] }) {
   const [hover, setHover] = useState<PlanStep>();
 
   if (steps.length === 0) {
-    return <p className="muted small">Nothing to do — the target is already met.</p>;
+    return <p className="muted small">{t('plan.nothingToDo')}</p>;
   }
 
   const laneH = 46;
@@ -76,7 +77,7 @@ export function PlanRoadmap({ steps }: { steps: PlanStep[] }) {
 
       <div className="roadmap-scroll">
         <svg viewBox={`0 0 ${width} ${height}`} width={width} height={height} role="img"
-             aria-label="Evolution plan roadmap, ordered by step">
+             aria-label={t('plan.roadmapLabel')}>
           {LANES.map((lane, i) => (
             <g key={lane.label}>
               <text
@@ -85,7 +86,7 @@ export function PlanRoadmap({ steps }: { steps: PlanStep[] }) {
                 className={`roadmap-lane-label${used.has(i) ? '' : ' idle'}`}
               >
                 {lane.label}
-                {!used.has(i) && <tspan className="roadmap-idle-note"> · no change</tspan>}
+                {!used.has(i) && <tspan className="roadmap-idle-note"> {t('plan.noChange')}</tspan>}
               </text>
               <line
                 x1={gutter - 10} y1={i * laneH + 23} x2={width - 8} y2={i * laneH + 23}
@@ -150,7 +151,7 @@ export function PlanRoadmap({ steps }: { steps: PlanStep[] }) {
             {hover.reason && <span className="muted"> — {hover.reason}</span>}
           </>
         ) : (
-          <span className="muted">Hover a step for the reason it is in the plan.</span>
+          <span className="muted">{t('plan.hoverStep')}</span>
         )}
       </div>
     </div>

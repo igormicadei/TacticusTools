@@ -1,7 +1,7 @@
 import { Fragment, useMemo } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
-import { parseRarity, rankName, rarityName } from '@lib/gamedata/enums.js';
+import { parseRarity } from '@lib/gamedata/enums.js';
 import { computeTierStarLevel, computeUnitStats } from '@lib/gamedata/stats.js';
 import { resolveAbility, unitCombat } from '@lib/gamedata/combat.js';
 import type { GameDatabase } from '@lib/gamedata/types.js';
@@ -20,6 +20,8 @@ import {
   unitIcon,
 } from '../data/icons.ts';
 import { Icon, useIcons } from '../components/Icon.tsx';
+import { localAlliance, localDamage, localNumber, localRank, localRarity } from '../i18n/game.ts';
+import { t, type StringKey } from '../i18n/locale.ts';
 
 /**
  * Make game-config text readable.
@@ -86,7 +88,7 @@ export function UnitDetailPage({
               : ''}
             <Icon src={factionIcon(entry.factionId)} size={16} className="crest" />
             {humaniseFaction(entry.factionId)}
-            {definition?.isMachineOfWar ? ' · Machine of War' : ''}
+            {definition?.isMachineOfWar ? ` · ${t('card.machineOfWar')}` : ''}
           </div>
         </div>
         <div className="row wrap" style={{ marginLeft: 'auto' }}>
@@ -103,7 +105,7 @@ export function UnitDetailPage({
             <span className="chip">{starsLabel(computeTierStarLevel(unit.progressionIndex, db))}</span>
           ) : (
             <span className="chip">
-              {entry.status === 'unlockable' ? `${entry.shards} shards` : 'Not unlocked'}
+              {entry.status === 'unlockable' ? `${entry.shards} shards` : t('ud.notUnlocked')}
             </span>
           )}
         </div>
@@ -132,11 +134,11 @@ export function UnitDetailPage({
 function NotOwned({ entry }: { entry: ReturnType<typeof buildRoster>[number] }) {
   return (
     <div className="panel">
-      <h3>Not unlocked</h3>
+      <h3>{t('ud.notUnlocked')}</h3>
       <p className="muted small" style={{ marginTop: 0 }}>
         {entry.shards > 0
-          ? `${entry.shards} shards collected.`
-          : 'No shards collected for this unit yet.'}{' '}
+          ? t('ud.shardsCollected', { n: entry.shards })
+          : t('ud.noShards')}{' '}
         {/* The unlock threshold is its own value in the game's progression panel
             and no data source publishes it, so no target is shown here. */}
         The number of shards needed to unlock a character is not published in the
@@ -144,15 +146,15 @@ function NotOwned({ entry }: { entry: ReturnType<typeof buildRoster>[number] }) 
       </p>
       {entry.definition && (
         <dl className="kv">
-          <dt>Base rarity</dt>
+          <dt>{t('ud.baseRarity')}</dt>
           <dd>
             {entry.definition.baseRarity !== undefined
-              ? rarityName(entry.definition.baseRarity)
+              ? localRarity(entry.definition.baseRarity)
               : '—'}
           </dd>
-          <dt>Movement</dt>
+          <dt>{t('common.movement')}</dt>
           <dd>{entry.definition.movement ?? '—'}</dd>
-          <dt>Equipment slots</dt>
+          <dt>{t('ud.equipmentSlots')}</dt>
           <dd>{entry.definition.itemSlots.map(humaniseSlot).join(', ') || '—'}</dd>
         </dl>
       )}
@@ -176,24 +178,24 @@ function Progress({ unit, db }: { unit: Unit; db: GameDatabase }) {
 
   return (
     <section className="panel">
-      <h3>Progression</h3>
+      <h3>{t('ud.progression')}</h3>
       <div className="stat-grid">
         <div className="stat">
-          <div className="label">Level</div>
+          <div className="label">{t('common.level')}</div>
           <div className="value">
             {unit.xpLevel}
             {cap !== undefined && <small> / {cap}</small>}
           </div>
         </div>
         <div className="stat">
-          <div className="label">Rank</div>
+          <div className="label">{t('common.rank')}</div>
           <div className="value row" style={{ fontSize: 15 }}>
             <Icon src={rankIcon(unit.rank)} size={22} />
-            {rankName(unit.rank)}
+            {localRank(unit.rank)}
           </div>
         </div>
         <div className="stat">
-          <div className="label">Stars</div>
+          <div className="label">{t('ud.stars')}</div>
           <div className="value">
             {computeTierStarLevel(unit.progressionIndex, db) ?? '—'}
             {star?.starLevel !== undefined && <small> ({star.starLevel} total)</small>}
@@ -220,10 +222,10 @@ function Progress({ unit, db }: { unit: Unit; db: GameDatabase }) {
 }
 
 const ITEM_STAT_LABELS: Record<string, string> = {
-  critChance: 'Crit chance',
-  critDmg: 'Crit damage',
-  blockChance: 'Block chance',
-  blockDmg: 'Block damage',
+  critChance: t('ud.critChance'),
+  critDmg: t('ud.critDamage'),
+  blockChance: t('ud.blockChance'),
+  blockDmg: t('ud.blockDamage'),
   hp: 'Health',
   fixedArmor: 'Armour',
 };
@@ -236,10 +238,10 @@ const PERCENT_STATS = new Set(['critChance', 'blockChance']);
  * Read off the unit's own ability slots, so it is structural. A normal attack is
  * the weapon; everything else is the ability that carries it.
  */
-const SLOT_LABEL: Record<string, string> = {
-  active: 'Active',
-  passive: 'Passive',
-  mythic: 'Mythic',
+const SLOT_LABEL: Record<string, StringKey> = {
+  active: 'slot.active',
+  passive: 'slot.passive',
+  mythic: 'slot.mythic',
 };
 
 /**
@@ -253,7 +255,7 @@ function Attributes({ unit, db }: { unit: Unit; db: GameDatabase }) {
   const stats = computeUnitStats(unit, db);
   return (
     <section className="panel">
-      <h3>Attributes at {rankName(unit.rank)}</h3>
+      <h3>{t('ud.attributesAt', { rank: localRank(unit.rank) })}</h3>
       {stats ? (
         <>
           <div className="stat-grid">
@@ -316,7 +318,7 @@ function Attributes({ unit, db }: { unit: Unit; db: GameDatabase }) {
 
       {stats && Object.keys(stats.itemBonuses).length > 0 && (
         <>
-          <h3 style={{ marginTop: 16 }}>From equipment</h3>
+          <h3 style={{ marginTop: 16 }}>{t('ud.fromEquipment')}</h3>
           <dl className="kv">
             {Object.entries(stats.itemBonuses).map(([key, value]) => (
               <Fragment key={key}>
@@ -325,7 +327,7 @@ function Attributes({ unit, db }: { unit: Unit; db: GameDatabase }) {
                   +{value}
                   {PERCENT_STATS.has(key) ? '%' : ''}
                   {FOLDED_INTO_ATTRIBUTES.has(key) && (
-                    <span className="muted small"> · counted above</span>
+                    <span className="muted small"> {t('ud.countedAbove')}</span>
                   )}
                 </dd>
               </Fragment>
@@ -336,12 +338,12 @@ function Attributes({ unit, db }: { unit: Unit; db: GameDatabase }) {
 
       {definition && (
         <dl className="kv" style={{ marginTop: 12 }}>
-          <dt>Movement</dt>
+          <dt>{t('common.movement')}</dt>
           <dd>{definition.movement ?? '—'}</dd>
-          <dt>Grand alliance</dt>
-          <dd>{unit.grandAlliance ?? '—'}</dd>
-          <dt>Power score</dt>
-          <dd className="muted">not published</dd>
+          <dt>{t('ud.grandAlliance')}</dt>
+          <dd>{unit.grandAlliance ? localAlliance(unit.grandAlliance) : '—'}</dd>
+          <dt>{t('ud.powerScore')}</dt>
+          <dd className="muted">{t('ud.notPublished')}</dd>
         </dl>
       )}
       <p className="small muted" style={{ marginBottom: 0 }}>
@@ -367,7 +369,7 @@ function Abilities({ unit, db }: { unit: Unit; db: GameDatabase }) {
           : undefined;
   return (
     <section className="panel">
-      <h3>Abilities</h3>
+      <h3>{t('ud.abilities')}</h3>
       {unit.abilities.length === 0 && <p className="muted small">None.</p>}
       {unit.abilities.map((ability) => {
         const def = db.abilities[ability.id];
@@ -393,7 +395,7 @@ function Abilities({ unit, db }: { unit: Unit; db: GameDatabase }) {
                 {def?.name ?? ability.id}
               </strong>
               <span className="chip">
-                {ability.level === 0 ? 'Locked' : `Level ${ability.level}`}
+                {ability.level === 0 ? t('ud.locked') : t('ud.levelN', { n: ability.level })}
               </span>
               {resolved?.attack && (
                 <span className="chip ok-chip">
@@ -406,8 +408,19 @@ function Abilities({ unit, db }: { unit: Unit; db: GameDatabase }) {
             )}
             {cost && (
               <div className="desc">
-                Next level: <span>{cost.amount}× {cost.badgeType.replace(/^abilityToken/, '')} badge</span>
-                {cost.gold > 0 && <> · <span>{cost.gold.toLocaleString()} gold</span></>}
+                {t('ud.nextLevel')}{' '}
+                <span>
+                  {t('ud.badgeCost', {
+                    n: cost.amount,
+                    type: cost.badgeType.replace(/^abilityToken/, ''),
+                  })}
+                </span>
+                {cost.gold > 0 && (
+                  <>
+                    {' · '}
+                    <span>{t('ud.goldCost', { n: localNumber(cost.gold) })}</span>
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -422,8 +435,8 @@ function Equipment({ unit, db }: { unit: Unit; db: GameDatabase }) {
   const definition = db.units[unit.id];
   return (
     <section className="panel">
-      <h3>Equipment</h3>
-      {unit.items.length === 0 && <p className="muted small">Nothing equipped.</p>}
+      <h3>{t('ud.equipment')}</h3>
+      {unit.items.length === 0 && <p className="muted small">{t('ud.nothingEquipped')}</p>}
       {unit.items.map((item) => {
         const def = db.items[item.id];
         const level = def?.levels[item.level - 1];
@@ -480,7 +493,7 @@ function Shards({
 
   return (
     <section className="panel">
-      <h3>Shards</h3>
+      <h3>{t('ud.shards')}</h3>
       <dl className="kv">
         <dt className="row">
           <Icon src={requirementIcon(`shard:${unit.id}`)} size={20} className="portrait" />
@@ -492,10 +505,10 @@ function Shards({
           Mythic shards
         </dt>
         <dd>{unit.mythicShards.toLocaleString()}</dd>
-        <dt>Star level</dt>
+        <dt>{t('ud.starLevel')}</dt>
         <dd>
           {unit.progressionIndex}
-          {entry.rarity !== undefined ? ` · ${rarityName(entry.rarity)}` : ''}
+          {entry.rarity !== undefined ? ` · ${localRarity(entry.rarity)}` : ''}
         </dd>
       </dl>
       {next && (
@@ -510,7 +523,9 @@ function Shards({
           <p className="small muted" style={{ marginBottom: 0 }}>
             Next star ({next.kind === 'ascension' ? 'ascension' : 'promotion'}):{' '}
             {next.shards ?? '?'} {next.shardType ?? ''} shards
-            {next.orbs ? ` + ${next.orbs} ${rarityName(next.orbRarity ?? 0)} orbs` : ''}
+            {next.orbs
+              ? t('ud.orbs', { n: next.orbs, rarity: localRarity(next.orbRarity ?? 0) })
+              : ''}
             {short !== undefined && short > 0 ? ` — ${short} short` : ' — ready'}
           </p>
         </>
@@ -525,7 +540,7 @@ function Badges({ unit, player }: { unit: Unit; player: PlayerResponse }) {
   const badges = alliance ? player.player.inventory.abilityBadges[alliance] : undefined;
   return (
     <section className="panel">
-      <h3>Ability badges · {alliance ?? 'unknown alliance'}</h3>
+      <h3>{t('ud.abilityBadges', { alliance: alliance ?? t('ud.unknownAlliance') })}</h3>
       {!badges || badges.length === 0 ? (
         <p className="muted small" style={{ margin: 0 }}>
           No badges held for this alliance.
@@ -559,7 +574,7 @@ function Traits({ unit, db }: { unit: Unit; db: GameDatabase }) {
   const { traits } = unitCombat(unit, stats?.damage ?? 0, stats?.rarity, db);
   return (
     <section className="panel">
-      <h3>Traits</h3>
+      <h3>{t('ud.traits')}</h3>
       <p className="small muted" style={{ marginTop: 0 }}>
         Traits are conditional — most apply only in a particular situation — so none
         of them is folded into the figures above.
@@ -596,7 +611,7 @@ function Attacks({ unit, db }: { unit: Unit; db: GameDatabase }) {
 
   return (
     <section className="panel">
-      <h3>Attacks</h3>
+      <h3>{t('ud.attacks')}</h3>
       {rows.map((attack, index) => (
         <div className="attack-row" key={`${attack.source}:${attack.label}:${index}`}>
           <div className="attack-head">
@@ -610,26 +625,26 @@ function Attacks({ unit, db }: { unit: Unit; db: GameDatabase }) {
                 size={20}
               />
               {attack.source === 'melee'
-                ? 'Melee'
+                ? t('ud.melee')
                 : attack.source === 'ranged'
-                  ? 'Ranged'
+                  ? t('ud.ranged')
                   : attack.label}
             </strong>
             <span className={`chip ${attack.slot ? `slot-${attack.slot}` : 'slot-normal'}`}>
-              {attack.slot ? SLOT_LABEL[attack.slot] : 'Normal'}
+              {attack.slot ? t(SLOT_LABEL[attack.slot] ?? 'ud.normal') : t('ud.normal')}
             </span>
             <span className="muted small">
               {attack.hits}× {attack.perHit.mid.toLocaleString()}
               {attack.perHit.high > attack.perHit.mid && ` ±${attack.perHit.high - attack.perHit.mid}`}
               {' '}
-              {humaniseStat(attack.damageProfile)}
+              {localDamage(attack.damageProfile)}
               {attack.pierceRatio !== undefined && (
                 <span title={attack.pierceDescription}>
                   {' '}
-                  · {(attack.pierceRatio * 100).toFixed(0)}% pierce
+                  {t('ud.pierce', { n: (attack.pierceRatio * 100).toFixed(0) })}
                 </span>
               )}
-              {attack.range !== undefined && ` · range ${attack.range}`}
+              {attack.range !== undefined && t('ud.range', { n: attack.range })}
               {attack.attackRangeType !== undefined &&
                 attack.source === 'ability' &&
                 ` · ${attack.attackRangeType.toLowerCase()}`}
@@ -637,25 +652,32 @@ function Attacks({ unit, db }: { unit: Unit; db: GameDatabase }) {
           </div>
           <div className="attack-figures">
             {attack.effective ? (
-              <Figure label="min" value={attack.effective} note="through any armour" />
+              <Figure
+                label={t('ud.min')}
+                value={attack.effective}
+                note={t('ud.throughAnyArmour')}
+              />
             ) : (
               <span className="attack-figure">
-                <em>min</em> <span className="muted">pierce not published</span>
+                <em>{t('ud.min')}</em>{' '}
+                <span className="muted">{t('ud.pierceNotPublished')}</span>
               </span>
             )}
-            <Figure label="max" value={attack.total} strong note="against no armour" />
+            <Figure
+              label={t('ud.max')}
+              value={attack.total}
+              strong
+              note={t('ud.againstNoArmour')}
+            />
           </div>
         </div>
       ))}
 
       <p className="small muted">
-        <strong>Min</strong> and <strong>max</strong> bracket the target's armour, not
-        the roll: each hit deals <code>max(damage − armour, damage × pierce)</code>, so
-        the pierce share always lands however heavily armoured the target is, and
-        against no armour the whole of damage × hits does. Armour subtracts one for one
-        in between and stops mattering once it passes damage × (1 − pierce) —{' '}
-        {armourNote(rows)}. Above the max still sits the ±20% every attack rolls, shown
-        on each figure, and crits and terrain on top of that.
+        <strong>{t('ud.min')}</strong> / <strong>{t('ud.max')}</strong>{' '}
+        {t('ud.minMaxNote')}
+        {armourNote(rows)}
+        {t('ud.minMaxNoteEnd')}
       </p>
 
       {combat.critChain && (

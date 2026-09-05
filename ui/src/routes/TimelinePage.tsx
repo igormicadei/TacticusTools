@@ -19,6 +19,7 @@ import { ItemRow, toggleOpen } from '../components/StepItems.tsx';
 import { plansStore } from '../data/plans.ts';
 import { rankIcon, unitIcon } from '../data/icons.ts';
 import { Icon, useIcons } from '../components/Icon.tsx';
+import { t } from '../i18n/locale.ts';
 
 type Mode = 'order' | 'energy';
 
@@ -78,7 +79,7 @@ export function TimelinePage({ db, player }: { db: GameDatabase; player: PlayerR
 
       <div className="detail-head">
         <div>
-          <h1>Everything, in order</h1>
+          <h1>{t('timeline.heading')}</h1>
           <div className="muted">
             {timeline.bundles.length} steps across {plansById.size} plan
             {plansById.size === 1 ? '' : 's'}
@@ -126,7 +127,7 @@ function OrderOfWork({
 }) {
   useIcons();
   if (bundles.length === 0) {
-    return <div className="empty">Every plan is complete.</div>;
+    return <div className="empty">{t('timeline.allComplete')}</div>;
   }
 
   // The heading names the rank a group sorts on, not whatever the group's first
@@ -144,7 +145,7 @@ function OrderOfWork({
           ? `Reaching ${rankName(bundle.sortRank)}`
           : // Nothing here moves the rank: this is level and ability work by
             // units already standing at it.
-            `Already at ${rankName(bundle.sortRank)}`,
+            t('timeline.alreadyAt', { label: rankName(bundle.sortRank) }),
       );
     }
   }
@@ -251,7 +252,7 @@ function SpendEnergy({ db, player }: { db: GameDatabase; player: PlayerResponse 
     <section className="panel">
       <div className="row wrap" style={{ gap: 16, marginBottom: 12 }}>
         <label className="inline-field">
-          <span>Energy available</span>
+          <span>{t('timeline.energy')}</span>
           <input
             type="number"
             min={0}
@@ -264,7 +265,7 @@ function SpendEnergy({ db, player }: { db: GameDatabase; player: PlayerResponse 
           />
         </label>
         <label className="inline-field">
-          <span>Favour</span>
+          <span>{t('common.favour')}</span>
           <select
             value={stat}
             onChange={(e) => {
@@ -273,10 +274,10 @@ function SpendEnergy({ db, player }: { db: GameDatabase; player: PlayerResponse 
               localStorage.setItem(STAT_KEY, next);
             }}
           >
-            <option value="">Any attribute</option>
-            <option value="health">Health</option>
-            <option value="damage">Damage</option>
-            <option value="armour">Armour</option>
+            <option value="">{t('timeline.anyAttribute')}</option>
+            <option value="health">{t('common.health')}</option>
+            <option value="damage">{t('common.damage')}</option>
+            <option value="armour">{t('common.armour')}</option>
           </select>
         </label>
         <span style={{ flex: 1 }} />
@@ -295,8 +296,8 @@ function SpendEnergy({ db, player }: { db: GameDatabase; player: PlayerResponse 
 
       {picks.length === 0 ? (
         <div className="empty">
-          Nothing fits in {budget}⚡.
-          {rest[0] && ` The cheapest worthwhile run is ${rest[0].energy.toFixed(0)}⚡.`}
+          {t('timeline.nothingFits', { n: budget })}
+          {rest[0] && t('timeline.cheapestRun', { n: rest[0].energy.toFixed(0) })}
         </div>
       ) : (
         <CandidateTable rows={picks} db={db} player={player} affordable />
@@ -304,7 +305,7 @@ function SpendEnergy({ db, player }: { db: GameDatabase; player: PlayerResponse 
 
       {rest.length > 0 && (
         <>
-          <h3 style={{ marginTop: 20 }}>Beyond this budget</h3>
+          <h3 style={{ marginTop: 20 }}>{t('timeline.beyondBudget')}</h3>
           <CandidateTable rows={rest.slice(0, 12)} db={db} player={player} affordable={false} />
         </>
       )}
@@ -383,7 +384,7 @@ function CandidateTable({
                               node.attemptsLeft > 0 ? (
                                 <span className="ok">{node.attemptsLeft} tries left</span>
                               ) : (
-                                <span className="muted">none left today</span>
+                                <span className="muted">{t('timeline.noneLeftToday')}</span>
                               )
                             ) : (
                               <span className="muted">locked</span>

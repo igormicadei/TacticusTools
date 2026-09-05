@@ -118,13 +118,13 @@ const STAT_EN: Record<string, string> = {
 
 const pt = (): boolean => currentLang() === 'pt';
 
-export function localRarity(rarity: Rarity | undefined): string {
+export function localRarity(rarity: Rarity | number | undefined): string {
   if (rarity === undefined) return '';
   const english = rarityName(rarity);
   return pt() ? (RARITY_PT[english] ?? english) : english;
 }
 
-export function localRank(rank: Rank | undefined): string {
+export function localRank(rank: Rank | number | undefined): string {
   if (rank === undefined) return '';
   const english = rankName(rank);
   if (!pt()) return english;
@@ -165,4 +165,15 @@ export function localStat(statType: string | undefined): string {
  */
 export function localNumber(value: number): string {
   return value.toLocaleString(pt() ? 'pt-BR' : 'en-GB');
+}
+
+/**
+ * A date and time in the page's language, not the browser's.
+ *
+ * This matters more than a translated word does: 8/20/2026 and 20/8/2026 are
+ * the same string read two ways, and a reader who takes the American order for
+ * the Brazilian one is not confused, they are simply wrong about the date.
+ */
+export function localDateTime(ms: number): string {
+  return new Date(ms).toLocaleString(pt() ? 'pt-BR' : 'en-GB');
 }

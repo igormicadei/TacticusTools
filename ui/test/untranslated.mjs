@@ -33,6 +33,7 @@ const IGNORE = [
   /^(TACTICUS TOOLS|Tacticus|API|JSON|CSV|URL|CORS|OK|ID)$/i,
   /^(px|rem|auto|none|flex|grid|true|false|null|undefined)$/,
   /^(var|calc|rgba?)\(/,
+  /^element=\{</, // a route definition split across lines, not content
   /^https?:/,
   /^[\w.-]+\.(ts|tsx|mjs|js|json|css|html)$/,
 ];
@@ -60,6 +61,10 @@ for await (const file of walk(SRC)) {
     // A line inside a block comment is documentation, not UI.
     if (/^\s*\*/.test(code) || /^\s*\/\*/.test(code)) return;
 
+    // A line that is a type signature or an expression happens to contain
+    // ">...<" too. Prose does not carry these.
+    if (/[:;=]\s*$|\)\s*(:|=>)|\bas\s+(Promise|Record|const)\b/.test(code)) return;
+
     // Text sitting between JSX tags.
     for (const m of code.matchAll(/>([^<>{}]+)</g)) {
       if (isProse(m[1])) findings.push({ file, line: i + 1, text: m[1].trim(), how: 'jsx-text' });
@@ -67,6 +72,32 @@ for await (const file of walk(SRC)) {
     // Rendered attributes.
     for (const m of code.matchAll(/\b(title|placeholder|alt|aria-label|label)="([^"]+)"/g)) {
       if (isProse(m[2])) findings.push({ file, line: i + 1, text: m[2].trim(), how: `attr:${m[1]}` });
+    }
+    // Prose built inside an expression rather than written between tags — a
+    // template literal or a quoted string in a ternary. This is where the
+    // first pass of this check missed a whole banner: the words never sat
+    // between two angle brackets, so nothing looked for them.
+    // Class-name templates like `chip slot-${x}` are markup, not content, and
+    // are stripped for the same reason quoted class lists are.
+    const noClassTemplates = code.replace(/className=\{`[^`]*`\}/g, '');
+    for (const m of noClassTemplates.matchAll(/`([^`$]*(?:\$\{[^}]*\}[^`$]*)*)`/g)) {
+      const literal = m[1].replace(/\$\{[^}]*\}/g, ' ');
+      if (isProse(literal) && /[a-z]{3}\s+[a-z]{2}/i.test(literal)) {
+        findings.push({ file, line: i + 1, text: literal.trim(), how: 'template' });
+      }
+    }
+    // Class lists are strings of lowercase words and would drown everything
+    // else, so they go before the scan rather than being filtered after it.
+    const noClasses = code
+      .replace(/className=\{?["'`][^"'`]*["'`]\}?/g, '')
+      .replace(/class="[^"]*"/g, '');
+    for (const m of noClasses.matchAll(/'([^']{6,})'|"([^"]{6,})"/g)) {
+      const literal = m[1] ?? m[2] ?? '';
+      // Two words of prose, not an import path or a CSS value.
+      if (/^[\w./@-]+$/.test(literal) || literal.includes('--')) continue;
+      if (isProse(literal) && /[a-z]{3}\s+[a-z]{2}/i.test(literal)) {
+        findings.push({ file, line: i + 1, text: literal.trim(), how: 'string' });
+      }
     }
   });
 }

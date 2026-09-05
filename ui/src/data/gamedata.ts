@@ -8,6 +8,8 @@
 import { GAME_DATABASE_SCHEMA_VERSION } from '@lib/gamedata/types.js';
 import type { GameDatabase } from '@lib/gamedata/types.js';
 
+import { t } from '../i18n/locale.ts';
+
 let pending: Promise<GameDatabase> | undefined;
 
 /**
@@ -29,18 +31,16 @@ export function loadGameData(): Promise<GameDatabase> {
     const url = `${import.meta.env.BASE_URL}gamedata.json?v=${GAME_DATABASE_SCHEMA_VERSION}`;
     const response = await fetch(url);
     if (!response.ok) {
-      throw new Error(
-        `Could not load gamedata.json (HTTP ${response.status}). ` +
-          'Run `npm run gamedata:snapshot` from the repository root.',
-      );
+      throw new Error(t('err.gamedataLoad', { status: response.status }));
     }
 
     const db = (await response.json()) as GameDatabase;
     if (db.schemaVersion !== GAME_DATABASE_SCHEMA_VERSION) {
       throw new Error(
-        `The game database is version ${db.schemaVersion}, but this build needs ` +
-          `${GAME_DATABASE_SCHEMA_VERSION}. Your browser is probably holding a cached ` +
-          'copy from an earlier deploy — reload the page to clear it.',
+        t('err.schemaMismatch', {
+          have: db.schemaVersion,
+          want: GAME_DATABASE_SCHEMA_VERSION,
+        }),
       );
     }
     return db;

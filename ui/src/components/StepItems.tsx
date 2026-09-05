@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 
-import { rankName, rarityName } from '@lib/gamedata/enums.js';
+
 import {
   aggregate,
   allocateHoldings,
@@ -25,6 +25,8 @@ import type { PlayerResponse, Unit } from '@lib/types/player.js';
 
 import { campaignIcon, requirementIcon, uiIcon } from '../data/icons.ts';
 import { Icon, useIcons } from './Icon.tsx';
+import { localNumber, localRank, localRarity, localStat } from '../i18n/game.ts';
+import { t, tn } from '../i18n/locale.ts';
 
 type View = 'steps' | 'total';
 
@@ -88,32 +90,23 @@ export function StepItems({
       {/* Wraps: a heading plus three controls does not fit a phone on one line,
           and the spacer then simply ends the first line. */}
       <div className="row wrap" style={{ marginBottom: 12 }}>
-        <h3 style={{ margin: 0 }}>Items needed</h3>
+        <h3 style={{ margin: 0 }}>{t('si.heading')}</h3>
         <span style={{ flex: 1 }} />
         <div className="tabs">
           <button className={view === 'steps' ? 'active' : ''} onClick={() => setView('steps')}>
-            Per step
+            {t('si.perStep')}
           </button>
           <button className={view === 'total' ? 'active' : ''} onClick={() => setView('total')}>
-            Total
+            {t('si.total')}
           </button>
         </div>
-        <label className="switch" title="Resolve every recipe down to the materials a node actually drops">
+        <label className="switch" title={t('si.flattenHint')}>
           <input type="checkbox" checked={flat} onChange={(e) => setFlat(e.target.checked)} />
-          <span>Flatten to what you farm</span>
+          <span>{t('si.flatten')}</span>
         </label>
       </div>
 
-      <p className="small muted" style={{ marginTop: 0 }}>
-        Held stock is spread across the steps that need it, earliest first, so a shortfall
-        shows up on the step where it actually bites. Recipe ingredients draw on the same
-        stock. Items already fitted to the unit are marked applied — they are spent, and
-        cannot be moved elsewhere. An item you hold but cannot farm is marked stock only:
-        spending it elsewhere cannot be undone. Forged items have no farmable form, so they
-        read as ready to forge or parts missing rather than as a count. Click an item for
-        where to get it. Gold is shown where it is spent; the API does not report the
-        balance, so there is nothing to check it against.
-      </p>
+      <p className="small muted" style={{ marginTop: 0 }}>{t('si.blurb')}</p>
 
       {view === 'steps'
         ? plan.steps.map((step) => {
@@ -126,7 +119,7 @@ export function StepItems({
                     <span className="step-num">✓</span>
                     {step.label}
                     <span className="chip ok-chip" style={{ marginLeft: 8 }}>
-                      Done
+                      {t('si.done')}
                     </span>
                   </div>
                 </div>
@@ -141,13 +134,13 @@ export function StepItems({
                 {step.label}
                 {stepGold > 0 && (
                   <span className="chip gold" style={{ marginLeft: 8 }}>
-                    {stepGold.toLocaleString()} gold
+                    {t('si.goldChip', { n: localNumber(stepGold) })}
                   </span>
                 )}
               </div>
               {items.length === 0 ? (
                 <p className="muted small" style={{ margin: '4px 0 0 30px' }}>
-                  No items.
+                  {t('si.noItems')}
                 </p>
               ) : flat ? (
                 <BySlot items={items} />
@@ -178,9 +171,9 @@ export function StepItems({
                 <li className="item-row">
                   <div className="item-head static">
                     <span className="chevron" />
-                    <span className="count">{gold.toLocaleString()}</span>
-                    <span className="item-name">Gold</span>
-                    <span className="muted small">across the plan</span>
+                    <span className="count">{localNumber(gold)}</span>
+                    <span className="item-name">{t('si.gold')}</span>
+                    <span className="muted small">{t('si.acrossPlan')}</span>
                   </div>
                 </li>
               )}
@@ -201,13 +194,6 @@ export function StepItems({
     </section>
   );
 }
-
-/** What the slot raises, in the words the game uses for the stat. */
-const STAT_LABEL: Record<string, string> = {
-  hp: 'health',
-  dmg: 'damage',
-  fixedArmor: 'armour',
-};
 
 /**
  * Which slots a material fills, and what they give.
@@ -232,10 +218,10 @@ function SlotNote({ slots }: { slots?: readonly SlotPlacement[] | undefined }) {
     }
     return {
       positions: slots
-        .map((slot) => `${rankName(slot.rank)} slot ${slot.slotIndex + 1}`)
+        .map((slot) => t('si.slotPos', { rank: localRank(slot.rank), n: slot.slotIndex + 1 }))
         .join(', '),
       gains: [...gains.entries()].map(
-        ([stat, total]) => `+${total} ${STAT_LABEL[stat] ?? stat}`,
+        ([stat, total]) => t('si.slotGain', { n: total, stat: localStat(stat) }),
       ),
       level,
     };
@@ -255,9 +241,9 @@ function SlotNote({ slots }: { slots?: readonly SlotPlacement[] | undefined }) {
       {summary.level !== undefined && (
         <span
           className="muted small"
-          title="The level that completes this rank. Only the rank's highest threshold is published, so this is the ceiling rather than this slot's own requirement."
+          title={t('si.levelHint')}
         >
-          level {summary.level}
+          {t('si.levelShort', { n: summary.level })}
         </span>
       )}
     </>
@@ -316,19 +302,22 @@ function BySlot({ items }: { items: AllocatedItem[] }) {
         <div className="slot-group" key={slotKey(slot)}>
           <div className="slot-head">
             <span className="slot-pos">
-              {rankName(slot.rank)} · slot {slot.slotIndex + 1}
+              {t('si.slotPos', { rank: localRank(slot.rank), n: slot.slotIndex + 1 })}
             </span>
             {slot.statIncrease !== undefined && slot.statType !== undefined && (
               <span className="slot-gain">
-                +{slot.statIncrease} {STAT_LABEL[slot.statType] ?? slot.statType}
+                {t('si.slotGain', {
+                  n: slot.statIncrease,
+                  stat: localStat(slot.statType),
+                })}
               </span>
             )}
             {slot.levelToComplete !== undefined && (
               <span
                 className="chip"
-                title="The level that completes this rank. A rank's second row of upgrades is level-gated per upgrade and only the rank's highest threshold is published, so this is the ceiling rather than this slot's own requirement."
+                title={t('si.levelHint')}
               >
-                needs up to level {slot.levelToComplete}
+                {t('si.needsLevel', { n: slot.levelToComplete })}
               </span>
             )}
           </div>
@@ -338,7 +327,7 @@ function BySlot({ items }: { items: AllocatedItem[] }) {
       {groups.loose.length > 0 && (
         <div className="slot-group">
           <div className="slot-head">
-            <span className="slot-pos">Not a rank slot</span>
+            <span className="slot-pos">{t('si.notARankSlot')}</span>
           </div>
           <FlatList needs={groups.loose} />
         </div>
@@ -374,12 +363,14 @@ function FlatList({ needs }: { needs: FlatNeed[] }) {
             <span className="item-name">
               {need.name}
               {need.rarity !== undefined && (
-                <span className="muted small"> · {rarityName(need.rarity)}</span>
+                <span className="muted small"> · {localRarity(need.rarity)}</span>
               )}
             </span>
             <span className="row-tail">
               {need.via.length > 0 && (
-                <span className="muted small">for {need.via.join(' › ')}</span>
+                <span className="muted small">
+                  {t('si.forFlat', { chain: need.via.join(' › ') })}
+                </span>
               )}
             </span>
           </div>
@@ -428,11 +419,11 @@ export function ItemRow({
           <span className="item-name">
             {item.name}
             {item.rarity !== undefined && (
-              <span className="muted small"> · {rarityName(item.rarity)}</span>
+              <span className="muted small"> · {localRarity(item.rarity)}</span>
             )}
           </span>
           <span className="row-tail">
-            <span className="chip ok-chip">Already applied</span>
+            <span className="chip ok-chip">{t('si.alreadyApplied')}</span>
             <SlotNote slots={item.slots} />
           </span>
         </div>
@@ -449,23 +440,25 @@ export function ItemRow({
         <span className="item-name">
           {item.name}
           {item.rarity !== undefined && (
-            <span className="muted small"> · {rarityName(item.rarity)}</span>
+            <span className="muted small"> · {localRarity(item.rarity)}</span>
           )}
         </span>
         <span className="row-tail">
           <SlotNote slots={item.slots} />
           {forge !== undefined && <ForgeChip ready={forge} />}
-          {blocked && <span className="chip warn">Nothing unlocked</span>}
+          {blocked && <span className="chip warn">{t('si.nothingUnlocked')}</span>}
           {finite && (
-            <span className="chip caution" title="You hold enough, but no unlocked source can replace what you spend.">
-              Stock only — cannot farm more
+            <span className="chip caution" title={t('si.stockOnlyHint')}>
+              {t('si.stockOnly')}
             </span>
           )}
           {totals && !totals.applied && (
             <span className="muted small">
               {/* "0 held" of a forged item is the same non-fact as "0/1". */}
-              {forge !== undefined && totals.owned === 0 ? '' : `${totals.owned} held · `}
-              {totals.steps} step{totals.steps === 1 ? '' : 's'}
+              {forge !== undefined && totals.owned === 0
+                ? ''
+                : `${t('si.held', { n: totals.owned })} · `}
+              {tn(totals.steps, 'si.steps', 'si.stepsPlural')}
             </span>
           )}
         </span>
@@ -504,12 +497,12 @@ function ItemSources({
   if (source.kind === 'other') {
     return (
       <p className="source-note muted small">
-        Not farmed from campaign nodes — this comes from chests, events and rewards.
+        {t('si.notFarmed')}
       </p>
     );
   }
   if (source.kind === 'none') {
-    return <p className="source-note muted small">No published way to obtain this yet.</p>;
+    return <p className="source-note muted small">{t('si.noSource')}</p>;
   }
   if (source.kind === 'craft') {
     // The allocated recipe covers only the shortfall; when nothing is missing
@@ -521,8 +514,8 @@ function ItemSources({
       <div className="source-note">
         <div className="small muted" style={{ marginBottom: 6 }}>
           {item.missing > 0
-            ? `Crafting the ${item.missing} still missing needs:`
-            : 'Crafted from:'}
+            ? t('si.craftingNeeds', { n: item.missing })
+            : t('si.craftedFrom')}
         </div>
         <ul className="item-list nested">
           {components.map((component) => (
@@ -588,17 +581,17 @@ function ComponentRow({
         <span className="item-name">
           {component.name}
           {component.rarity !== undefined && (
-            <span className="muted small"> · {rarityName(component.rarity)}</span>
+            <span className="muted small"> · {localRarity(component.rarity)}</span>
           )}
         </span>
         <span className="row-tail">
           {/* No slot note here: an ingredient fills no slot of its own, the
               item it forges into does. */}
           {forge !== undefined && <ForgeChip ready={forge} />}
-          {blocked && <span className="chip warn">Nothing unlocked</span>}
+          {blocked && <span className="chip warn">{t('si.nothingUnlocked')}</span>}
           {finite && (
-            <span className="chip caution" title="You hold enough, but no unlocked source can replace what you spend.">
-              Stock only — cannot farm more
+            <span className="chip caution" title={t('si.stockOnlyHint')}>
+              {t('si.stockOnly')}
             </span>
           )}
         </span>
@@ -608,8 +601,8 @@ function ComponentRow({
           <div className="source-note">
             <div className="small muted" style={{ marginBottom: 6 }}>
               {component.missing > 0
-                ? `Crafting the ${component.missing} still missing needs:`
-                : 'Crafted from:'}
+                ? t('si.craftingNeeds', { n: component.missing })
+                : t('si.craftedFrom')}
             </div>
             <ul className="item-list nested">
               {(
@@ -636,7 +629,7 @@ function ComponentRow({
             })}
           />
         ) : (
-          <p className="source-note muted small">No published way to obtain this yet.</p>
+          <p className="source-note muted small">{t('si.noSource')}</p>
         ))}
     </li>
   );
@@ -689,12 +682,12 @@ function Count({
 
 function ForgeChip({ ready }: { ready: boolean }) {
   return ready ? (
-    <span className="chip ok-chip" title="Every ingredient is in hand — forge it.">
-      Ready to forge
+    <span className="chip ok-chip" title={t('si.readyToForgeHint')}>
+      {t('si.readyToForge')}
     </span>
   ) : (
-    <span className="chip" title="Some ingredients are still missing.">
-      Parts missing
+    <span className="chip" title={t('si.partsMissingHint')}>
+      {t('si.partsMissing')}
     </span>
   );
 }
@@ -702,7 +695,7 @@ function ForgeChip({ ready }: { ready: boolean }) {
 function NodeTable({ nodes }: { nodes: ReturnType<typeof nodeStatuses> }) {
   useIcons();
   if (nodes.length === 0) {
-    return <p className="source-note muted small">No campaign node drops this.</p>;
+    return <p className="source-note muted small">{t('si.noNodeDrops')}</p>;
   }
   // Cheapest per copy among the nodes actually open, so the best buy is marked
   // rather than left to be worked out by eye.
@@ -725,16 +718,16 @@ function NodeTable({ nodes }: { nodes: ReturnType<typeof nodeStatuses> }) {
                 <Icon src={campaignIcon(node.campaignId)} size={18} className="portrait" reserve />
                 {node.campaignName}
               </td>
-              <td className="muted">node {node.nodeNumber}</td>
+              <td className="muted">{t('si.node', { n: node.nodeNumber })}</td>
               <td>
                 {node.unlocked ? (
                   node.attemptsLeft > 0 ? (
-                    <span className="ok">{node.attemptsLeft} tries left today</span>
+                    <span className="ok">{t('si.triesLeft', { n: node.attemptsLeft })}</span>
                   ) : (
-                    <span className="muted">no tries left today</span>
+                    <span className="muted">{t('si.noTriesLeft')}</span>
                   )
                 ) : (
-                  <span className="muted">locked</span>
+                  <span className="muted">{t('si.locked')}</span>
                 )}
               </td>
               {/* Run cost and cost per copy are separate on purpose: a node can

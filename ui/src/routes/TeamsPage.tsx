@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
-import { rankName, rarityName, Rarity } from '@lib/gamedata/enums.js';
+import { rankName, Rarity } from '@lib/gamedata/enums.js';
 import {
   BattleBrief,
   RarityCeiling,
@@ -18,16 +18,18 @@ import type { PlayerResponse } from '@lib/types/player.js';
 import { Icon, useIcons } from '../components/Icon.tsx';
 import { factionIcon, rankIcon, rarityIcon, unitIcon } from '../data/icons.ts';
 import { teamsStore, type StoredTeam } from '../data/teams.ts';
+import { localRarity } from '../i18n/game.ts';
+import { t, type StringKey } from '../i18n/locale.ts';
 
-const SORTS: { key: SortKey; label: string }[] = [
-  { key: 'effectiveNormal', label: 'Effective attack — normal' },
-  { key: 'effectiveAbility', label: 'Effective attack — ability' },
-  { key: 'effective', label: 'Effective attack — best of either' },
-  { key: 'damage', label: 'Base attack' },
-  { key: 'health', label: 'Health' },
-  { key: 'armour', label: 'Armour' },
-  { key: 'rank', label: 'Rank' },
-  { key: 'name', label: 'Name' },
+const SORTS: { key: SortKey; label: StringKey }[] = [
+  { key: 'effectiveNormal', label: 'teams.sort.effectiveNormal' },
+  { key: 'effectiveAbility', label: 'teams.sort.effectiveAbility' },
+  { key: 'effective', label: 'teams.sort.effective' },
+  { key: 'damage', label: 'teams.sort.damage' },
+  { key: 'health', label: 'teams.sort.health' },
+  { key: 'armour', label: 'teams.sort.armour' },
+  { key: 'rank', label: 'common.rank' },
+  { key: 'name', label: 'common.name' },
 ];
 
 const RARITIES: Rarity[] = [
@@ -47,7 +49,7 @@ export function TeamsPage({ db, player }: { db: GameDatabase; player: PlayerResp
   const roster = useMemo(() => buildRosterUnits(player, db), [player, db]);
 
   const create = () => {
-    const created = teamsStore.create({ name: 'New team', memberIds: [] });
+    const created = teamsStore.create({ name: t('teams.newName'), memberIds: [] });
     setTeams(teamsStore.list());
     navigate(`/teams/${created.id}`);
   };
@@ -60,18 +62,15 @@ export function TeamsPage({ db, player }: { db: GameDatabase; player: PlayerResp
   return (
     <>
       <div className="toolbar">
-        <h1 style={{ margin: 0, fontSize: 'var(--text-xl)' }}>Teams</h1>
+        <h1 style={{ margin: 0, fontSize: 'var(--text-xl)' }}>{t('teams.heading')}</h1>
         <span style={{ flex: 1 }} />
         <button className="primary" onClick={create}>
-          New team
+          {t('teams.new')}
         </button>
       </div>
 
       {teams.length === 0 ? (
-        <div className="empty">
-          No teams yet. A team is a squad you can filter for, cap to a rarity, point at a
-          campaign node, and optimise the equipment of.
-        </div>
+        <div className="empty">{t('teams.none')}</div>
       ) : (
         <div className="grid">
           {teams.map((stored) => (
@@ -117,10 +116,10 @@ function TeamCard({
       style={{ '--status': 'var(--status-unlockable)' } as React.CSSProperties}
     >
       <Link to={`/teams/${stored.id}`}>
-        <div className="name">{stored.name || 'Untitled team'}</div>
+        <div className="name">{stored.name || t('teams.untitled')}</div>
         <div className="sub">
           {members.length} unit{members.length === 1 ? '' : 's'}
-          {stored.capRarity !== undefined && ` · capped to ${rarityName(stored.capRarity)}`}
+          {stored.capRarity !== undefined && t('teams.cappedTo', { rarity: localRarity(stored.capRarity) })}
         </div>
         <div className="row wrap" style={{ marginTop: 8, gap: 4 }}>
           {members.map((member) => (
@@ -209,32 +208,32 @@ export function RosterPicker({
 
   return (
     <section className="panel">
-      <h3>Choose units</h3>
+      <h3>{t('teams.chooseUnits')}</h3>
 
       <div className="toolbar" style={{ marginBottom: 12 }}>
         <input
           className="search"
-          placeholder="Search units or factions…"
+          placeholder={t('teams.searchUnits')}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
         <label className="inline-field">
-          <span>Sort by</span>
+          <span>{t('teams.sortBy')}</span>
           <select value={sort} onChange={(e) => setSort(e.target.value as SortKey)}>
             {SORTS.map((s) => (
               <option key={s.key} value={s.key}>
-                {s.label}
+                {t(s.label)}
               </option>
             ))}
           </select>
         </label>
         <label className="inline-field">
-          <span>Min rank</span>
+          <span>{t('teams.minRank')}</span>
           <select
             value={minRank ?? ''}
             onChange={(e) => setMinRank(e.target.value === '' ? undefined : Number(e.target.value))}
           >
-            <option value="">Any</option>
+            <option value="">{t('teams.any')}</option>
             {Array.from({ length: 20 }, (_, rank) => (
               <option key={rank} value={rank}>
                 {rankName(rank)}
@@ -248,40 +247,40 @@ export function RosterPicker({
       </div>
 
       <ChipFilter
-        label="Rarity"
-        options={RARITIES.map((r) => ({ value: String(r), label: rarityName(r) }))}
+        label={t('common.rarity')}
+        options={RARITIES.map((r) => ({ value: String(r), label: localRarity(r) }))}
         selected={rarities.map(String)}
         onToggle={(value) => toggleIn(rarities, Number(value) as Rarity, setRarities)}
       />
       <ChipFilter
-        label="Faction"
+        label={t('teams.faction')}
         options={options.factions.map((f) => ({ value: f, label: humanise(f) }))}
         selected={factions}
         onToggle={(value) => toggleIn(factions, value, setFactions)}
       />
       <ChipFilter
-        label="Damage type"
+        label={t('teams.damageType')}
         options={options.damageTypes.map((d) => ({ value: d, label: humanise(d) }))}
         selected={damageTypes}
         onToggle={(value) => toggleIn(damageTypes, value, setDamageTypes)}
       />
       <ChipFilter
-        label="Trait"
+        label={t('teams.trait')}
         options={options.traits.map((t) => ({ value: t, label: humanise(t) }))}
         selected={traits}
         onToggle={(value) => toggleIn(traits, value, setTraits)}
       />
 
       {rows.length === 0 ? (
-        <div className="empty">No unit matches those filters.</div>
+        <div className="empty">{t('teams.noMatch')}</div>
       ) : (
         <div className="table-wrap">
         <table className="steps split-head stacked">
           <thead>
             <tr>
               <th rowSpan={2} />
-              <th rowSpan={2}>Unit</th>
-              <th rowSpan={2}>Rank</th>
+              <th rowSpan={2}>{t('common.unit')}</th>
+              <th rowSpan={2}>{t('common.rank')}</th>
               <th rowSpan={2} style={{ textAlign: 'right' }}>
                 Health
               </th>
@@ -304,18 +303,18 @@ export function RosterPicker({
               {/* An active ability usually fires once a battle, so its damage
                   is an opening rather than a rate. Averaging it in with the
                   weapon hid exactly the difference that decides a pick. */}
-              <th style={{ textAlign: 'right' }} title="Melee and ranged weapons, every turn">
+              <th style={{ textAlign: 'right' }} title={t('teams.normalHint')}>
                 Normal
               </th>
-              <th style={{ textAlign: 'right' }} title="Abilities, usually once a battle">
+              <th style={{ textAlign: 'right' }} title={t('teams.abilityHint')}>
                 Ability
               </th>
               {brief && (
                 <>
-                  <th style={{ textAlign: 'right' }} title="Melee and ranged, after these enemies' armour">
+                  <th style={{ textAlign: 'right' }} title={t('teams.nodeNormalHint')}>
                     Normal
                   </th>
-                  <th style={{ textAlign: 'right' }} title="Abilities, after these enemies' armour">
+                  <th style={{ textAlign: 'right' }} title={t('teams.nodeAbilityHint')}>
                     Ability
                   </th>
                 </>
@@ -339,33 +338,33 @@ export function RosterPicker({
                     <Link to={`/units/${encodeURIComponent(unit.id)}`}>{unit.name}</Link>
                     <Icon src={factionIcon(unit.factionId)} size={14} className="crest" />
                     {unit.isCapped && (
-                      <span className="chip caution" title="A cap scaled this unit down.">
+                      <span className="chip caution" title={t('teams.cappedHint')}>
                         capped
                       </span>
                     )}
                   </span>
                 </td>
-                <td data-label="Rank">
+                <td data-label={t('common.rank')}>
                   <span className="row" style={{ gap: 6 }}>
                     <Icon src={rankIcon(unit.effective.rank)} size={16} reserve />
                     {rankName(unit.effective.rank)}
                     <Icon src={rarityIcon(unit.stats?.rarity)} size={14} />
                   </span>
                 </td>
-                <td data-label="Health" style={{ textAlign: 'right' }}>
+                <td data-label={t('common.health')} style={{ textAlign: 'right' }}>
                   {unit.stats?.health.toLocaleString() ?? '—'}
                 </td>
-                <td data-label="Attack" style={{ textAlign: 'right' }}>
+                <td data-label={t('teams.attack')} style={{ textAlign: 'right' }}>
                   {unit.stats?.damage.toLocaleString() ?? '—'}
                 </td>
-                <td data-label="Armour" style={{ textAlign: 'right' }}>
+                <td data-label={t('common.armour')} style={{ textAlign: 'right' }}>
                   {unit.stats?.armour.toLocaleString() ?? '—'}
                 </td>
-                <td data-label="Through · normal" style={{ textAlign: 'right' }}>
+                <td data-label={t('teams.throughNormal')} style={{ textAlign: 'right' }}>
                   {Math.round(unit.normalEffectiveDamage) || '—'}
                 </td>
                 <td
-                  data-label="Through · ability"
+                  data-label={t('teams.throughAbility')}
                   style={{ textAlign: 'right' }}
                   className="ability-figure"
                 >
@@ -373,11 +372,11 @@ export function RosterPicker({
                 </td>
                 {brief && (
                   <>
-                    <td data-label="Node · normal" style={{ textAlign: 'right' }}>
+                    <td data-label={t('teams.nodeNormal')} style={{ textAlign: 'right' }}>
                       <b>{Math.round(brief.normalDamageAgainst(unit)) || '—'}</b>
                     </td>
                     <td
-                      data-label="Node · ability"
+                      data-label={t('teams.nodeAbility')}
                       style={{ textAlign: 'right' }}
                       className="ability-figure"
                     >

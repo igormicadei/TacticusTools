@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
-import { rankName, rarityName, Rarity } from '@lib/gamedata/enums.js';
+import { Rarity } from '@lib/gamedata/enums.js';
 import {
   BattleBrief,
   EquipmentPool,
@@ -22,6 +22,8 @@ import { Icon, useIcons } from '../components/Icon.tsx';
 import { campaignIcon, rankIcon, rarityIcon, requirementIcon, unitIcon } from '../data/icons.ts';
 import { teamsStore } from '../data/teams.ts';
 import { RosterPicker, humanise } from './TeamsPage.tsx';
+import { localRank, localRarity } from '../i18n/game.ts';
+import { t, tn, type StringKey } from '../i18n/locale.ts';
 
 const RARITIES: Rarity[] = [
   Rarity.Common,
@@ -32,21 +34,17 @@ const RARITIES: Rarity[] = [
   Rarity.Mythic,
 ];
 
-const OBJECTIVES: { key: Objective; label: string; hint: string }[] = [
-  { key: 'defence', label: 'Survive', hint: 'Health, plus what armour and Block save over ten hits' },
-  { key: 'offence', label: 'Hit hardest', hint: 'Damage per attack with crits folded in at their odds' },
-  { key: 'health', label: 'Health only', hint: 'Raw health, ignoring armour and Block' },
-  { key: 'armour', label: 'Armour only', hint: 'Raw armour' },
+const OBJECTIVES: { key: Objective; label: StringKey; hint: StringKey }[] = [
+  { key: 'defence', label: 'td.obj.defence', hint: 'td.obj.defenceHint' },
+  { key: 'offence', label: 'td.obj.offence', hint: 'td.obj.offenceHint' },
+  { key: 'health', label: 'td.obj.health', hint: 'td.obj.healthHint' },
+  { key: 'armour', label: 'td.obj.armour', hint: 'td.obj.armourHint' },
 ];
 
-const SCOPES: { key: PoolScope; label: string; hint: string }[] = [
-  { key: 'team', label: "The team's own gear", hint: 'Shuffle only what these units already wear' },
-  {
-    key: 'team+inventory',
-    label: 'Team gear + inventory',
-    hint: "The team's gear plus everything unequipped",
-  },
-  { key: 'all', label: 'Everything I own', hint: 'Including gear worn by units outside the team' },
+const SCOPES: { key: PoolScope; label: StringKey; hint: StringKey }[] = [
+  { key: 'team', label: 'td.pool.team', hint: 'td.pool.teamHint' },
+  { key: 'team+inventory', label: 'td.pool.teamInventory', hint: 'td.pool.teamInventoryHint' },
+  { key: 'all', label: 'td.pool.all', hint: 'td.pool.allHint' },
 ];
 
 export function TeamDetailPage({ db, player }: { db: GameDatabase; player: PlayerResponse }) {
@@ -77,7 +75,7 @@ export function TeamDetailPage({ db, player }: { db: GameDatabase; player: Playe
         <Link to="/teams" className="back">
           ← All teams
         </Link>
-        <div className="empty">That team no longer exists.</div>
+        <div className="empty">{t('td.gone')}</div>
       </>
     );
   }
@@ -123,43 +121,43 @@ export function TeamDetailPage({ db, player }: { db: GameDatabase; player: Playe
               className="title-input"
               value={stored.name}
               onChange={(e) => save({ name: e.target.value })}
-              aria-label="Team name"
+              aria-label={t('td.teamName')}
             />
           </h1>
           <div className="muted">
             {members.length} unit{members.length === 1 ? '' : 's'}
-            {cap && ` · played at ${cap.name}`}
+            {cap && t('td.playedAt', { rarity: localRarity(team.capRarity) })}
             {brief && ` · ${brief.campaignName} node ${brief.battle.nodeNumber}`}
           </div>
         </div>
       </div>
 
       <section className="panel" style={{ marginBottom: 16 }}>
-        <h3>Conditions</h3>
+        <h3>{t('td.conditions')}</h3>
         <div className="form-grid">
           <label>
-            <span>Rarity cap</span>
+            <span>{t('td.rarityCap')}</span>
             <select
               value={stored.capRarity ?? ''}
               onChange={(e) =>
                 save({ capRarity: e.target.value === '' ? undefined : (Number(e.target.value) as Rarity) })
               }
             >
-              <option value="">Uncapped</option>
+              <option value="">{t('td.uncapped')}</option>
               {RARITIES.map((rarity) => (
                 <option key={rarity} value={rarity}>
-                  {rarityName(rarity)}
+                  {localRarity(rarity)}
                 </option>
               ))}
             </select>
           </label>
           <label>
-            <span>Battle</span>
+            <span>{t('td.battle')}</span>
             <select
               value={stored.battleKey ?? ''}
               onChange={(e) => save({ battleKey: e.target.value || undefined })}
             >
-              <option value="">No node</option>
+              <option value="">{t('td.noNode')}</option>
               {battles.map((b) => (
                 <option key={b.battle.key} value={b.battle.key}>
                   {b.campaignName} — node {b.battle.nodeNumber} ({b.slots} slots)
@@ -175,13 +173,13 @@ export function TeamDetailPage({ db, player }: { db: GameDatabase; player: Playe
 
       {members.length > 0 && (
         <section className="panel" style={{ marginBottom: 16 }}>
-          <h3>The squad</h3>
+          <h3>{t('td.squad')}</h3>
           <div className="stat-grid" style={{ marginBottom: 12 }}>
-            <Stat label="Health" value={totals.health} />
-            <Stat label="Attack" value={totals.damage} />
-            <Stat label="Armour" value={totals.armour} />
-            <Stat label="Through armour · normal" value={Math.round(totals.effectiveNormal)} />
-            <Stat label="Through armour · ability" value={Math.round(totals.effectiveAbility)} />
+            <Stat label={t('common.health')} value={totals.health} />
+            <Stat label={t('teams.attack')} value={totals.damage} />
+            <Stat label={t('common.armour')} value={totals.armour} />
+            <Stat label={t('td.throughNormal')} value={Math.round(totals.effectiveNormal)} />
+            <Stat label={t('td.throughAbility')} value={Math.round(totals.effectiveAbility)} />
           </div>
           <ul className="item-list" style={{ paddingLeft: 0 }}>
             {members.map((member) => (
@@ -198,7 +196,7 @@ export function TeamDetailPage({ db, player }: { db: GameDatabase; player: Playe
       )}
 
       <section className="panel" style={{ marginBottom: 16 }}>
-        <h3>Optimise equipment</h3>
+        <h3>{t('td.optimise')}</h3>
         <p className="small muted" style={{ marginTop: 0 }}>
           Equipment grants Crit and Block far more often than Health or Armour — 626 item levels
           carry Crit Chance against 215 carrying Health — so an objective that read only the
@@ -208,17 +206,17 @@ export function TeamDetailPage({ db, player }: { db: GameDatabase; player: Playe
         </p>
         <div className="form-grid">
           <label>
-            <span>Optimise for</span>
+            <span>{t('td.optimiseFor')}</span>
             <select value={objective} onChange={(e) => setObjective(e.target.value as Objective)}>
               {OBJECTIVES.map((o) => (
-                <option key={o.key} value={o.key} title={o.hint}>
-                  {o.label}
+                <option key={o.key} value={o.key} title={t(o.hint)}>
+                  {t(o.label)}
                 </option>
               ))}
             </select>
           </label>
           <label>
-            <span>Drawing from</span>
+            <span>{t('td.drawingFrom')}</span>
             <select value={scope} onChange={(e) => setScope(e.target.value as PoolScope)}>
               {SCOPES.map((s) => (
                 <option key={s.key} value={s.key} title={s.hint}>
@@ -240,8 +238,8 @@ export function TeamDetailPage({ db, player }: { db: GameDatabase; player: Playe
           {layout && (
             <span className="muted small">
               {layout.length === 0
-                ? 'Nothing in that pool beats what they already wear.'
-                : `${layout.length} swap${layout.length === 1 ? '' : 's'} — shown against each unit below.`}
+                ? t('td.nothingBetter')
+                : tn(layout.length, 'td.swapCount', 'td.swapCountPlural')}
             </span>
           )}
         </div>
@@ -260,7 +258,7 @@ export function TeamDetailPage({ db, player }: { db: GameDatabase; player: Playe
 
 /** A rarity that may not be known, for the two sides of a cap. */
 function rarityLabel(rarity: Rarity | undefined): string {
-  return rarity === undefined ? 'unknown' : rarityName(rarity);
+  return rarity === undefined ? t('td.rarityUnknown') : localRarity(rarity);
 }
 
 function Stat({ label, value }: { label: string; value: number }) {
@@ -284,11 +282,11 @@ function CapExplainer({ cap, members }: { cap: RarityCeiling; members: RosterUni
   return (
     <>
       <p className="small muted" style={{ marginBottom: affected.length ? 8 : 0 }}>
-        A {cap.name} cap holds every unit to level {cap.levelCap} and {rankName(cap.rankCap)},
-        drops stars to the last of that rarity, and swaps equipment above the cap for its own
-        series’ member at {cap.name} — a Bolt Pistol chain runs Standard-Issue → Battle-Hardened →
-        Sanctified → Master-Crafted → Artificer, and the cap takes the {cap.name} link at its top
-        level. Nothing is ever raised: a unit already below the cap is untouched.
+        {t('td.capBlurb', {
+          rarity: localRarity(cap.rarity),
+          level: cap.levelCap,
+          rank: localRank(cap.rankCap),
+        })}
       </p>
       {affected.length > 0 && (
         <ul className="item-list nested">
@@ -303,11 +301,11 @@ function CapExplainer({ cap, members }: { cap: RarityCeiling; members: RosterUni
                   <span className="row-tail muted small">
                     {rarityLabel(effect.rarity.from)} → {rarityLabel(effect.rarity.to)}
                     {effect.rank.from !== effect.rank.to &&
-                      ` · ${rankName(effect.rank.from)} → ${rankName(effect.rank.to)}`}
+                      ` · ${localRank(effect.rank.from)} → ${localRank(effect.rank.to)}`}
                     {effect.xpLevel.from !== effect.xpLevel.to &&
-                      ` · level ${effect.xpLevel.from} → ${effect.xpLevel.to}`}
+                      t('td.capLevel', { from: effect.xpLevel.from, to: effect.xpLevel.to })}
                     {effect.items.length > 0 &&
-                      ` · ${effect.items.length} item${effect.items.length === 1 ? '' : 's'} scaled`}
+                      tn(effect.items.length, 'td.capItems', 'td.capItemsPlural')}
                   </span>
                 </div>
               </li>
@@ -344,7 +342,7 @@ function BattlePanel({ brief, onFill }: { brief: BattleBrief; onFill: () => void
           </span>
         ))}
         <span style={{ flex: 1 }} />
-        <button onClick={onFill}>Fill the squad from this node</button>
+        <button onClick={onFill}>{t('td.fillFromNode')}</button>
       </div>
       <p className="small muted" style={{ margin: 0 }}>
         Campaign nodes name no required units — the game does not restrict who you deploy — so
@@ -377,7 +375,7 @@ function MemberRow({
           <Link to={`/units/${encodeURIComponent(member.id)}`}>{member.name}</Link>
           <span className="muted small">
             {' · '}
-            {rankName(member.effective.rank)}
+            {localRank(member.effective.rank)}
           </span>
         </span>
         <span className="row-tail">
@@ -391,19 +389,19 @@ function MemberRow({
             {member.stats?.armour.toLocaleString()} armour
           </span>
           {!brief && (
-            <span className="muted small" title="Through armour: normal weapon, then abilities">
+            <span className="muted small" title={t('td.throughHint')}>
               {Math.round(member.normalEffectiveDamage)} /{' '}
               {Math.round(member.abilityEffectiveDamage)}
             </span>
           )}
           {brief && (
             <>
-              <span className="chip ok-chip" title="Melee and ranged, after these enemies' armour">
+              <span className="chip ok-chip" title={t('teams.nodeNormalHint')}>
                 {Math.round(brief.normalDamageAgainst(member))} normal
               </span>
               <span
                 className="chip slot-active"
-                title="Abilities, after these enemies' armour — usually one shot a battle"
+                title={t('teams.nodeAbilityHint')}
               >
                 {Math.round(brief.abilityDamageAgainst(member))} ability
               </span>
@@ -432,7 +430,7 @@ function MemberRow({
                   <span className="muted small">
                     {' '}
                     lv {a.item.level} · {a.slotId}
-                    {a.replaces && ` · replacing ${a.replaces.name} lv ${a.replaces.level}`}
+                    {a.replaces && t('td.replacing', { name: a.replaces.name, level: a.replaces.level })}
                   </span>
                 </span>
                 <span className="row-tail">
@@ -462,12 +460,12 @@ function LayoutTable({
       <table className="steps stacked">
         <thead>
           <tr>
-            <th>Unit</th>
-            <th>Slot</th>
-            <th>Equip</th>
-            <th>Instead of</th>
-            <th style={{ textAlign: 'right' }}>Gain</th>
-            <th>Currently on</th>
+            <th>{t('common.unit')}</th>
+            <th>{t('td.slot')}</th>
+            <th>{t('td.equip')}</th>
+            <th>{t('td.insteadOf')}</th>
+            <th style={{ textAlign: 'right' }}>{t('td.gain')}</th>
+            <th>{t('td.currentlyOn')}</th>
           </tr>
         </thead>
         <tbody>
@@ -476,19 +474,19 @@ function LayoutTable({
               <td data-label="" className="card-title-cell">
                 <b>{nameOf(a.unitId)}</b>
               </td>
-              <td data-label="Slot" className="muted">
+              <td data-label={t('td.slot')} className="muted">
                 {humanise(db.items[a.item.id]?.itemType ?? a.slotId)}
               </td>
-              <td data-label="Equip">
+              <td data-label={t('td.equip')}>
                 {a.item.name} <span className="muted">lv {a.item.level}</span>
               </td>
-              <td data-label="Instead of" className="muted">
+              <td data-label={t('td.insteadOf')} className="muted">
                 {a.replaces ? `${a.replaces.name} lv ${a.replaces.level}` : 'nothing'}
               </td>
-              <td data-label="Gain" style={{ textAlign: 'right' }}>
+              <td data-label={t('td.gain')} style={{ textAlign: 'right' }}>
                 +{Math.round(a.gain).toLocaleString()}
               </td>
-              <td data-label="Currently on" className="muted">
+              <td data-label={t('td.currentlyOn')} className="muted">
                 {a.item.wornBy ? nameOf(a.item.wornBy) : 'inventory'}
               </td>
             </tr>

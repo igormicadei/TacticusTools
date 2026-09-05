@@ -9,6 +9,7 @@ import {
   type Credentials,
 } from '../data/player.ts';
 
+import { localDateTime } from '../i18n/game.ts';
 import { setLang, t, useLang } from '../i18n/locale.ts';
 
 import type { GameDatabase } from '@lib/gamedata/types.js';
@@ -62,7 +63,7 @@ export function PlayerDataPage({
         setText('');
       } catch (e) {
         setError(
-          e instanceof InvalidPlayerDataError ? e.message : 'Could not read that file.',
+          e instanceof InvalidPlayerDataError ? e.message : t('pd.fileUnreadable'),
         );
       }
     },
@@ -85,16 +86,21 @@ export function PlayerDataPage({
             <div>
               <strong>{player.player.details.name}</strong>{' '}
               <span className="muted small">
-                · power {player.player.details.powerLevel} · {player.player.units.length} units
+                {t('pd.rosterSummary', {
+                  power: player.player.details.powerLevel,
+                  units: player.player.units.length,
+                })}
                 {player.metaData.lastUpdatedOn
-                  ? ` · game data as of ${new Date(player.metaData.lastUpdatedOn * 1000).toLocaleString()}`
+                  ? t('pd.gameDataAsOf', {
+                      when: localDateTime(player.metaData.lastUpdatedOn * 1000),
+                    })
                   : ''}
-                {fetchedAt ? ` · fetched ${new Date(fetchedAt).toLocaleString()}` : ''}
+                {fetchedAt ? t('pd.fetchedAt', { when: localDateTime(fetchedAt) }) : ''}
               </span>
             </div>
             <span style={{ flex: 1 }} />
             <button className="danger" onClick={onClear}>
-              Remove roster
+              {t('pd.removeRoster')}
             </button>
           </div>
         </div>
@@ -117,16 +123,16 @@ export function PlayerDataPage({
             {t('lang.blurb')}
           </p>
 
-          <h3 style={{ marginTop: 20 }}>API key</h3>
+          <h3 style={{ marginTop: 20 }}>{t('pd.apiKey')}</h3>
           <p className="small muted" style={{ marginTop: 0 }}>
-            Stored in this browser only, and sent with each request. Get one from the{' '}
+            {t('pd.apiKeyBlurb')}
             <a
               href="https://api.tacticusgame.com/settings"
               target="_blank"
               rel="noreferrer"
               style={{ color: 'var(--accent)' }}
             >
-              Tacticus API settings
+              {t('pd.apiKeySettings')}
             </a>
             .
           </p>
@@ -142,24 +148,7 @@ export function PlayerDataPage({
           />
 
           <p className="small muted">
-            {relayUrl ? (
-              <>
-                Nothing else to set up. The API sends no CORS headers, so a page cannot
-                read its reply directly — this build routes through a relay that adds
-                them and forwards nothing else. It carries no key of its own and stores
-                nothing: your key passes through on each request and goes straight to the
-                game.
-              </>
-            ) : (
-              <>
-                This build has no relay set, so the request will go straight to the API
-                and the browser will block it. That is a browser rule about pages, not a
-                limit on your machine — run <code className="inline">node
-                relay/local-relay.mjs</code> and rebuild with{' '}
-                <code className="inline">VITE_DEFAULT_RELAY</code> pointing at it, or use
-                the file import on the right.
-              </>
-            )}
+            {relayUrl ? t('pd.relayBuiltIn') : t('pd.noRelay')}
           </p>
 
           <div className="row" style={{ marginTop: 16 }}>
@@ -168,7 +157,11 @@ export function PlayerDataPage({
               disabled={busy || !apiKey.trim()}
               onClick={() => void refresh({ apiKey, relayUrl })}
             >
-              {busy ? 'Fetching…' : player ? 'Refresh roster' : 'Fetch roster'}
+              {busy
+                ? t('pd.fetching')
+                : player
+                  ? t('pd.refreshRoster')
+                  : t('pd.fetchRoster')}
             </button>
             <button
               disabled={busy}
@@ -177,15 +170,15 @@ export function PlayerDataPage({
                 setApiKey('');
               }}
             >
-              Forget key
+              {t('pd.forgetKey')}
             </button>
           </div>
         </section>
 
         <section className="panel">
-          <h3>Import a file instead</h3>
+          <h3>{t('pd.importInstead')}</h3>
           <p className="small muted" style={{ marginTop: 0 }}>
-            No relay? Fetch the roster yourself and load the JSON here.
+            {t('pd.importBlurb')}
           </p>
           <pre className="cmd">
             curl -H &quot;X-API-KEY: YOUR_KEY&quot; \{'\n'}
@@ -193,7 +186,7 @@ export function PlayerDataPage({
           </pre>
           <div className="row" style={{ marginTop: 12 }}>
             <label className="button">
-              Choose file…
+              {t('pd.chooseFile')}
               <input
                 type="file"
                 accept="application/json,.json"
@@ -202,7 +195,7 @@ export function PlayerDataPage({
               />
             </label>
             <button onClick={() => setShowPaste((v) => !v)}>
-              {showPaste ? 'Hide paste box' : 'Paste JSON'}
+              {showPaste ? t('pd.hidePaste') : t('pd.pasteJson')}
             </button>
           </div>
           {showPaste && (
@@ -219,7 +212,7 @@ export function PlayerDataPage({
                 disabled={!text.trim()}
                 onClick={() => importText(text)}
               >
-                Import pasted JSON
+                {t('pd.importPasted')}
               </button>
             </>
           )}
@@ -229,8 +222,12 @@ export function PlayerDataPage({
       <RelaySetup />
 
       <p className="small muted" style={{ marginTop: 24 }}>
-        Game database: version {db.sources.gameInfoVersion ?? 'unknown'} · {db.stats.units}{' '}
-        units · {db.stats.items} items · {db.stats.abilities} abilities.
+        {t('pd.dbFooter', {
+          version: db.sources.gameInfoVersion ?? t('shell.unknown'),
+          units: db.stats.units,
+          items: db.stats.items,
+          abilities: db.stats.abilities,
+        })}
       </p>
     </>
   );
@@ -252,7 +249,7 @@ function RelaySetup() {
     fetch(`${import.meta.env.BASE_URL}cloudflare-worker.js`)
       .then((r) => (r.ok ? r.text() : Promise.reject(new Error(String(r.status)))))
       .then(setSource)
-      .catch(() => setSource('Could not load the worker source.'));
+      .catch(() => setSource(t('pd.sourceFailed')));
   }, [open, source]);
 
   const copy = useCallback(async () => {
@@ -269,16 +266,16 @@ function RelaySetup() {
   return (
     <section className="panel" style={{ marginTop: 16 }}>
       <div className="row">
-        <h3 style={{ margin: 0 }}>Set up a hosted relay</h3>
+        <h3 style={{ margin: 0 }}>{t('pd.setUpRelay')}</h3>
         <span style={{ flex: 1 }} />
-        <button onClick={() => setOpen((v) => !v)}>{open ? 'Hide' : 'Show steps'}</button>
+        <button onClick={() => setOpen((v) => !v)}>{open ? t('pd.hide') : t('pd.showSteps')}</button>
       </div>
 
       {open && (
         <>
           <ol className="small" style={{ paddingLeft: 18, lineHeight: 1.7 }}>
             <li>
-              Open{' '}
+              {t('pd.step1a')}
               <a
                 href="https://workers.cloudflare.com/playground"
                 target="_blank"
@@ -287,31 +284,18 @@ function RelaySetup() {
               >
                 workers.cloudflare.com/playground
               </a>{' '}
-              — a plain editor, no upload or build step.
+              {t('pd.step1b')}
             </li>
-            <li>Select everything there, delete it, and paste the code below.</li>
-            <li>Deploy, and name it something you will recognise.</li>
-            <li>
-              Open the Worker URL in a browser. A small JSON reply means it is live.
-            </li>
-            <li>
-              In the Worker&apos;s Settings → Variables, set{' '}
-              <code className="inline">ALLOWED_ORIGINS</code> to the site that will use it
-              — that is what keeps other pages out. Leave{' '}
-              <code className="inline">RELAY_KEY</code> unset: this app sends no relay
-              key, and a key baked into a public page is readable by anyone who opens it.
-            </li>
-            <li>
-              Rebuild the app with{' '}
-              <code className="inline">VITE_DEFAULT_RELAY</code> set to the Worker URL.
-              There is no field for it here — it belongs to the build, so a fresh browser
-              needs only the API key.
-            </li>
+            <li>{t('pd.step2')}</li>
+            <li>{t('pd.step3')}</li>
+            <li>{t('pd.step4')}</li>
+            <li>{t('pd.step5')}</li>
+            <li>{t('pd.step6')}</li>
           </ol>
 
           <div className="row" style={{ marginBottom: 8 }}>
             <button className="primary" onClick={() => void copy()} disabled={!source}>
-              {copied ? 'Copied' : 'Copy worker code'}
+              {copied ? t('pd.copied') : t('pd.copy')}
             </button>
             <a
               className="button"
@@ -319,7 +303,7 @@ function RelaySetup() {
               target="_blank"
               rel="noreferrer"
             >
-              Open raw
+              {t('pd.openRaw')}
             </a>
           </div>
           <pre className="cmd" style={{ maxHeight: 260 }}>
