@@ -770,18 +770,20 @@ function NodeTable({ nodes }: { nodes: ReturnType<typeof nodeStatuses> }) {
                 {node.energyCost !== undefined && (
                   <>
                     {node.energyCost}
-                    <Energy /> /run
+                    <Energy /> {t('si.perRun')}
                   </>
                 )}
               </td>
               <td className="muted">
-                {node.dropRate !== undefined ? `${(node.dropRate * 100).toFixed(0)}% drop` : ''}
+                {node.dropRate !== undefined
+                  ? t('si.dropRate', { n: (node.dropRate * 100).toFixed(0) })
+                  : ''}
               </td>
               <td className={node.unlocked && node.energyPerDrop === best ? 'ok' : 'muted'}>
                 {node.energyPerDrop !== undefined && (
                   <>
                     {node.energyPerDrop.toFixed(1)}
-                    <Energy /> each
+                    <Energy /> {t('si.each')}
                   </>
                 )}
               </td>

@@ -128,9 +128,20 @@ console.log('ordering: rank tier, then effort  ✓');
   const candidates = energyCandidates(units, playerResponse, db);
 
   for (const c of candidates) {
-    const slots = db.units[c.unitId]?.ranks.find((r) => r.rank === units.find((u) => u.id === c.unitId).rank)?.upgrades ?? [];
+    const unit = units.find((u) => u.id === c.unitId);
+    const slots = db.units[c.unitId]?.ranks.find((r) => r.rank === unit.rank)?.upgrades ?? [];
     if (!slots.some((s) => `upgrade:${s.upgradeId}` === c.itemKey)) {
       note(`energy: ${c.unitName} offered ${c.itemName}, not a slot at its current rank`);
+    }
+    // The position is what the screen tells the player to go and fill, so it
+    // has to be the position of *this* material, not merely a plausible one.
+    const at = slots[c.slotIndex];
+    if (!at || `upgrade:${at.upgradeId}` !== c.itemKey) {
+      note(`energy: ${c.unitName} put ${c.itemName} at slot ${c.slotIndex + 1}, which holds ${at?.upgradeId ?? 'nothing'}`);
+    }
+    if (c.rank !== unit.rank) note(`energy: ${c.unitName} priced at rank ${c.rank}, but stands at ${unit.rank}`);
+    if (at && c.statType !== (at.statType ?? '')) {
+      note(`energy: ${c.unitName} slot ${c.slotIndex + 1} claims ${c.statType}, the slot gives ${at.statType}`);
     }
     if (!(c.energy > 0) || !(c.gain > 0)) note(`energy: ${c.itemName} priced ${c.energy} for ${c.gain}`);
     if (Math.abs(c.energy - c.copies * c.energyPerCopy) > 1e-6) {

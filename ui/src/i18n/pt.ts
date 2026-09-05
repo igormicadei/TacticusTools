@@ -210,8 +210,26 @@ export const PT: Record<keyof typeof EN, string> = {
   'timeline.allComplete': 'Todos os planos estão completos.',
   'timeline.energy': 'Energia disponível',
   'timeline.anyAttribute': 'Qualquer atributo',
-  'timeline.beyondBudget': 'Além deste orçamento',
   'timeline.noneLeftToday': 'nada sobrando hoje',
+  'spend.energyNote': 'Sua energia não vem na API; digite acima.',
+  'spend.onlyPlans': 'Só unidades com plano',
+  'spend.allUnits': 'Todas as unidades',
+  'spend.gain': '+{n} de {stat}',
+  'spend.cost': '{n} ⚡',
+  'spend.afford': 'O que {n}⚡ compra',
+  'spend.affordPlural': 'O que {n}⚡ compram',
+  'spend.affordNone':
+    'Nada na sua tropa custa {n}⚡ ou menos agora. O espaço mais barato sai por {cheapest}⚡.',
+  'spend.beyond': 'Acima deste orçamento',
+  'spend.copies': '{n}× {item}',
+  'spend.unitAffordable': '{n} espaço dentro do orçamento',
+  'spend.unitAffordablePlural': '{n} espaços dentro do orçamento',
+  'spend.unitBeyond': '{n} espaço fora do alcance',
+  'spend.unitBeyondPlural': '{n} espaços fora do alcance',
+  'spend.each': '{n}⚡ por cópia',
+  'spend.noPlans': 'Nenhum plano ainda, então não há para o que filtrar. Mostrando todas as unidades.',
+  'spend.blurb':
+    'Só os espaços que cada unidade consegue preencher no rank em que está agora — uma melhoria de um rank posterior não aumenta nada até você chegar lá. Cada linha é um desses espaços, precificado inteiro, porque um espaço pela metade vale zero. São alternativas, não uma lista para percorrer: o orçamento compra uma delas, e a mais barata vem primeiro dentro de cada unidade. Os preços são valores esperados sobre as taxas de drop publicadas, então trate isto como conselho, não como aritmética.',
 
   /* ---- equipes -------------------------------------------------------- */
   'teams.heading': 'Equipes',
@@ -327,6 +345,9 @@ export const PT: Record<keyof typeof EN, string> = {
   'si.triesLeft': 'restam {n} tentativas hoje',
   'si.noTriesLeft': 'sem tentativas hoje',
   'si.locked': 'bloqueado',
+  'si.perRun': 'por batalha',
+  'si.each': 'cada',
+  'si.dropRate': '{n}% de drop',
   'si.held': '{n} em mãos',
   'si.steps': '{n} passo',
   'si.stepsPlural': '{n} passos',
@@ -464,9 +485,8 @@ export const PT: Record<keyof typeof EN, string> = {
   'timeline.spendEnergy': 'Gastar energia',
   'timeline.orderBlurb':
     'Agrupado por rank, para a tropa subir junto, e dentro de cada rank o mais barato primeiro. Um grupo chamado “já está em” é trabalho que não move o rank — níveis e habilidades de unidades que já estão lá. Uma unidade que precisa de ascensão para alcançar um rank fica atrás das que chegam sem ela — o pacote dela custa mais. O estoque em mãos é distribuído por esta ordem, então duas unidades que querem o mesmo material não contam mais as duas com ele.',
-  'timeline.spendBlurb':
-    'Só os espaços que cada unidade pode preencher no rank em que está agora — uma melhoria de um rank posterior não aumenta nada até você chegar lá. Um espaço é tudo ou nada, então um parcialmente preenchido conta como zero e a quantidade inteira é precificada. Os preços são valores esperados sobre as taxas de drop publicadas, então trate a ordem como conselho, não como aritmética.',
-  'timeline.craftedNote': 'Forjado — o preço acima é o dos ingredientes, farmados no mais barato',
+  'timeline.craftedNote':
+    'Forjado — o preço acima é o dos ingredientes, farmados nos nós abertos mais baratos.',
 
   /* ---- textos de equipe ------------------------------------------------ */
   'td.objectiveBlurb':
@@ -521,7 +541,6 @@ export const PT: Record<keyof typeof EN, string> = {
   'timeline.unreachable': '{n} sem rota',
   'timeline.stepsAcross': '{steps} passos em {plans} planos',
   'timeline.triesLeft': 'restam {n} tentativas',
-  'timeline.copiesAt': '{n}× em {node}',
   'td.node': 'nó {n}',
   'td.nodeSlots': '{campaign} — nó {node} ({slots} espaços)',
   'ud.totalXpValue': 'XP total {n}',
@@ -550,8 +569,6 @@ export const PT: Record<keyof typeof EN, string> = {
   'td.replacing': ' · substituindo {name} nv {level}',
   'teams.cappedTo': ' · limitada a {rarity}',
   'timeline.alreadyAt': 'Já está em {label}',
-  'timeline.cheapestRun': ' A corrida que mais compensa custa {n}⚡.',
-  'timeline.nothingFits': 'Nada cabe em {n}⚡.',
   'ud.shardsCollected': '{n} fragmentos reunidos.',
   'ud.noShards': 'Nenhum fragmento reunido para esta unidade ainda.',
   'ud.critChance': 'Chance de crítico',

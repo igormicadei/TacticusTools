@@ -216,8 +216,26 @@ export const EN = {
   'timeline.allComplete': 'Every plan is complete.',
   'timeline.energy': 'Energy available',
   'timeline.anyAttribute': 'Any attribute',
-  'timeline.beyondBudget': 'Beyond this budget',
   'timeline.noneLeftToday': 'none left today',
+  'spend.energyNote': 'Your energy is not in the API; type it above.',
+  'spend.onlyPlans': 'Only units I have a plan for',
+  'spend.allUnits': 'Every unit',
+  'spend.gain': '+{n} {stat}',
+  'spend.cost': '{n} ⚡',
+  'spend.afford': 'What {n}⚡ buys',
+  'spend.affordPlural': 'What {n}⚡ buys',
+  'spend.affordNone':
+    'Nothing on your roster costs {n}⚡ or less right now. The cheapest slot is {cheapest}⚡.',
+  'spend.beyond': 'Beyond this budget',
+  'spend.copies': '{n}× {item}',
+  'spend.unitAffordable': '{n} slot within budget',
+  'spend.unitAffordablePlural': '{n} slots within budget',
+  'spend.unitBeyond': '{n} slot out of reach',
+  'spend.unitBeyondPlural': '{n} slots out of reach',
+  'spend.each': '{n}⚡ per copy',
+  'spend.noPlans': 'No plans yet, so there is nothing to filter to. Showing every unit.',
+  'spend.blurb':
+    'Only the slots each unit can fill at the rank it is on now — an upgrade for a later rank raises nothing until you get there. Each row is one such slot, priced whole, because a part-filled slot counts for zero. They are alternatives rather than a list to work through: the budget buys one of them, and the cheapest comes first within each unit. Prices are expected values over published drop rates, so treat this as advice rather than arithmetic.',
 
   /* ---- teams ---------------------------------------------------------- */
   'teams.heading': 'Teams',
@@ -333,6 +351,9 @@ export const EN = {
   'si.triesLeft': '{n} tries left today',
   'si.noTriesLeft': 'no tries left today',
   'si.locked': 'locked',
+  'si.perRun': 'per run',
+  'si.each': 'each',
+  'si.dropRate': '{n}% drop',
   'si.held': '{n} held',
   'si.steps': '{n} step',
   'si.stepsPlural': '{n} steps',
@@ -470,9 +491,8 @@ export const EN = {
   'timeline.spendEnergy': 'Spend energy',
   'timeline.orderBlurb':
     'Grouped by rank, so the roster comes up together, and within a rank the cheapest first. A group named “already at” is work that does not move the rank — levels and abilities for units standing there already. A unit needing an ascension to reach a rank sorts behind units that can reach it without one — its bundle costs more. Held stock is spread across this order, so two units wanting the same material no longer both count it as theirs.',
-  'timeline.spendBlurb':
-    'Only the slots each unit can fill at the rank it is on now — an upgrade for a later rank raises nothing until you get there. A slot is all or nothing, so a part-filled one counts for zero and the whole quantity is priced. Prices are expected values over published drop rates, so treat the order as advice rather than arithmetic.',
-  'timeline.craftedNote': 'Crafted — the price above is its ingredients, farmed at their cheapest',
+  'timeline.craftedNote':
+    'Crafted — the price above is its ingredients, farmed at their cheapest open nodes.',
 
   /* ---- team prose ------------------------------------------------------ */
   'td.objectiveBlurb':
@@ -527,7 +547,6 @@ export const EN = {
   'timeline.unreachable': '{n} unreachable',
   'timeline.stepsAcross': '{steps} steps across {plans} plans',
   'timeline.triesLeft': '{n} tries left',
-  'timeline.copiesAt': '{n}× at {node}',
   'td.node': 'node {n}',
   'td.nodeSlots': '{campaign} — node {node} ({slots} slots)',
   'ud.totalXpValue': 'Total XP {n}',
@@ -556,8 +575,6 @@ export const EN = {
   'td.replacing': ' · replacing {name} lv {level}',
   'teams.cappedTo': ' · capped to {rarity}',
   'timeline.alreadyAt': 'Already at {label}',
-  'timeline.cheapestRun': ' The cheapest worthwhile run is {n}⚡.',
-  'timeline.nothingFits': 'Nothing fits in {n}⚡.',
   'ud.shardsCollected': '{n} shards collected.',
   'ud.noShards': 'No shards collected for this unit yet.',
   'ud.critChance': 'Crit chance',

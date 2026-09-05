@@ -186,6 +186,9 @@ const routes = [
   ['plans', '#/plans'],
   ['plan-detail', '#/plans/probe-0'],
   ['timeline', '#/plans/timeline'],
+  // The same route in its other mode. It is state rather than a URL, so the
+  // stored choice is set below before the page loads.
+  ['timeline-energy', '#/plans/timeline'],
   ['teams', '#/teams'],
   ['team-detail', '#/teams/probe-team'],
   ['upgrades', '#/upgrades'],
@@ -212,6 +215,9 @@ const broken = [];
 const ENGLISH_TELLS = [
   'the', 'with', 'your', 'you', 'already', 'nothing', 'every', 'needs',
   'missing', 'slots', 'level to', 'rank up', 'steps left',
+  // Units of measure read as furniture and are easy to leave behind: two of
+  // these sat in a node table through two whole translation passes.
+  'each', 'per run', 'per copy',
 ];
 
 /*
@@ -227,6 +233,12 @@ const NOT_OURS = '.item-name, .name, .unit-name, .desc, .cmd, .use-unit, .card-t
 const leaks = new Map();
 for (const [name, hash] of routes) {
   await page.goto(`http://127.0.0.1:${PORT}${BASE}${hash}`);
+  if (name.startsWith('timeline')) {
+    await page.evaluate(
+      (mode) => localStorage.setItem('tacticus-tools:timelineMode', mode),
+      name === 'timeline-energy' ? 'energy' : 'order',
+    );
+  }
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(2200);
 

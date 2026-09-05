@@ -12,6 +12,13 @@
 
 * { box-sizing: border-box; }
 
+/*
+ * The whole app is dark, and the browser has to be told so. Without this the
+ * parts the page cannot paint — a number field's spinners, the scrollbars, a
+ * text caret — are drawn for a white page and land as bright specks on navy.
+ */
+html { color-scheme: dark; }
+
 body {
   margin: 0;
   background: var(--bg-app);
@@ -417,6 +424,10 @@ table.steps tr:last-child td { border-bottom: none; }
 }
 .item-row.complete .count { color: var(--status-owned); }
 .item-name { flex: 1; }
+/* In a row of alternatives the position is read down a column, so it holds a
+   width rather than shifting with the length of the rank's name. Scoped to
+   these rows: elsewhere a slot label sits inline in a sentence. */
+.item-head .slot-pos { min-width: 108px; }
 .chip.warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 45%, transparent); }
 .chip.caution { color: var(--caution); border-color: color-mix(in srgb, var(--caution) 45%, transparent); }
 .chip.gold { color: var(--gold-5); border-color: var(--gold-2); }
@@ -471,7 +482,8 @@ table.steps tr.done td { color: var(--text-secondary); }
 /* Controls outside a form grid still have to look like the app: an unstyled
  * `select` falls back to the platform's white one, which on a phone lands as a
  * bright slab in the middle of a navy page. */
-select, input[type='text'], input[type='password'], input[type='search'] {
+select, input[type='text'], input[type='password'], input[type='search'],
+input[type='number'] {
   font: inherit; color: var(--text-primary); background: var(--bg-sunken);
   border: var(--border-w) solid var(--border-default);
   border-radius: var(--radius-md); padding: var(--space-3) var(--space-5);

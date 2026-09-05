@@ -354,6 +354,16 @@ const STAT_OF: Record<string, StatPriority> = {
 export interface EnergyCandidate {
   unitId: UnitId;
   unitName: string;
+  /**
+   * Which of the rank's six slots this fills, and what the slot is worth.
+   *
+   * The position is what the player looks at on the character screen — "slot
+   * 2" is findable in a way "Grand Helmet Trophy" is not, when the question is
+   * which one to fill next.
+   */
+  slotIndex: number;
+  rank: Rank;
+  statType: string;
   itemKey: string;
   itemName: string;
   rarity?: Rarity;
@@ -451,6 +461,9 @@ export function energyCandidates(
       candidates.push({
         unitId: unit.id,
         unitName: unit.name ?? unit.id,
+        slotIndex: index,
+        rank: unit.rank as Rank,
+        statType: slot.statType ?? '',
         itemKey: item.key,
         itemName: upgrade?.name ?? slot.upgradeId,
         ...(upgrade?.rarity !== undefined ? { rarity: upgrade.rarity } : {}),

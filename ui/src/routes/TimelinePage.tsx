@@ -7,7 +7,6 @@ import { nodeStatuses } from '@lib/gamedata/requirements.js';
 import {
   buildTimeline,
   energyCandidates,
-  planEnergy,
   type EnergyCandidate,
   type StatPriority,
   type TimelineBundle,
@@ -19,22 +18,26 @@ import { ItemRow, toggleOpen } from '../components/StepItems.tsx';
 import { plansStore } from '../data/plans.ts';
 import { rankIcon, unitIcon } from '../data/icons.ts';
 import { Icon, useIcons } from '../components/Icon.tsx';
-import { localRank, localRarity, localStepLabel } from '../i18n/game.ts';
-import { t } from '../i18n/locale.ts';
+import { localNumber, localRank, localRarity, localStat, localStepLabel } from '../i18n/game.ts';
+import { t, tn } from '../i18n/locale.ts';
 
 type Mode = 'order' | 'energy';
 
 const ENERGY_KEY = 'tacticus-tools:energy';
 const STAT_KEY = 'tacticus-tools:energyStat';
-
-const STAT_LABEL: Record<StatPriority, string> = {
-  health: 'Health',
-  damage: 'Damage',
-  armour: 'Armour',
-};
+const PLANNED_KEY = 'tacticus-tools:energyPlannedOnly';
+const MODE_KEY = 'tacticus-tools:timelineMode';
 
 export function TimelinePage({ db, player }: { db: GameDatabase; player: PlayerResponse }) {
-  const [mode, setMode] = useState<Mode>('order');
+  // Remembered, because the two views answer different questions and a player
+  // who came here to spend tonight's energy should not have to re-pick it.
+  const [mode, setMode] = useState<Mode>(
+    () => (localStorage.getItem(MODE_KEY) === 'energy' ? 'energy' : 'order'),
+  );
+  const chooseMode = (next: Mode) => {
+    setMode(next);
+    localStorage.setItem(MODE_KEY, next);
+  };
   const [open, setOpen] = useState<ReadonlySet<string>>(() => new Set());
   const toggle = (id: string) => setOpen((current) => toggleOpen(current, id));
 
@@ -89,10 +92,10 @@ export function TimelinePage({ db, player }: { db: GameDatabase; player: PlayerR
           </div>
         </div>
         <div className="tabs" style={{ marginLeft: 'auto' }}>
-          <button className={mode === 'order' ? 'active' : ''} onClick={() => setMode('order')}>
+          <button className={mode === 'order' ? 'active' : ''} onClick={() => chooseMode('order')}>
             {t('timeline.orderOfWork')}
           </button>
-          <button className={mode === 'energy' ? 'active' : ''} onClick={() => setMode('energy')}>
+          <button className={mode === 'energy' ? 'active' : ''} onClick={() => chooseMode('energy')}>
             {t('timeline.spendEnergy')}
           </button>
         </div>
@@ -229,22 +232,50 @@ function SpendEnergy({ db, player }: { db: GameDatabase; player: PlayerResponse 
   const [stat, setStat] = useState<StatPriority | ''>(
     () => (localStorage.getItem(STAT_KEY) as StatPriority | null) ?? '',
   );
+  const [plannedOnly, setPlannedOnly] = useState(
+    () => localStorage.getItem(PLANNED_KEY) === '1',
+  );
 
   const budget = Number(energy) || 0;
+  const plans = plansStore.list();
+  const planned = new Set(plans.map((p) => p.unitId));
 
-  const { picks, rest, energyUsed, gain } = useMemo(() => {
+  /**
+   * Every slot that could be filled, priced on its own.
+   *
+   * Deliberately not a basket. The old view spent the whole budget across
+   * units and reported one combined total, which answers "what could I buy
+   * with all of it" — a question with one answer, decided for you. What a
+   * player standing at a campaign screen actually asks is which single slot to
+   * go and fill, and that needs the alternatives side by side with their own
+   * prices.
+   */
+  const { affordable, beyond, cheapest } = useMemo(() => {
     // Per-unit choices override the page-wide one, so a tank can favour health
     // while the same run tops up someone else's damage.
     const perUnit = new Map<string, StatPriority>();
-    for (const saved of plansStore.list()) {
+    for (const saved of plans) {
       if (saved.priority) perUnit.set(saved.unitId, saved.priority);
     }
-    const candidates = energyCandidates(player.player.units, player, db, {
+    const units = plannedOnly && planned.size > 0
+      ? player.player.units.filter((u) => planned.has(u.id))
+      : player.player.units;
+
+    const all = energyCandidates(units, player, db, {
       ...(stat ? { priority: stat } : {}),
       perUnit,
     });
-    return planEnergy(candidates, budget);
-  }, [player, db, stat, budget]);
+    return {
+      affordable: all.filter((c) => c.energy <= budget),
+      // Nearest misses first, because the list below is cut short and what is
+      // worth seeing above the budget is what a little more energy would reach.
+      beyond: all.filter((c) => c.energy > budget).sort((a, b) => a.energy - b.energy),
+      cheapest: all.reduce<number | undefined>(
+        (min, c) => (min === undefined ? c.energy : Math.min(min, c.energy)),
+        undefined,
+      ),
+    };
+  }, [player, db, stat, budget, plannedOnly, plans.length]);
 
   return (
     <section className="panel">
@@ -259,7 +290,7 @@ function SpendEnergy({ db, player }: { db: GameDatabase; player: PlayerResponse 
               setEnergy(e.target.value);
               localStorage.setItem(ENERGY_KEY, e.target.value);
             }}
-            style={{ width: 90 }}
+            style={{ width: 100 }}
           />
         </label>
         <label className="inline-field">
@@ -278,32 +309,113 @@ function SpendEnergy({ db, player }: { db: GameDatabase; player: PlayerResponse 
             <option value="armour">{t('common.armour')}</option>
           </select>
         </label>
-        <span style={{ flex: 1 }} />
-        <span className="chip">
-          {energyUsed.toFixed(0)} of {budget}⚡ · +{gain} {stat ? STAT_LABEL[stat] : 'total'}
-        </span>
+        <div className="tabs">
+          <button
+            className={plannedOnly ? '' : 'active'}
+            onClick={() => {
+              setPlannedOnly(false);
+              localStorage.setItem(PLANNED_KEY, '0');
+            }}
+          >
+            {t('spend.allUnits')}
+          </button>
+          <button
+            className={plannedOnly ? 'active' : ''}
+            onClick={() => {
+              setPlannedOnly(true);
+              localStorage.setItem(PLANNED_KEY, '1');
+            }}
+          >
+            {t('spend.onlyPlans')}
+          </button>
+        </div>
       </div>
 
       <p className="small muted" style={{ marginTop: 0 }}>
-        {t('timeline.spendBlurb')} Your energy is not in the API; type it above.
+        {t('spend.blurb')} {t('spend.energyNote')}
       </p>
-
-      {picks.length === 0 ? (
-        <div className="empty">
-          {t('timeline.nothingFits', { n: budget })}
-          {rest[0] && t('timeline.cheapestRun', { n: rest[0].energy.toFixed(0) })}
-        </div>
-      ) : (
-        <CandidateTable rows={picks} db={db} player={player} affordable />
+      {plannedOnly && planned.size === 0 && (
+        <div className="notice">{t('spend.noPlans')}</div>
       )}
 
-      {rest.length > 0 && (
+      {/* The verb agrees with the number in Portuguese, so one budget buys and
+          several buy. */}
+      <h3>{tn(budget, 'spend.afford', 'spend.affordPlural', { n: localNumber(budget) })}</h3>
+      {affordable.length === 0 ? (
+        <div className="empty">
+          {t('spend.affordNone', {
+            n: localNumber(budget),
+            cheapest: cheapest === undefined ? '—' : localNumber(Math.round(cheapest)),
+          })}
+        </div>
+      ) : (
+        <ByUnit rows={affordable} db={db} player={player} affordable />
+      )}
+
+      {beyond.length > 0 && (
         <>
-          <h3 style={{ marginTop: 20 }}>{t('timeline.beyondBudget')}</h3>
-          <CandidateTable rows={rest.slice(0, 12)} db={db} player={player} affordable={false} />
+          <h3 style={{ marginTop: 20 }}>{t('spend.beyond')}</h3>
+          <ByUnit rows={beyond.slice(0, 12)} db={db} player={player} affordable={false} />
         </>
       )}
     </section>
+  );
+}
+
+/**
+ * Affordable slots, gathered under the unit they belong to.
+ *
+ * Grouping is what makes these read as alternatives rather than a queue: three
+ * rows under one name are three ways to spend the same energy on the same
+ * character, and only one of them is going to happen tonight.
+ */
+function ByUnit({
+  rows,
+  db,
+  player,
+  affordable,
+}: {
+  rows: EnergyCandidate[];
+  db: GameDatabase;
+  player: PlayerResponse;
+  affordable: boolean;
+}) {
+  const groups = useMemo(() => {
+    const map = new Map<string, EnergyCandidate[]>();
+    for (const row of rows) {
+      const list = map.get(row.unitId);
+      if (list) list.push(row);
+      else map.set(row.unitId, [row]);
+    }
+    // Cheapest first inside a unit. These are alternatives — one of them
+    // happens tonight — so the question is what the budget reaches, and value
+    // for money only breaks the tie between two slots at the same price.
+    for (const list of map.values()) list.sort((a, b) => a.energy - b.energy || b.ratio - a.ratio);
+    // Units whose best option is cheapest first, so the top of the page is the
+    // thing most likely to be done.
+    return [...map.entries()].sort(
+      (a, b) =>
+        Math.min(...a[1].map((c) => c.energy)) - Math.min(...b[1].map((c) => c.energy)),
+    );
+  }, [rows]);
+
+  return (
+    <>
+      {groups.map(([unitId, candidates]) => (
+        <div className="step-block" key={unitId}>
+          <div className="step-block-head">
+            <Icon src={unitIcon(unitId)} size={26} className="portrait" reserve />
+            <Link to={`/units/${encodeURIComponent(unitId)}`}>{candidates[0]?.unitName}</Link>
+            <span className="muted small">
+              {affordable
+                ? tn(candidates.length, 'spend.unitAffordable', 'spend.unitAffordablePlural')
+                : tn(candidates.length, 'spend.unitBeyond', 'spend.unitBeyondPlural')}
+            </span>
+          </div>
+          <CandidateTable rows={candidates} db={db} player={player} affordable={affordable} />
+        </div>
+      ))}
+    </>
   );
 }
 
@@ -332,27 +444,24 @@ function CandidateTable({
               aria-expanded={isOpen}
             >
               <span className="chevron">{isOpen ? '▾' : '▸'}</span>
-              <span className="count">{row.energy.toFixed(0)}⚡</span>
-              <span className="item-name">
-                <Link
-                  to={`/units/${encodeURIComponent(row.unitId)}`}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {row.unitName}
-                </Link>
-                <span className="muted"> · {row.itemName}</span>
+              <span className="count">{t('spend.cost', { n: localNumber(Math.round(row.energy)) })}</span>
+              {/* The slot leads, because that is what the player has to find on
+                  the character screen; the material is how they get it. Kept
+                  out of `.item-name`, which is where game-English lives. */}
+              <span className="slot-pos">
+                {t('si.slotPos', { rank: localRank(row.rank), n: row.slotIndex + 1 })}
+              </span>
+              <span className="item-name muted">
+                {t('spend.copies', { n: row.copies, item: row.itemName })}
                 {row.rarity !== undefined && (
-                  <span className="muted small"> · {localRarity(row.rarity)}</span>
+                  <span className="small"> · {localRarity(row.rarity)}</span>
                 )}
               </span>
               <span className="chip ok-chip">
-                +{row.gain} {STAT_LABEL[row.stat].toLowerCase()}
+                {t('spend.gain', { n: row.gain, stat: localStat(row.statType) })}
               </span>
               <span className="muted small">
-                {t('timeline.copiesAt', {
-                  n: row.copies,
-                  node: `${row.energyPerCopy.toFixed(1)}⚡`,
-                })}
+                {t('spend.each', { n: row.energyPerCopy.toFixed(1) })}
               </span>
             </button>
             {isOpen && (
@@ -384,15 +493,17 @@ function CandidateTable({
                                 <span className="muted">{t('timeline.noneLeftToday')}</span>
                               )
                             ) : (
-                              <span className="muted">locked</span>
+                              <span className="muted">{t('si.locked')}</span>
                             )}
                           </td>
                           <td className="muted">
-                            {node.energyCost !== undefined ? `${node.energyCost}⚡/run` : ''}
+                            {node.energyCost !== undefined
+                              ? `${node.energyCost}⚡ ${t('si.perRun')}`
+                              : ''}
                           </td>
                           <td className="muted">
                             {node.energyPerDrop !== undefined
-                              ? `${node.energyPerDrop.toFixed(1)}⚡ each`
+                              ? `${node.energyPerDrop.toFixed(1)}⚡ ${t('si.each')}`
                               : ''}
                           </td>
                         </tr>
@@ -403,7 +514,6 @@ function CandidateTable({
                 {row.nodes.length === 0 && (
                   <p className="muted small" style={{ margin: 0 }}>
                     {t('timeline.craftedNote')}
-                    open nodes.
                   </p>
                 )}
               </div>
