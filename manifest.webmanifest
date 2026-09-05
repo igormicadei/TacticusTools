@@ -1,0 +1,37 @@
+{
+  "name": "Tacticus Tools",
+  "short_name": "Tacticus",
+  "description": "Roster, plans, teams and upgrades for Warhammer 40,000: Tacticus.",
+  "lang": "pt-BR",
+  "dir": "ltr",
+  "start_url": "/TacticusTools/",
+  "scope": "/TacticusTools/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0a1220",
+  "theme_color": "#0a1220",
+  "categories": [
+    "games",
+    "utilities"
+  ],
+  "icons": [
+    {
+      "src": "/TacticusTools/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/TacticusTools/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/TacticusTools/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
