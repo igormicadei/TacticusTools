@@ -10,6 +10,7 @@ import {
   type Credentials,
 } from '../data/player.ts';
 
+import { CopyResponseDialog } from '../components/CopyResponseDialog.tsx';
 import { localDateTime } from '../i18n/game.ts';
 import { setLang, t, useLang } from '../i18n/locale.ts';
 
@@ -55,24 +56,22 @@ export function PlayerDataPage({
   const [text, setText] = useState('');
   const [showPaste, setShowPaste] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [toCopy, setToCopy] = useState<string>();
 
   /**
-   * The API's reply, verbatim, on the clipboard.
+   * Fetch the reply, then ask which of it to take.
    *
    * A fresh call rather than the stored roster: what is kept here has been
    * through the app's own parse, and the point of this button is to hand
-   * somebody else exactly what the game sent.
+   * somebody else what the game sent.
    */
-  const copyResponse = useCallback(
+  const openCopyDialog = useCallback(
     async (credentials: Credentials) => {
       setBusy(true);
       setError(undefined);
       setCopied(false);
       try {
-        const raw = await fetchPlayerText(credentials);
-        await navigator.clipboard.writeText(raw);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
+        setToCopy(await fetchPlayerText(credentials));
       } catch (e) {
         setError(copyFailure(e));
       } finally {
@@ -81,6 +80,17 @@ export function PlayerDataPage({
     },
     [],
   );
+
+  const copyText = useCallback(async (text: string) => {
+    setToCopy(undefined);
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (e) {
+      setError(copyFailure(e));
+    }
+  }, []);
 
   const refresh = useCallback(
     async (credentials: Credentials) => {
@@ -151,6 +161,12 @@ export function PlayerDataPage({
 
       {error && <div className="notice error">{error}</div>}
 
+      <CopyResponseDialog
+        response={toCopy}
+        onCopy={(text) => void copyText(text)}
+        onClose={() => setToCopy(undefined)}
+      />
+
       <div className="panels">
         <section className="panel">
           <h3>{t('lang.heading')}</h3>
@@ -208,7 +224,7 @@ export function PlayerDataPage({
             </button>
             <button
               disabled={busy || !apiKey.trim()}
-              onClick={() => void copyResponse({ apiKey, relayUrl })}
+              onClick={() => void openCopyDialog({ apiKey, relayUrl })}
               title={t('pd.copyResponseHint')}
             >
               {copied ? t('pd.copied') : t('pd.copyResponse')}

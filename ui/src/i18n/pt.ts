@@ -405,6 +405,16 @@ export const PT: Record<keyof typeof EN, string> = {
   'pd.refreshRoster': 'Atualizar tropa',
   'pd.fetching': 'Buscando…',
   'pd.copyResponse': 'Copiar resposta da API',
+  'pd.copyWhat': 'O que copiar',
+  'pd.copyWhatBlurb':
+    'Desmarque um ramo para deixá-lo de fora. Só estruturas — ramos inteiros, não os campos dentro deles — e um ramo pequeno o bastante para que suas chaves sejam campos, e não estruturas, não é aberto. Levar tudo copia a resposta exatamente como veio; levar uma parte é remontado, então a formatação é desta página, não da API.',
+  'pd.selectAll': 'Tudo',
+  'pd.selectNone': 'Nada',
+  'pd.selectedBytes': '{selected} de {total} bytes',
+  'pd.copySelection': 'Copiar seleção',
+  'pd.nItems': '{n} itens',
+  'pd.nKeys': '{n} chaves',
+  'pd.nBytes': '{n} bytes',
   'pd.copyResponseHint':
     'Chama a API e coloca a resposta na área de transferência, exatamente como veio. Nada é exibido nem salvo.',
   'pd.clipboardBlocked':

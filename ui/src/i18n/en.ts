@@ -411,6 +411,16 @@ export const EN = {
   'pd.refreshRoster': 'Refresh roster',
   'pd.fetching': 'Fetching…',
   'pd.copyResponse': 'Copy API response',
+  'pd.copyWhat': 'What to copy',
+  'pd.copyWhatBlurb':
+    'Untick a branch to leave it out. Structures only — whole branches, not the fields inside them — and a branch small enough that its keys are fields rather than structures is not split up. Taking all of it copies the reply exactly as it came back; taking part of it is rebuilt, so the formatting is this page’s rather than the API’s.',
+  'pd.selectAll': 'All',
+  'pd.selectNone': 'None',
+  'pd.selectedBytes': '{selected} of {total} bytes',
+  'pd.copySelection': 'Copy selection',
+  'pd.nItems': '{n} items',
+  'pd.nKeys': '{n} keys',
+  'pd.nBytes': '{n} bytes',
   'pd.copyResponseHint':
     'Calls the API and puts its reply on the clipboard, exactly as it came back. Nothing is shown or saved.',
   'pd.clipboardBlocked':
