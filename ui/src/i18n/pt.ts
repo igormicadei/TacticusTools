@@ -404,6 +404,11 @@ export const PT: Record<keyof typeof EN, string> = {
   'pd.fetchRoster': 'Buscar tropa',
   'pd.refreshRoster': 'Atualizar tropa',
   'pd.fetching': 'Buscando…',
+  'pd.copyResponse': 'Copiar resposta da API',
+  'pd.copyResponseHint':
+    'Chama a API e coloca a resposta na área de transferência, exatamente como veio. Nada é exibido nem salvo.',
+  'pd.clipboardBlocked':
+    'O navegador não deixou a página escrever na área de transferência. A maioria recusa se a página não estiver em foco e servida por HTTPS.',
   'pd.forgetKey': 'Esquecer chave',
   'pd.importBlurb': 'Sem relay? Busque a tropa você mesmo e carregue o JSON aqui.',
   'pd.chooseFile': 'Escolher arquivo…',

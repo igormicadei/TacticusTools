@@ -4,6 +4,7 @@ import {
   InvalidPlayerDataError,
   PlayerFetchError,
   fetchPlayer,
+  fetchPlayerText,
   parsePlayerResponse,
   storage,
   type Credentials,
@@ -14,6 +15,21 @@ import { setLang, t, useLang } from '../i18n/locale.ts';
 
 import type { GameDatabase } from '@lib/gamedata/types.js';
 import type { PlayerResponse } from '@lib/types/player.js';
+
+/**
+ * Why the copy did not happen.
+ *
+ * A clipboard the browser refused is not a failed request, and reporting it as
+ * one would send the reader after the wrong problem — most browsers refuse
+ * unless the page is focused and on HTTPS.
+ */
+function copyFailure(error: unknown): string {
+  if (error instanceof PlayerFetchError) return error.message;
+  if (error instanceof Error && error.name === 'NotAllowedError') {
+    return t('pd.clipboardBlocked');
+  }
+  return String(error);
+}
 
 export function PlayerDataPage({
   db,
@@ -38,6 +54,33 @@ export function PlayerDataPage({
   const [error, setError] = useState<string>();
   const [text, setText] = useState('');
   const [showPaste, setShowPaste] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  /**
+   * The API's reply, verbatim, on the clipboard.
+   *
+   * A fresh call rather than the stored roster: what is kept here has been
+   * through the app's own parse, and the point of this button is to hand
+   * somebody else exactly what the game sent.
+   */
+  const copyResponse = useCallback(
+    async (credentials: Credentials) => {
+      setBusy(true);
+      setError(undefined);
+      setCopied(false);
+      try {
+        const raw = await fetchPlayerText(credentials);
+        await navigator.clipboard.writeText(raw);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } catch (e) {
+        setError(copyFailure(e));
+      } finally {
+        setBusy(false);
+      }
+    },
+    [],
+  );
 
   const refresh = useCallback(
     async (credentials: Credentials) => {
@@ -162,6 +205,13 @@ export function PlayerDataPage({
                 : player
                   ? t('pd.refreshRoster')
                   : t('pd.fetchRoster')}
+            </button>
+            <button
+              disabled={busy || !apiKey.trim()}
+              onClick={() => void copyResponse({ apiKey, relayUrl })}
+              title={t('pd.copyResponseHint')}
+            >
+              {copied ? t('pd.copied') : t('pd.copyResponse')}
             </button>
             <button
               disabled={busy}

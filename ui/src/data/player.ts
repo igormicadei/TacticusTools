@@ -211,14 +211,19 @@ async function relayAnsweredWithoutCors(base: string): Promise<boolean> {
 }
 
 /**
- * Fetch the roster using the stored key.
+ * Fetch the roster using the stored key, and hand back the reply as it came.
  *
  * With no relay configured this calls the API directly, which a browser will
  * block; the failure is reported with the reason rather than a bare network
  * error. It is still attempted so the app starts working on its own if the API
  * ever begins sending CORS headers.
+ *
+ * Text rather than a parsed object, because one caller wants the response
+ * verbatim — the bytes the API sent, to hand to something else — and parsing
+ * it only to print it again would quietly reformat and reorder what it
+ * promised to reproduce.
  */
-export async function fetchPlayer(credentials: Credentials): Promise<PlayerResponse> {
+export async function fetchPlayerText(credentials: Credentials): Promise<string> {
   const apiKey = credentials.apiKey?.trim();
   if (!apiKey) throw new PlayerFetchError(t('err.noApiKey'));
 
@@ -248,9 +253,10 @@ export async function fetchPlayer(credentials: Credentials): Promise<PlayerRespo
   }
 
   if (!response.ok) {
-    const body = (await response.json().catch(() => undefined)) as
-      | { type?: string; detail?: string }
-      | undefined;
+    const body = (await response
+      .text()
+      .then((text) => JSON.parse(text) as unknown)
+      .catch(() => undefined)) as { type?: string; detail?: string } | undefined;
 
     // The relay explains its own refusals; pass that through rather than
     // reporting a generic failure the user cannot act on.
@@ -283,5 +289,10 @@ export async function fetchPlayer(credentials: Credentials): Promise<PlayerRespo
     );
   }
 
-  return assertPlayerResponse(await response.json());
+  return response.text();
+}
+
+/** {@link fetchPlayerText}, parsed and checked for the shape the app needs. */
+export async function fetchPlayer(credentials: Credentials): Promise<PlayerResponse> {
+  return parsePlayerResponse(await fetchPlayerText(credentials));
 }

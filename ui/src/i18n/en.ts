@@ -410,6 +410,11 @@ export const EN = {
   'pd.fetchRoster': 'Fetch roster',
   'pd.refreshRoster': 'Refresh roster',
   'pd.fetching': 'Fetching…',
+  'pd.copyResponse': 'Copy API response',
+  'pd.copyResponseHint':
+    'Calls the API and puts its reply on the clipboard, exactly as it came back. Nothing is shown or saved.',
+  'pd.clipboardBlocked':
+    'The browser would not let the page write to the clipboard. Most refuse unless the page is focused and served over HTTPS.',
   'pd.forgetKey': 'Forget key',
   'pd.importBlurb': 'No relay? Fetch the roster yourself and load the JSON here.',
   'pd.chooseFile': 'Choose file…',
