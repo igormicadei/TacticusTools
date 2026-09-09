@@ -23,7 +23,7 @@ import {
   type Rank,
 } from './enums.js';
 import { computeUnitStats, type ComputedUnitStats } from './stats.js';
-import { unitCombat, type AttackProfile, type UnitCombat } from './combat.js';
+import { bestDamageThrough, unitCombat, type AttackProfile, type UnitCombat } from './combat.js';
 import { levelToCompleteRank } from './plan.js';
 import type { UnitId } from './ids.js';
 import type {
@@ -1282,16 +1282,7 @@ export class BattleBrief {
   }
 
   private through(attacks: readonly AttackProfile[]): number {
-    const armour = this.meanEnemyArmour;
-    let best = 0;
-    for (const attack of attacks) {
-      const perHit = Math.max(
-        attack.perHit.mid - armour,
-        attack.perHit.mid * (attack.pierceRatio ?? 0),
-      );
-      best = Math.max(best, Math.max(0, perHit) * attack.hits);
-    }
-    return best;
+    return bestDamageThrough(attacks, this.meanEnemyArmour);
   }
 
   /** Every node in the database, as briefs, for a picker. */

@@ -328,6 +328,31 @@ export interface UnitCombat {
   critChain?: { chance: number; perAttack: number[] };
 }
 
+/**
+ * What one attack lands against a given armour.
+ *
+ * The game subtracts armour from every hit and then floors the result at the
+ * part the attack's pierce guarantees, so a Psychic weapon keeps its whole
+ * output against a wall that blunts a bigger Physical one. Multiplied by the
+ * hit count, since armour is charged per hit rather than per swing — which is
+ * why a four-hit weapon suffers far more from armour than its raw damage
+ * suggests.
+ *
+ * Exported because more than one caller needs it and two copies of an armour
+ * formula is one copy too many.
+ */
+export function damageThrough(attack: AttackProfile, armour: number): number {
+  const perHit = Math.max(attack.perHit.mid - armour, attack.perHit.mid * (attack.pierceRatio ?? 0));
+  return Math.max(0, perHit) * attack.hits;
+}
+
+/** The best of a set of attacks against one armour value. */
+export function bestDamageThrough(attacks: readonly AttackProfile[], armour: number): number {
+  let best = 0;
+  for (const attack of attacks) best = Math.max(best, damageThrough(attack, armour));
+  return best;
+}
+
 /** Strip the client's icon markup, keeping the words. */
 export function plainText(markup: string | undefined): string | undefined {
   if (markup === undefined) return undefined;

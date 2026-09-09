@@ -33,7 +33,10 @@
     "validate:teams": "node test/validate-teams.mjs",
     "validate:timeline": "node test/validate-timeline.mjs",
     "validate:combat": "node test/validate-combat.mjs",
-    "relay": "node relay/local-relay.mjs"
+    "relay": "node relay/local-relay.mjs",
+    "mcp:build": "npm --prefix mcp run build",
+    "mcp:test": "npm --prefix mcp test",
+    "mcp:start": "npm --prefix mcp start"
   },
   "engines": {
     "node": ">=18"

@@ -836,6 +836,25 @@ dense. Depth comes from surface-tone steps, not from shadow.
 To re-sync from the upstream project, or to fetch its component sources, use the
 `DesignSync` tool against project `1e6536db-a74e-448e-84f0-f687745ec253`.
 
+## MCP server
+
+`mcp/` is an MCP server over the same library, for an assistant that is not a
+browser: it reads the game database, the stored roster and every calculation
+here, writes plans and teams, and refreshes the roster from the API. It calls
+into `dist/gamedata` rather than reimplementing anything, so a figure it
+reports and the figure on the matching screen are the same arithmetic.
+
+```bash
+npm run mcp:build      # after the root `npm run build`
+npm run mcp:test       # spawns it over stdio and exercises all 29 tools
+```
+
+It keeps its own `~/.tacticus-tools` store, because the app's roster, plans and
+teams live in `localStorage` where no process outside that browser can read
+them; the files use the app's shapes, so what is written on one side loads on
+the other. See [`mcp/README.md`](mcp/README.md) for the tool list and the
+environment it reads.
+
 ## Shelved ideas
 
 Investigations that concluded "not worth building" are written up in `docs/`, so
