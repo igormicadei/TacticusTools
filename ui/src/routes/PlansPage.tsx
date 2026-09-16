@@ -11,12 +11,12 @@ import type { PlayerResponse } from '@lib/types/player.js';
 
 import { humaniseFaction } from '../data/roster.ts';
 import { plansStore, type StoredPlan } from '../data/plans.ts';
-import { unitIcon } from '../data/icons.ts';
+import { uiIcon, unitIcon } from '../data/icons.ts';
 import { Icon, useIcons } from '../components/Icon.tsx';
 import { ItemTargetsEditor, ItemTargetsSummary } from '../components/ItemTargets.tsx';
 import { localAlliance, localRank, localRarity } from '../i18n/game.ts';
 import { PlanCost } from '../components/PlanCost.tsx';
-import { ProjectedStats } from '../components/ProjectedStats.tsx';
+import { StatCard, type StatCardRow } from '../components/StatCard.tsx';
 import { t, tn } from '../i18n/locale.ts';
 
 type GroupMode = 'none' | 'faction' | 'alliance' | 'status';
@@ -290,33 +290,35 @@ export function PlansPage({ db, player }: { db: GameDatabase; player: PlayerResp
                           are resolved — two different numbers for one fact. */}
                       {summary && <PlanCost cost={summary.cost} />}
                     </div>
-                    <div className="meta">
-                      <ProjectedStats
-                        from={projections.get(stored.id)?.from}
-                        to={projections.get(stored.id)?.to}
-                        compact
-                      />
-                      {plan.blocked && <span className="chip">{t('common.blocked')}</span>}
-                    </div>
+                    {plan.blocked && (
+                      <div className="meta">
+                        <span className="chip">{t('common.blocked')}</span>
+                      </div>
+                    )}
                     {stored.itemTargets && stored.itemTargets.length > 0 && (
                       <div className="meta">
                         <ItemTargetsSummary db={db} player={player} unit={unit} targets={stored.itemTargets} compact />
                       </div>
                     )}
                   </Link>
-                  <div className="row" style={{ marginTop: 10 }}>
-                    <button
-                      className="small"
-                      onClick={() => {
-                        setCreating(false);
-                        setEditing((current) => (current === stored.id ? undefined : stored.id));
-                      }}
-                    >
-                      {editing === stored.id ? t('common.cancel') : t('common.edit')}
-                    </button>
-                    <button className="danger small" onClick={() => remove(stored.id)}>
-                      {t('common.delete')}
-                    </button>
+                  <div className="row" style={{ marginTop: 10, alignItems: 'stretch' }}>
+                    <div style={{ flex: 1 }}>
+                      <StatCard rows={statCardRows(projections.get(stored.id)?.from, projections.get(stored.id)?.to)} />
+                    </div>
+                    <div className="row" style={{ flexDirection: 'column', gap: 6 }}>
+                      <button
+                        className="small"
+                        onClick={() => {
+                          setCreating(false);
+                          setEditing((current) => (current === stored.id ? undefined : stored.id));
+                        }}
+                      >
+                        {editing === stored.id ? t('common.cancel') : t('common.edit')}
+                      </button>
+                      <button className="danger small" onClick={() => remove(stored.id)}>
+                        {t('common.delete')}
+                      </button>
+                    </div>
                   </div>
                   {editing === stored.id && (
                     <PlanForm
@@ -338,6 +340,19 @@ export function PlansPage({ db, player }: { db: GameDatabase; player: PlayerResp
       ))}
     </>
   );
+}
+
+/** The three headline stats, as a projection when both ends are known. */
+function statCardRows(
+  from: ComputedUnitStats | undefined,
+  to: ComputedUnitStats | undefined,
+): StatCardRow[] {
+  if (!from || !to) return [];
+  return [
+    { key: 'hp', icon: uiIcon('health'), label: t('stat.hp'), value: to.health, from: from.health },
+    { key: 'dmg', icon: uiIcon('damage'), label: t('stat.dmg'), value: to.damage, from: from.damage },
+    { key: 'armour', icon: uiIcon('armour'), label: t('stat.armour'), value: to.armour, from: from.armour },
+  ];
 }
 
 export function describeTarget(

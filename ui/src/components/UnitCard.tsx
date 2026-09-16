@@ -1,10 +1,14 @@
 import { Link } from 'react-router-dom';
 
-import { factionIcon, rankIcon, starIcon, unitIcon } from '../data/icons.ts';
+import { computeUnitStats } from '@lib/gamedata/stats.js';
+import type { GameDatabase } from '@lib/gamedata/types.js';
+
+import { factionIcon, rankIcon, starIcon, uiIcon, unitIcon } from '../data/icons.ts';
 import { humaniseFaction, type RosterEntry } from '../data/roster.ts';
 import { localRarity } from '../i18n/game.ts';
 import { t } from '../i18n/locale.ts';
 import { Icon, useIcons } from './Icon.tsx';
+import { StatCard, type StatCardRow } from './StatCard.tsx';
 
 const STATUS_COLOR: Record<RosterEntry['status'], string> = {
   owned: 'var(--status-owned)',
@@ -26,10 +30,18 @@ function Stars({ count }: { count: number }) {
   );
 }
 
-export function UnitCard({ entry }: { entry: RosterEntry }) {
+export function UnitCard({ entry, db }: { entry: RosterEntry; db: GameDatabase }) {
   useIcons();
   const { unit, definition } = entry;
   const factionId = definition?.factionId ?? entry.factionId;
+  const stats = unit ? computeUnitStats(unit, db) : undefined;
+  const statRows: StatCardRow[] = stats
+    ? [
+        { key: 'hp', icon: uiIcon('health'), label: t('stat.hp'), value: stats.health },
+        { key: 'dmg', icon: uiIcon('damage'), label: t('stat.dmg'), value: stats.damage },
+        { key: 'armour', icon: uiIcon('armour'), label: t('stat.armour'), value: stats.armour },
+      ]
+    : [];
   const style = {
     '--status': STATUS_COLOR[entry.status],
     '--rarity': `var(--rarity-${entry.rarity ?? 0})`,
@@ -75,6 +87,12 @@ export function UnitCard({ entry }: { entry: RosterEntry }) {
       {entry.starLevel !== undefined && entry.starLevel > 0 && (
         <div style={{ marginTop: 6 }}>
           <Stars count={entry.starLevel} />
+        </div>
+      )}
+
+      {statRows.length > 0 && (
+        <div style={{ marginTop: 10 }}>
+          <StatCard rows={statRows} />
         </div>
       )}
     </Link>

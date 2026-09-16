@@ -91,7 +91,7 @@ export function UnitsPage({ db, player }: { db: GameDatabase; player: PlayerResp
           </div>
           <div className="grid">
             {group.entries.map((entry) => (
-              <UnitCard entry={entry} key={entry.id} />
+              <UnitCard entry={entry} db={db} key={entry.id} />
             ))}
           </div>
         </section>
