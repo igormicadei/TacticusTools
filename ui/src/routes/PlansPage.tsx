@@ -15,6 +15,7 @@ import { uiIcon, unitIcon } from '../data/icons.ts';
 import { Icon, useIcons } from '../components/Icon.tsx';
 import { ItemTargetsEditor, ItemTargetsSummary } from '../components/ItemTargets.tsx';
 import { localAlliance, localRank, localRarity } from '../i18n/game.ts';
+import { NextStep } from '../components/NextStep.tsx';
 import { PlanCost } from '../components/PlanCost.tsx';
 import { StatCard, type StatCardRow } from '../components/StatCard.tsx';
 import { t, tn } from '../i18n/locale.ts';
@@ -301,6 +302,7 @@ export function PlansPage({ db, player }: { db: GameDatabase; player: PlayerResp
                       </div>
                     )}
                   </Link>
+                  <NextStep unit={unit} plan={plan} db={db} player={player} />
                   <div className="row" style={{ marginTop: 10, alignItems: 'stretch' }}>
                     <div style={{ flex: 1 }}>
                       <StatCard rows={statCardRows(projections.get(stored.id)?.from, projections.get(stored.id)?.to)} />
