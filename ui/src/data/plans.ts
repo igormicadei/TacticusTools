@@ -57,7 +57,13 @@ function readAll(): StoredPlan[] {
   if (!raw) return [];
   try {
     const parsed = JSON.parse(raw) as unknown;
-    return Array.isArray(parsed) ? (parsed as StoredPlan[]) : [];
+    if (!Array.isArray(parsed)) return [];
+    // `id` was once a random id of its own, from before a unit could have
+    // only one plan. `unitId` was always the authority on whose plan this is,
+    // so trusting it here — rather than whatever `id` happened to be saved
+    // as — makes an entry from that era resolve correctly without a
+    // migration step: the very next read already agrees with `save()`.
+    return (parsed as StoredPlan[]).map((p) => ({ ...p, id: p.unitId }));
   } catch {
     // A corrupt entry reads as "no plans" rather than breaking the page.
     localStorage.removeItem(STORAGE_KEY);
