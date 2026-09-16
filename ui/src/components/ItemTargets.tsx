@@ -1,12 +1,12 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
 import { parseRarity, type Rarity } from '@lib/gamedata/enums.js';
 import { itemOptionsForSlot } from '@lib/gamedata/items.js';
 import { projectedItemStats, resolveItemTarget, type ItemPlan, type ItemTarget } from '@lib/gamedata/itemPlan.js';
 import { computeUnitStats, type ComputedUnitStats } from '@lib/gamedata/stats.js';
-import type { GameDatabase, UnitDefinition } from '@lib/gamedata/types.js';
+import type { GameDatabase, ItemDefinition, UnitDefinition } from '@lib/gamedata/types.js';
 import { UNIT_ITEM_SLOTS } from '@lib/types/player.js';
-import type { PlayerResponse, Unit, UnitItemSlot } from '@lib/types/player.js';
+import type { PlayerResponse, Unit, UnitItem, UnitItemSlot } from '@lib/types/player.js';
 
 import { requirementIcon } from '../data/icons.ts';
 import { Icon, useIcons } from './Icon.tsx';
@@ -64,19 +64,9 @@ export function ItemTargetsEditor({
   useIcons();
   if (!unitDef || unitDef.itemSlots.length === 0) return null;
 
-  const set = (slotId: UnitItemSlot, patch: Partial<ItemTarget> | undefined) => {
+  const set = (slotId: UnitItemSlot, patch: { itemId: string; level: number } | undefined) => {
     const rest = value.filter((v) => v.slotId !== slotId);
-    if (!patch) {
-      onChange(rest);
-      return;
-    }
-    const existing = targetFor(value, slotId);
-    const itemId = patch.itemId ?? existing?.itemId ?? '';
-    if (!itemId) {
-      onChange(rest);
-      return;
-    }
-    onChange([...rest, { slotId, itemId, level: patch.level ?? existing?.level ?? 1 }]);
+    onChange(patch ? [...rest, { slotId, ...patch }] : rest);
   };
 
   return (
@@ -84,50 +74,20 @@ export function ItemTargetsEditor({
       {unitDef.itemSlots.map((itemType, index) => {
         const slotId = UNIT_ITEM_SLOTS[index];
         if (!slotId) return null;
-        const options = itemOptionsForSlot(unitDef, slotId, db);
-        const current = targetFor(value, slotId);
-        const worn = unit?.items.find((i) => i.slotId === slotId);
-        const chosenDef = current ? db.items[current.itemId] : undefined;
-        const cap = chosenDef?.levels.length ?? 1;
-
         return (
-          <div className="form-grid" key={slotId} style={{ marginBottom: 8 }}>
-            <label>
-              <span>
-                {slotCategoryLabel(itemType)}
-                {worn && (
-                  <span className="muted small"> · {t('itemplan.currently', { item: worn.name ?? worn.id, level: worn.level })}</span>
-                )}
-              </span>
-              <select
-                value={current?.itemId ?? ''}
-                onChange={(e) => set(slotId, e.target.value ? { itemId: e.target.value, level: 1 } : undefined)}
-              >
-                <option value="">{t('itemplan.noTarget')}</option>
-                {options.map((opt) => (
-                  <option value={opt.id} key={opt.id}>
-                    {opt.name}
-                    {opt.rarity !== undefined ? ` · ${localRarity(opt.rarity)}` : ''}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {current && (
-              <label>
-                <span>{t('common.level')}</span>
-                <select
-                  value={current.level}
-                  onChange={(e) => set(slotId, { level: Number(e.target.value) })}
-                >
-                  {Array.from({ length: cap }, (_, i) => i + 1).map((n) => (
-                    <option value={n} key={n}>
-                      {n}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
-          </div>
+          // Keyed on the unit too: switching units must start each slot's
+          // rarity/level filter fresh rather than carry over a choice that
+          // may no longer mean anything for the new unit's slots.
+          <ItemSlotEditor
+            key={`${unitDef.id}:${slotId}`}
+            db={db}
+            unitDef={unitDef}
+            slotId={slotId}
+            itemType={itemType}
+            worn={unit?.items.find((i) => i.slotId === slotId)}
+            current={targetFor(value, slotId)}
+            onChange={(patch) => set(slotId, patch)}
+          />
         );
       })}
 
@@ -135,6 +95,160 @@ export function ItemTargetsEditor({
         <ItemTargetsSummary db={db} player={player} unit={unit} targets={value} />
       )}
     </div>
+  );
+}
+
+/**
+ * One slot's target, chosen by narrowing rather than searching: rarity first,
+ * then the level that rarity is being planned to, then a button per item that
+ * qualifies — which is usually one, since the game standardises how many
+ * levels a rarity carries, but Mythic's ascension branches can leave more than
+ * one candidate at the same rarity and level.
+ *
+ * The button already shows what picking it grants at the chosen level, since
+ * that is exactly the number the rarity+level choice fixed — no need to pick
+ * an item first to find out.
+ */
+function ItemSlotEditor({
+  db,
+  unitDef,
+  slotId,
+  itemType,
+  worn,
+  current,
+  onChange,
+}: {
+  db: GameDatabase;
+  unitDef: UnitDefinition;
+  slotId: UnitItemSlot;
+  itemType: string;
+  worn: UnitItem | undefined;
+  current: ItemTarget | undefined;
+  onChange: (patch: { itemId: string; level: number } | undefined) => void;
+}) {
+  const options = useMemo(
+    () => itemOptionsForSlot(unitDef, slotId, db),
+    [unitDef, slotId, db],
+  );
+  const currentDef = current ? db.items[current.itemId] : undefined;
+
+  const [rarity, setRarity] = useState<Rarity | ''>(currentDef?.rarity ?? '');
+  const [level, setLevel] = useState<number | ''>(current?.level ?? '');
+
+  const rarities = useMemo(() => {
+    const set = new Set<Rarity>();
+    for (const opt of options) if (opt.rarity !== undefined) set.add(opt.rarity);
+    return [...set].sort((a, b) => a - b);
+  }, [options]);
+
+  const atRarity = useMemo(
+    () => (rarity === '' ? [] : options.filter((opt) => opt.rarity === rarity)),
+    [options, rarity],
+  );
+  const maxLevel = atRarity.reduce((max, opt) => Math.max(max, opt.levels.length), 0);
+  const levelOptions = Array.from({ length: maxLevel }, (_, i) => i + 1);
+  const choices = level === '' ? [] : atRarity.filter((opt) => opt.levels.length >= level);
+
+  const onRarity = (raw: string) => {
+    setRarity(raw === '' ? '' : (Number(raw) as Rarity));
+    setLevel('');
+    if (current) onChange(undefined);
+  };
+  const onLevel = (raw: string) => {
+    setLevel(raw === '' ? '' : Number(raw));
+    if (current) onChange(undefined);
+  };
+
+  return (
+    <div className="item-slot-editor">
+      <div className="item-slot-head">
+        {slotCategoryLabel(itemType)}
+        {worn && (
+          <span className="muted small">
+            {' '}
+            · {t('itemplan.currently', { item: worn.name ?? worn.id, level: worn.level })}
+          </span>
+        )}
+      </div>
+      <div className="form-grid" style={{ marginBottom: 8 }}>
+        <label>
+          <span>{t('common.rarity')}</span>
+          <select value={rarity} onChange={(e) => onRarity(e.target.value)}>
+            <option value="">{t('itemplan.noTarget')}</option>
+            {rarities.map((r) => (
+              <option value={r} key={r}>
+                {localRarity(r)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          <span>{t('common.level')}</span>
+          <select value={level} onChange={(e) => onLevel(e.target.value)} disabled={rarity === ''}>
+            <option value="">{rarity === '' ? t('itemplan.pickRarityFirst') : '—'}</option>
+            {levelOptions.map((n) => (
+              <option value={n} key={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      {rarity !== '' && level !== '' && (
+        <div className="item-choice-list">
+          {choices.length === 0 ? (
+            <p className="small muted">{t('itemplan.noItemsHere')}</p>
+          ) : (
+            choices.map((item) => (
+              <ItemChoiceButton
+                key={item.id}
+                item={item}
+                level={level}
+                selected={current?.itemId === item.id}
+                onClick={() =>
+                  onChange(current?.itemId === item.id ? undefined : { itemId: item.id, level })
+                }
+              />
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** One item on offer at the slot's chosen rarity and level, as a button. */
+function ItemChoiceButton({
+  item,
+  level,
+  selected,
+  onClick,
+}: {
+  item: ItemDefinition;
+  level: number;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  const levelData = item.levels[level - 1];
+  const gains = levelData
+    ? Object.entries(levelData.stats).map(([key, n]) =>
+        t('si.slotGain', { n: localNumber(n), stat: localStat(key) }),
+      )
+    : [];
+  return (
+    <button
+      type="button"
+      className={`item-choice-btn${selected ? ' selected' : ''}`}
+      onClick={onClick}
+      aria-pressed={selected}
+    >
+      <Icon src={requirementIcon(`upgrade:${item.id}`)} size={28} className="portrait" reserve />
+      <span className="item-choice-body">
+        <span className="item-choice-name">{item.name}</span>
+        {gains.length > 0 && <span className="item-choice-gain muted small">{gains.join(', ')}</span>}
+      </span>
+    </button>
   );
 }
 

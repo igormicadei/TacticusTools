@@ -103,17 +103,39 @@ const DAMAGE_PT: Record<string, string> = {
   Projectile: 'Projétil',
 };
 
-/** The three stats a rank upgrade raises. */
+/**
+ * Stats a rank upgrade or a piece of equipment can raise.
+ *
+ * A Booster's own key (`critChanceBonus`, etc.) shares its base stat's label:
+ * the item's own context already says which one is doing the granting, so the
+ * reader does not need the internal name for "the boosted version of this".
+ */
 const STAT_PT: Record<string, string> = {
   hp: 'vida',
   dmg: 'dano',
   fixedArmor: 'armadura',
+  critChance: 'chance de crítico',
+  critChanceBonus: 'chance de crítico',
+  critDmg: 'dano de crítico',
+  critDmgBonus: 'dano de crítico',
+  blockChance: 'chance de bloqueio',
+  blockChanceBonus: 'chance de bloqueio',
+  blockDmg: 'dano de bloqueio',
+  blockDmgBonus: 'dano de bloqueio',
 };
 
 const STAT_EN: Record<string, string> = {
   hp: 'health',
   dmg: 'damage',
   fixedArmor: 'armour',
+  critChance: 'crit chance',
+  critChanceBonus: 'crit chance',
+  critDmg: 'crit damage',
+  critDmgBonus: 'crit damage',
+  blockChance: 'block chance',
+  blockChanceBonus: 'block chance',
+  blockDmg: 'block damage',
+  blockDmgBonus: 'block damage',
 };
 
 const pt = (): boolean => currentLang() === 'pt';

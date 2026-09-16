@@ -654,6 +654,8 @@ export const PT: Record<keyof typeof EN, string> = {
   'itemplan.notOnChain':
     '{item} não é alcançável ascendendo a partir de {from} — o jogo também pode oferecer um item diferente ao ascender. Custo calculado como {item} a partir do nível 1.',
   'itemplan.freshStart': 'Nada equipado nesse slot ainda — custo calculado como {item} a partir do nível 1.',
+  'itemplan.pickRarityFirst': 'Escolha uma raridade primeiro',
+  'itemplan.noItemsHere': 'Nenhum item dessa raridade alcança esse nível.',
 
   /* ---- catálogo de equipamento ------------------------------------------ */
   'equip.blurb':

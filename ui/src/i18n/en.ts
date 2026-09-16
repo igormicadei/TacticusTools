@@ -660,6 +660,8 @@ export const EN = {
   'itemplan.notOnChain':
     '{item} is not reachable by ascending from {from} — the game can also offer a different item when you ascend. Costed as {item} from level 1.',
   'itemplan.freshStart': 'Nothing worn here yet — costed as {item} from level 1.',
+  'itemplan.pickRarityFirst': 'Pick a rarity first',
+  'itemplan.noItemsHere': 'No item of this rarity reaches that level.',
 
   /* ---- equipment catalogue ---------------------------------------------- */
   'equip.blurb':
