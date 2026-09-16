@@ -302,7 +302,6 @@ export function PlansPage({ db, player }: { db: GameDatabase; player: PlayerResp
                       </div>
                     )}
                   </Link>
-                  <NextStep unit={unit} plan={plan} db={db} player={player} />
                   <div className="row" style={{ marginTop: 10, alignItems: 'stretch' }}>
                     <div style={{ flex: 1 }}>
                       <StatCard rows={statCardRows(projections.get(stored.id)?.from, projections.get(stored.id)?.to)} />
@@ -322,6 +321,7 @@ export function PlansPage({ db, player }: { db: GameDatabase; player: PlayerResp
                       </button>
                     </div>
                   </div>
+                  <NextStep unit={unit} plan={plan} db={db} player={player} />
                   {editing === stored.id && (
                     <PlanForm
                       db={db}
