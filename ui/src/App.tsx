@@ -208,7 +208,7 @@ export function App() {
               }
             />
             <Route
-              path="/plans/:planId"
+              path="/plans/:unitId"
               element={
                 player ? (
                   <PlanDetailPage db={db} player={player} />

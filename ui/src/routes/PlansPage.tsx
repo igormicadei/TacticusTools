@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 
 import {  Rarity } from '@lib/gamedata/enums.js';
 import type { ItemTarget } from '@lib/gamedata/itemPlan.js';
@@ -25,21 +25,19 @@ type SortMode = 'created' | 'name' | 'energy' | 'steps';
 
 const VIEW_KEY = 'tacticus-tools:plans-view';
 
-function readView(): { group: GroupMode; sort: SortMode } {
+function readView(): { group: GroupMode; sort: SortMode; hideDone: boolean } {
   try {
     const raw = localStorage.getItem(VIEW_KEY);
-    if (raw) return { group: 'none', sort: 'created', ...JSON.parse(raw) };
+    if (raw) return { group: 'none', sort: 'created', hideDone: false, ...JSON.parse(raw) };
   } catch {
     /* Private mode, or a corrupt value — the defaults still work. */
   }
-  return { group: 'none', sort: 'created' };
+  return { group: 'none', sort: 'created', hideDone: false };
 }
 
 export function PlansPage({ db, player }: { db: GameDatabase; player: PlayerResponse }) {
   useIcons();
-  const navigate = useNavigate();
   const [plans, setPlans] = useState(() => plansStore.list());
-  const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<string>();
   const [view, setView] = useState(readView);
 
@@ -57,6 +55,17 @@ export function PlansPage({ db, player }: { db: GameDatabase; player: PlayerResp
   const setSort = (sort: SortMode) => {
     setView((v) => {
       const next = { ...v, sort };
+      try {
+        localStorage.setItem(VIEW_KEY, JSON.stringify(next));
+      } catch {
+        /* Private mode, or storage disabled — the choice still holds for this render. */
+      }
+      return next;
+    });
+  };
+  const setHideDone = (hideDone: boolean) => {
+    setView((v) => {
+      const next = { ...v, hideDone };
       try {
         localStorage.setItem(VIEW_KEY, JSON.stringify(next));
       } catch {
@@ -114,8 +123,8 @@ export function PlansPage({ db, player }: { db: GameDatabase; player: PlayerResp
     return map;
   }, [plans, owned, db]);
 
-  const remove = (id: string) => {
-    plansStore.remove(id);
+  const reset = (unitId: string) => {
+    plansStore.reset(unitId);
     setPlans(plansStore.list());
   };
 
@@ -177,8 +186,9 @@ export function PlansPage({ db, player }: { db: GameDatabase; player: PlayerResp
    * — a single unlabelled bucket — rather than a second branch to keep in sync.
    */
   const groups = useMemo(() => {
+    const visible = view.hideDone ? rows.filter((row) => !row.done) : rows;
     if (view.group === 'none') {
-      return [{ key: 'all', label: '', rows: sortRows(rows) }];
+      return [{ key: 'all', label: '', rows: sortRows(visible) }];
     }
     const keyOf = (row: Row): { key: string; label: string } => {
       if (view.group === 'faction') {
@@ -194,7 +204,7 @@ export function PlansPage({ db, player }: { db: GameDatabase; player: PlayerResp
         : { key: 'active', label: t('plans.inProgress') };
     };
     const buckets = new Map<string, { label: string; rows: Row[] }>();
-    for (const row of rows) {
+    for (const row of visible) {
       const { key, label } = keyOf(row);
       const bucket = buckets.get(key);
       if (bucket) bucket.rows.push(row);
@@ -214,6 +224,14 @@ export function PlansPage({ db, player }: { db: GameDatabase; player: PlayerResp
         <span style={{ flex: 1 }} />
         {plans.length > 0 && (
           <>
+            <label className="switch">
+              <input
+                type="checkbox"
+                checked={view.hideDone}
+                onChange={(e) => setHideDone(e.target.checked)}
+              />
+              <span>{t('plans.hideDone')}</span>
+            </label>
             <label className="row small" style={{ gap: 4 }}>
               <span className="muted">{t('plans.groupBy')}</span>
               <select value={view.group} onChange={(e) => setGroup(e.target.value as GroupMode)}>
@@ -237,22 +255,9 @@ export function PlansPage({ db, player }: { db: GameDatabase; player: PlayerResp
             </Link>
           </>
         )}
-        <button
-          className="primary"
-          onClick={() => {
-            setEditing(undefined);
-            setCreating((v) => !v);
-          }}
-        >
-          {creating ? 'Cancel' : t('common.newPlan')}
-        </button>
       </div>
 
-      {creating && (
-        <PlanForm db={db} player={player} units={owned} onSaved={(id) => navigate(`/plans/${id}`)} />
-      )}
-
-      {plans.length === 0 && !creating && (
+      {plans.length === 0 && (
         <div className="empty">
           {t('plans.none')}
         </div>
@@ -309,15 +314,12 @@ export function PlansPage({ db, player }: { db: GameDatabase; player: PlayerResp
                     <div className="row" style={{ flexDirection: 'column', gap: 6 }}>
                       <button
                         className="small"
-                        onClick={() => {
-                          setCreating(false);
-                          setEditing((current) => (current === stored.id ? undefined : stored.id));
-                        }}
+                        onClick={() => setEditing((current) => (current === stored.id ? undefined : stored.id))}
                       >
                         {editing === stored.id ? t('common.cancel') : t('common.edit')}
                       </button>
-                      <button className="danger small" onClick={() => remove(stored.id)}>
-                        {t('common.delete')}
+                      <button className="danger small" onClick={() => reset(stored.unitId)}>
+                        {t('plans.reset')}
                       </button>
                     </div>
                   </div>
@@ -326,8 +328,7 @@ export function PlansPage({ db, player }: { db: GameDatabase; player: PlayerResp
                     <PlanForm
                       db={db}
                       player={player}
-                      units={owned}
-                      plan={stored}
+                      unit={unit}
                       onSaved={() => {
                         setEditing(undefined);
                         setPlans(plansStore.list());
@@ -390,38 +391,35 @@ export function describeTarget(
 }
 
 /**
- * Create or edit a plan.
+ * Edit a unit's plan.
  *
- * Editing reuses the same form so the two never drift apart; passing `plan`
- * seeds the fields from it and saves back over the same entry, keeping the
- * plan's id and the page that links to it.
+ * Every unit has exactly one, so this is never "create vs. edit" — it always
+ * loads what is stored (or the default, empty target) for `unit` and saves
+ * back over that same entry. The unit is fixed by the caller rather than
+ * chosen here: every place this form appears already knows which unit it is
+ * editing, whether that is the unit's own page or one card on the Plans list.
  */
 export function PlanForm({
   db,
   player,
-  units,
-  plan: existing,
+  unit,
   onSaved,
-  /** Locks the unit selector to one unit — used from that unit's own page. */
-  fixedUnitId,
 }: {
   db: GameDatabase;
   player: PlayerResponse;
-  units: PlayerResponse['player']['units'];
-  plan?: StoredPlan;
-  onSaved: (id: string) => void;
-  fixedUnitId?: string;
+  unit: PlayerResponse['player']['units'][number];
+  onSaved: () => void;
 }) {
+  const existing = useMemo(() => plansStore.get(unit.id), [unit.id]);
   const field = (value: number | undefined) => (value === undefined ? '' : String(value));
-  const [unitId, setUnitId] = useState(existing?.unitId ?? fixedUnitId ?? units[0]?.id ?? '');
-  const [rarity, setRarity] = useState(field(existing?.target.rarity));
-  const [rank, setRank] = useState(field(existing?.target.rank));
-  const [xpLevel, setXpLevel] = useState(field(existing?.target.xpLevel));
-  const [active, setActive] = useState(field(existing?.target.activeAbilityLevel));
-  const [passive, setPassive] = useState(field(existing?.target.passiveAbilityLevel));
-  const [stars, setStars] = useState(field(existing?.target.progressionIndex));
-  const [priority, setPriority] = useState<StatPriority | ''>(existing?.priority ?? '');
-  const [itemTargets, setItemTargets] = useState<ItemTarget[]>(existing?.itemTargets ?? []);
+  const [rarity, setRarity] = useState(field(existing.target.rarity));
+  const [rank, setRank] = useState(field(existing.target.rank));
+  const [xpLevel, setXpLevel] = useState(field(existing.target.xpLevel));
+  const [active, setActive] = useState(field(existing.target.activeAbilityLevel));
+  const [passive, setPassive] = useState(field(existing.target.passiveAbilityLevel));
+  const [stars, setStars] = useState(field(existing.target.progressionIndex));
+  const [priority, setPriority] = useState<StatPriority | ''>(existing.priority ?? '');
+  const [itemTargets, setItemTargets] = useState<ItemTarget[]>(existing.itemTargets ?? []);
 
   const num = (v: string) => (v === '' ? undefined : Number(v));
   const target = {
@@ -433,15 +431,14 @@ export function PlanForm({
     ...(stars !== '' ? { progressionIndex: num(stars)! } : {}),
   };
   const empty = Object.keys(target).length === 0 && itemTargets.length === 0;
-  const unit = units.find((u) => u.id === unitId);
-  const unitDef = db.units[unitId];
-  const preview = unit && !empty ? resolvePlan(unit, target, db) : undefined;
+  const unitDef = db.units[unit.id];
+  const preview = !empty ? resolvePlan(unit, target, db) : undefined;
 
   const maxLevel = Math.max(...db.rarityCaps.map((c) => c.maxLevel), 50);
   // Where the unit stands now. Only what lies ahead of it is offerable — a
   // target it already meets is not a plan.
-  const now = unit ? currentState(unit, db) : undefined;
-  const held = unit ? computeUnitStats(unit, db)?.rarity : undefined;
+  const now = currentState(unit, db);
+  const held = computeUnitStats(unit, db)?.rarity;
 
   /**
    * Values a field may take: everything above where the unit is now.
@@ -487,38 +484,13 @@ export function PlanForm({
   const activeOptions = above(now?.activeAbilityLevel, maxLevel, active);
   const passiveOptions = above(now?.passiveAbilityLevel, maxLevel, passive);
 
-  // Switching units can leave a value the new one already has; clearing it is
-  // less surprising than saving a target that is met the moment it is created.
-  const onUnit = (next: string) => {
-    setUnitId(next);
-    setRarity('');
-    setRank('');
-    setXpLevel('');
-    setActive('');
-    setPassive('');
-    setStars('');
-    setItemTargets([]);
-  };
-
   return (
     <section className="panel" style={{ marginBottom: 24 }}>
-      <h3>{existing ? t('common.editPlan') : t('common.newPlan')}</h3>
       <p className="small muted" style={{ marginTop: 0 }}>
         {t('plans.formBlurb')}
       </p>
 
       <div className="form-grid">
-        <label>
-          <span>{t('common.unit')}</span>
-          <select value={unitId} onChange={(e) => onUnit(e.target.value)} disabled={Boolean(fixedUnitId)}>
-            {units.map((u) => (
-              <option value={u.id} key={u.id}>
-                {u.name ?? u.id}
-              </option>
-            ))}
-          </select>
-        </label>
-
         <label>
           <span>{t('common.favour')}</span>
           <select
@@ -640,35 +612,24 @@ export function PlanForm({
 
       <button
         className="primary"
-        disabled={!unitId || empty}
         onClick={() => {
-          const fields = {
-            unitId,
+          plansStore.save(unit.id, {
             target,
             priority: priority === '' ? undefined : priority,
             itemTargets: itemTargets.length > 0 ? itemTargets : undefined,
+            // Anchored once, the first time this unit's plan holds any real
+            // target — never moved after, or later progress would look like
+            // it was always there.
+            origin: existing.origin ?? currentState(unit, db),
             // A plan is a plan for one unit, so the unit's own name is the only
             // name it needs. Cleared on save so a name typed by an older build
             // does not linger under a field that no longer exists.
             name: undefined,
-          };
-          if (existing) {
-            plansStore.update(existing.id, fields);
-            onSaved(existing.id);
-          } else {
-            onSaved(
-              plansStore.create({
-                unitId,
-                target,
-                ...(unit ? { origin: currentState(unit, db) } : {}),
-                ...(priority ? { priority } : {}),
-                ...(itemTargets.length > 0 ? { itemTargets } : {}),
-              }).id,
-            );
-          }
+          });
+          onSaved();
         }}
       >
-        {existing ? t('common.savePlan') : t('common.createPlan')}
+        {t('common.savePlan')}
       </button>
     </section>
   );

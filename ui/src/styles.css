@@ -473,6 +473,10 @@ dialog.sheet h3 {
 /* A plan card's next step, collapsed by default — the same per-item detail
    the plan's own page shows, opened only when asked. */
 .next-step { margin-top: var(--space-5); }
+.next-step-label {
+  font-size: var(--text-2xs); letter-spacing: var(--tracking-wide);
+  text-transform: uppercase; color: var(--text-secondary); margin-bottom: var(--space-2);
+}
 .next-step-toggle {
   display: flex; align-items: center; gap: var(--space-4); width: 100%;
   background: none; border: none; padding: 0;
@@ -480,6 +484,7 @@ dialog.sheet h3 {
   text-align: left; cursor: pointer; flex-wrap: wrap;
 }
 .next-step-toggle:hover .step-num { border-color: var(--accent); }
+.next-step .switch { margin-top: var(--space-3); }
 .next-step .item-list { padding-left: 30px; }
 /* `.item-head` assumes a full-width panel everywhere else it is used; this is
  * the one place it sits in a grid card instead, which can be narrower than

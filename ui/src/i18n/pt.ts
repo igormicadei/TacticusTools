@@ -348,6 +348,10 @@ export const PT: Record<keyof typeof EN, string> = {
   'si.total': 'Total',
   'si.flatten': 'Achatar para o que se farma',
   'si.flattenHint': 'Resolver toda receita até os materiais que um nó realmente derruba',
+  'si.pendingOnly': 'Só pendentes',
+  'si.pendingOnlyHint': 'Ocultar slots já preenchidos no jogo',
+  'si.allApplied': 'Tudo aqui já foi aplicado.',
+  'si.nextStep': 'Próximo passo',
   'si.blurb':
     'O estoque em mãos é distribuído pelos passos que precisam dele, do primeiro em diante, então a falta aparece no passo em que realmente pesa. Ingredientes de receita puxam do mesmo estoque. Itens já encaixados na unidade aparecem como aplicados — foram gastos e não podem ser movidos. Um item que você tem mas não pode farmar aparece como só estoque: gastá-lo em outro lugar não tem volta. Itens forjados não têm forma farmável, então aparecem como pronto para forjar ou faltam peças em vez de uma contagem. Clique em um item para ver onde consegui-lo. O ouro aparece onde é gasto; a API não informa o saldo, então não há com o que conferir.',
   'si.done': 'Feito',
@@ -519,7 +523,7 @@ export const PT: Record<keyof typeof EN, string> = {
   'nav.backUnits': '← Todas as unidades',
   'nav.viewUnit': 'Ver unidade',
   'plans.everythingInOrder': 'Tudo em ordem',
-  'plans.none': 'Nenhum plano ainda. Crie um para descobrir o que subir de nível, de rank e ascender, em ordem.',
+  'plans.none': 'Nenhuma unidade tem um alvo definido ainda. Abra a página de uma unidade para definir um — toda unidade tem um plano, esta lista só mostra as que têm algo pendente.',
   'plans.formBlurb':
     'Defina só o que te importa. Tudo de que isso depende é calculado e acrescentado para você — um alvo de habilidade puxa o nível do personagem junto, e alvos de nível ou rank puxam a raridade. Cada campo oferece apenas o que está à frente da unidade, já que um alvo que ela já atende não é um plano.',
   'plans.groupBy': 'Agrupar por',
@@ -527,6 +531,8 @@ export const PT: Record<keyof typeof EN, string> = {
   'plans.groupFaction': 'Facção',
   'plans.groupAlliance': 'Aliança',
   'plans.groupStatus': 'Status',
+  'plans.hideDone': 'Ocultar concluídos',
+  'plans.reset': 'Redefinir',
   'plans.sortBy': 'Ordenar por',
   'plans.sortCreated': 'Mais recentes primeiro',
   'plans.sortName': 'Nome',
@@ -564,6 +570,8 @@ export const PT: Record<keyof typeof EN, string> = {
     'A quantidade de fragmentos necessária para desbloquear um personagem não é publicada nas fontes de dados, então nenhum alvo é mostrado.',
   'ud.levelCapped': 'Nível limitado por esta raridade — ascenda para elevar o limite.',
   'ud.noPlans': 'Nenhum plano ainda para esta unidade.',
+  'ud.plan': 'Plano',
+  'ud.viewFullPlan': 'Ver plano completo',
   'ud.armourNote':
     'A armadura subtrai de cada golpe recebido um a um, mas nunca abaixo da parcela de perfuração daquele ataque — contra um ataque totalmente perfurante ela não faz nada. Quanto ela vale depende inteiramente de quem está atirando em você.',
   'ud.noStatBlock': 'Nenhum bloco de atributos publicado para este rank.',

@@ -354,6 +354,10 @@ export const EN = {
   'si.total': 'Total',
   'si.flatten': 'Flatten to what you farm',
   'si.flattenHint': 'Resolve every recipe down to the materials a node actually drops',
+  'si.pendingOnly': 'Pending only',
+  'si.pendingOnlyHint': 'Hide slots already filled in game',
+  'si.allApplied': 'Everything here is already applied.',
+  'si.nextStep': 'Next step',
   'si.blurb':
     'Held stock is spread across the steps that need it, earliest first, so a shortfall shows up on the step where it actually bites. Recipe ingredients draw on the same stock. Items already fitted to the unit are marked applied — they are spent, and cannot be moved elsewhere. An item you hold but cannot farm is marked stock only: spending it elsewhere cannot be undone. Forged items have no farmable form, so they read as ready to forge or parts missing rather than as a count. Click an item for where to get it. Gold is shown where it is spent; the API does not report the balance, so there is nothing to check it against.',
   'si.done': 'Done',
@@ -525,7 +529,7 @@ export const EN = {
   'nav.backUnits': '← All units',
   'nav.viewUnit': 'View unit',
   'plans.everythingInOrder': 'Everything in order',
-  'plans.none': 'No plans yet. Create one to work out what to level, rank and ascend, in order.',
+  'plans.none': 'No unit has a target set yet. Open a unit’s page to set one — every unit has a plan, this just lists the ones with something to do.',
   'plans.formBlurb':
     'Set only what you care about. Anything else it depends on is worked out and added for you — an ability target pulls the character level with it, and level or rank targets pull rarity. Each field offers only what lies ahead of the unit, since a target it already meets is not a plan.',
   'plans.groupBy': 'Group by',
@@ -533,6 +537,8 @@ export const EN = {
   'plans.groupFaction': 'Faction',
   'plans.groupAlliance': 'Alliance',
   'plans.groupStatus': 'Status',
+  'plans.hideDone': 'Hide done',
+  'plans.reset': 'Reset',
   'plans.sortBy': 'Sort by',
   'plans.sortCreated': 'Newest first',
   'plans.sortName': 'Name',
@@ -570,6 +576,8 @@ export const EN = {
     'The number of shards needed to unlock a character is not published in the data sources, so no target is shown.',
   'ud.levelCapped': 'Level capped at this rarity — ascend to raise the cap.',
   'ud.noPlans': 'No plans yet for this unit.',
+  'ud.plan': 'Plan',
+  'ud.viewFullPlan': 'View full plan',
   'ud.armourNote':
     'Armour subtracts from each incoming hit one for one, but never below that attack’s pierce share — against a fully piercing attack it does nothing at all. How much it is worth depends entirely on what is shooting at you.',
   'ud.noStatBlock': 'No stat block published for this rank.',

@@ -1,9 +1,14 @@
 /**
- * Saved evolution plans, kept in `localStorage` alongside the roster.
+ * Every unit's plan, kept in `localStorage` alongside the roster.
  *
- * A plan stores only the unit and the target. The steps are recomputed from the
- * current roster on every view, so a plan stays honest as the unit progresses
- * rather than freezing a stale route.
+ * A unit has exactly one plan, and every unit has one by definition — a unit
+ * nobody has touched simply has the default, empty target. Nothing is stored
+ * for that case: `save()` deletes an entry that has gone back to default
+ * rather than keeping a blank row, so what is in storage and what is worth
+ * showing on the Plans list are the same set by construction.
+ *
+ * The steps are recomputed from the current roster on every view, so a plan
+ * stays honest as the unit progresses rather than freezing a stale route.
  */
 
 import type { EvolutionTarget, UnitState } from '@lib/gamedata/plan.js';
@@ -13,6 +18,7 @@ import type { StatPriority } from '@lib/gamedata/timeline.js';
 const STORAGE_KEY = 'tacticus-tools:plans';
 
 export interface StoredPlan {
+  /** Always equal to `unitId` — a plan is keyed by the unit it belongs to. */
   id: string;
   unitId: string;
   /** Optional label; the unit name is used when absent. Cleared by setting undefined. */
@@ -63,26 +69,48 @@ function writeAll(plans: StoredPlan[]): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(plans));
 }
 
+/** No target set and no equipment goal — the state every unit starts in. */
+function isDefault(plan: Pick<StoredPlan, 'target' | 'itemTargets'>): boolean {
+  return Object.keys(plan.target).length === 0 && (plan.itemTargets?.length ?? 0) === 0;
+}
+
+/** A fresh, unsaved plan for a unit nothing has been asked of yet. */
+function defaultPlan(unitId: string): StoredPlan {
+  return { id: unitId, unitId, target: {}, createdAt: 0 };
+}
+
 export const plansStore = {
+  /** Every unit with an actual target set — a default plan is not listed. */
   list(): StoredPlan[] {
-    return readAll().sort((a, b) => b.createdAt - a.createdAt);
+    return readAll()
+      .filter((p) => !isDefault(p))
+      .sort((a, b) => b.createdAt - a.createdAt);
   },
-  get(id: string): StoredPlan | undefined {
-    return readAll().find((p) => p.id === id);
+  /** This unit's plan, defaulted when nothing is stored — every unit has one. */
+  get(unitId: string): StoredPlan {
+    return readAll().find((p) => p.unitId === unitId) ?? defaultPlan(unitId);
   },
-  create(plan: Omit<StoredPlan, 'id' | 'createdAt'>): StoredPlan {
-    const created: StoredPlan = {
-      ...plan,
-      id: crypto.randomUUID(),
-      createdAt: Date.now(),
+  /**
+   * The only write. Merges `patch` onto whatever is stored (or the default),
+   * then stores the result — unless the result is back to default, in which
+   * case the entry is removed rather than kept as an empty row.
+   */
+  save(unitId: string, patch: Partial<Omit<StoredPlan, 'id' | 'unitId'>>): StoredPlan {
+    const all = readAll();
+    const existing = all.find((p) => p.unitId === unitId);
+    const merged: StoredPlan = {
+      ...(existing ?? defaultPlan(unitId)),
+      ...patch,
+      id: unitId,
+      unitId,
+      createdAt: existing?.createdAt || Date.now(),
     };
-    writeAll([...readAll(), created]);
-    return created;
+    const rest = all.filter((p) => p.unitId !== unitId);
+    writeAll(isDefault(merged) ? rest : [...rest, merged]);
+    return merged;
   },
-  update(id: string, patch: Partial<Omit<StoredPlan, 'id'>>): void {
-    writeAll(readAll().map((p) => (p.id === id ? { ...p, ...patch } : p)));
-  },
-  remove(id: string): void {
-    writeAll(readAll().filter((p) => p.id !== id));
+  /** Back to default: removes whatever is stored for this unit, if anything. */
+  reset(unitId: string): void {
+    writeAll(readAll().filter((p) => p.unitId !== unitId));
   },
 };

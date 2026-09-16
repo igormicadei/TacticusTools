@@ -60,6 +60,11 @@ export function StepItems({
   // composites the plan names. Off by default, because the unflattened list is
   // the one that matches what the game's own rank screen shows.
   const [flat, setFlat] = useState(false);
+  // Only meaningful in the unflattened view: `flattenNeeds` already drops
+  // applied materials since they need no further sourcing, so a flattened
+  // list is "pending only" by construction. This just hides the same rows the
+  // "Already applied" chip already marks, for a glance at what is left.
+  const [pendingOnly, setPendingOnly] = useState(false);
   // A set, not a single id: a recipe row lives inside its item's expansion, so
   // opening it must not close the parent that renders it.
   const [open, setOpen] = useState<ReadonlySet<string>>(() => new Set());
@@ -110,6 +115,14 @@ export function StepItems({
           </button>
         </div>
         <PlanCost cost={cost} />
+        <label className="switch" title={t('si.pendingOnlyHint')}>
+          <input
+            type="checkbox"
+            checked={pendingOnly}
+            onChange={(e) => setPendingOnly(e.target.checked)}
+          />
+          <span>{t('si.pendingOnly')}</span>
+        </label>
         <label className="switch" title={t('si.flattenHint')}>
           <input type="checkbox" checked={flat} onChange={(e) => setFlat(e.target.checked)} />
           <span>{t('si.flatten')}</span>
@@ -136,6 +149,7 @@ export function StepItems({
               );
             }
             const items = steps.get(step.order)?.items ?? [];
+            const shownItems = pendingOnly ? items.filter((item) => !item.applied) : items;
             const stepGold = goldByStep.get(step.order) ?? 0;
             return (
             <div className="step-block" key={step.order}>
@@ -153,15 +167,15 @@ export function StepItems({
                   </span>
                 )}
               </div>
-              {items.length === 0 ? (
+              {shownItems.length === 0 ? (
                 <p className="muted small" style={{ margin: '4px 0 0 30px' }}>
-                  {t('si.noItems')}
+                  {items.length === 0 ? t('si.noItems') : t('si.allApplied')}
                 </p>
               ) : flat ? (
-                <BySlot items={items} />
+                <BySlot items={shownItems} />
               ) : (
                 <ul className="item-list">
-                  {items.map((item) => (
+                  {shownItems.map((item) => (
                     <ItemRow
                       key={`${step.order}:${item.key}:${item.applied ? 'a' : 'n'}`}
                       id={`${step.order}:${item.key}:${item.applied ? 'a' : 'n'}`}
@@ -178,7 +192,7 @@ export function StepItems({
             );
           })
         : flat ? (
-            <FlatList needs={flattenNeeds(allItems)} />
+            <FlatList needs={flattenNeeds(pendingOnly ? allItems.filter((item) => !item.applied) : allItems)} />
           )
         : (
             <ul className="item-list">
@@ -192,7 +206,7 @@ export function StepItems({
                   </div>
                 </li>
               )}
-              {totals.map((item) => (
+              {(pendingOnly ? totals.filter((item) => !item.applied) : totals).map((item) => (
                 <ItemRow
                   key={`${item.key}:${item.applied ? 'a' : 'n'}`}
                   id={`${item.key}:${item.applied ? 'a' : 'n'}`}

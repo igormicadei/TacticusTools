@@ -33,6 +33,7 @@ export function NextStep({
 }) {
   const [expanded, setExpanded] = useState(false);
   const [open, setOpen] = useState<ReadonlySet<string>>(() => new Set());
+  const [pendingOnly, setPendingOnly] = useState(false);
 
   const next = plan.steps.find((step) => !step.done);
 
@@ -51,8 +52,11 @@ export function NextStep({
 
   if (!next) return null;
 
+  const shown = pendingOnly ? items.filter((item) => !item.applied) : items;
+
   return (
     <div className="next-step">
+      <div className="next-step-label">{t('si.nextStep')}</div>
       <button
         type="button"
         className="next-step-toggle"
@@ -69,26 +73,39 @@ export function NextStep({
           </span>
         )}
       </button>
-      {expanded &&
-        (items.length === 0 ? (
-          <p className="muted small" style={{ margin: '4px 0 0 30px' }}>
-            {t('si.noItems')}
-          </p>
-        ) : (
-          <ul className="item-list">
-            {items.map((item) => (
-              <ItemRow
-                key={`${item.key}:${item.applied ? 'a' : 'n'}`}
-                id={`${item.key}:${item.applied ? 'a' : 'n'}`}
-                item={item}
-                db={db}
-                player={player}
-                open={open}
-                onToggle={(id) => setOpen((current) => toggleOpen(current, id))}
+      {expanded && (
+        <>
+          {items.length > 0 && (
+            <label className="switch" title={t('si.pendingOnlyHint')}>
+              <input
+                type="checkbox"
+                checked={pendingOnly}
+                onChange={(e) => setPendingOnly(e.target.checked)}
               />
-            ))}
-          </ul>
-        ))}
+              <span>{t('si.pendingOnly')}</span>
+            </label>
+          )}
+          {shown.length === 0 ? (
+            <p className="muted small" style={{ margin: '4px 0 0 30px' }}>
+              {items.length === 0 ? t('si.noItems') : t('si.allApplied')}
+            </p>
+          ) : (
+            <ul className="item-list">
+              {shown.map((item) => (
+                <ItemRow
+                  key={`${item.key}:${item.applied ? 'a' : 'n'}`}
+                  id={`${item.key}:${item.applied ? 'a' : 'n'}`}
+                  item={item}
+                  db={db}
+                  player={player}
+                  open={open}
+                  onToggle={(id) => setOpen((current) => toggleOpen(current, id))}
+                />
+              ))}
+            </ul>
+          )}
+        </>
+      )}
     </div>
   );
 }

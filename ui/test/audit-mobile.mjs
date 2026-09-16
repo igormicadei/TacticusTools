@@ -100,7 +100,8 @@ await page.evaluate(
     player,
     JSON.stringify(
       roster.slice(0, 3).map((u, i) => ({
-        id: `probe-${i}`,
+        // A plan is keyed by the unit it belongs to — id and unitId agree.
+        id: u.id,
         unitId: u.id,
         target: { rank: Math.min(19, u.rank + 3), xpLevel: u.xpLevel + 6 },
         createdAt: Date.now() - i,
@@ -184,7 +185,7 @@ const routes = [
   ['units', '#/units'],
   ['unit-detail', `#/units/${encodeURIComponent(roster[0].id)}`],
   ['plans', '#/plans'],
-  ['plan-detail', '#/plans/probe-0'],
+  ['plan-detail', `#/plans/${encodeURIComponent(roster[0].id)}`],
   ['timeline', '#/plans/timeline'],
   // The same route in its other mode. It is state rather than a URL, so the
   // stored choice is set below before the page loads.

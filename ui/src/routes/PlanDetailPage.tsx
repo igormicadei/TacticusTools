@@ -26,29 +26,26 @@ import { t } from '../i18n/locale.ts';
 
 export function PlanDetailPage({ db, player }: { db: GameDatabase; player: PlayerResponse }) {
   useIcons();
-  const { planId = '' } = useParams();
+  const { unitId = '' } = useParams();
   const [editing, setEditing] = useState(false);
   // Bumped on save so the stored plan is re-read after an edit.
   const [revision, setRevision] = useState(0);
-  const stored = useMemo(() => plansStore.get(planId), [planId, revision]);
-  const units = useMemo(
-    () => [...player.player.units].sort((a, b) => (a.name ?? a.id).localeCompare(b.name ?? b.id)),
-    [player],
-  );
-  const unit = stored
-    ? player.player.units.find((u) => u.id === stored.unitId)
-    : undefined;
+  // Every unit has a plan by definition, so this is never undefined — only
+  // the unit itself (not owned, or the id in the URL is stale) can be.
+  const stored = useMemo(() => plansStore.get(unitId), [unitId, revision]);
+  const unit = player.player.units.find((u) => u.id === unitId);
 
   // Plans saved before origins existed have no starting point to measure
   // against, so they adopt one the first time they are opened and track
-  // progress from there.
+  // progress from there. Only for a plan that actually has a target set —
+  // there is nothing to anchor for a unit nobody has asked anything of.
   useEffect(() => {
-    if (!stored || !unit || stored.origin) return;
-    plansStore.update(stored.id, { origin: currentState(unit, db) });
+    if (!unit || stored.origin || Object.keys(stored.target).length === 0) return;
+    plansStore.save(unit.id, { origin: currentState(unit, db) });
     setRevision((v) => v + 1);
   }, [stored, unit, db]);
 
-  if (!stored || !unit) {
+  if (!unit) {
     return (
       <>
         <Link to="/plans" className="back">
@@ -120,8 +117,7 @@ export function PlanDetailPage({ db, player }: { db: GameDatabase; player: Playe
         <PlanForm
           db={db}
           player={player}
-          units={units}
-          plan={stored}
+          unit={unit}
           onSaved={() => {
             setEditing(false);
             setRevision((v) => v + 1);
