@@ -19,6 +19,7 @@ export const EN = {
   'nav.plans': 'Plans',
   'nav.teams': 'Teams',
   'nav.upgrades': 'Upgrades',
+  'nav.equipment': 'Equipment',
   'nav.badges': 'Badges',
   'nav.player': 'Player data',
   'shell.power': '{name} · power {power}',
@@ -527,6 +528,17 @@ export const EN = {
   'plans.none': 'No plans yet. Create one to work out what to level, rank and ascend, in order.',
   'plans.formBlurb':
     'Set only what you care about. Anything else it depends on is worked out and added for you — an ability target pulls the character level with it, and level or rank targets pull rarity. Each field offers only what lies ahead of the unit, since a target it already meets is not a plan.',
+  'plans.groupBy': 'Group by',
+  'plans.groupNone': 'None',
+  'plans.groupFaction': 'Faction',
+  'plans.groupAlliance': 'Alliance',
+  'plans.groupStatus': 'Status',
+  'plans.sortBy': 'Sort by',
+  'plans.sortCreated': 'Newest first',
+  'plans.sortName': 'Name',
+  'plans.sortEnergy': 'Resources to farm',
+  'plans.sortSteps': 'Steps left',
+  'plans.inProgress': 'In progress',
   'plan.projected':
     'Projected at {rank} with {stars} stars (×{multiplier}), counting no rank upgrades applied — reaching a rank consumes the previous rank’s, so a newly reached rank starts empty. Equipment is unchanged.',
   'plan.orderBlurb':
@@ -557,6 +569,7 @@ export const EN = {
   'ud.shardsUnknown':
     'The number of shards needed to unlock a character is not published in the data sources, so no target is shown.',
   'ud.levelCapped': 'Level capped at this rarity — ascend to raise the cap.',
+  'ud.noPlans': 'No plans yet for this unit.',
   'ud.armourNote':
     'Armour subtracts from each incoming hit one for one, but never below that attack’s pierce share — against a fully piercing attack it does nothing at all. How much it is worth depends entirely on what is shooting at you.',
   'ud.noStatBlock': 'No stat block published for this rank.',
@@ -632,6 +645,38 @@ export const EN = {
   'ud.critDamage': 'Crit damage',
   'ud.blockChance': 'Block chance',
   'ud.blockDamage': 'Block damage',
+
+  /* ---- item plans (equipment targets) ---------------------------------- */
+  'itemplan.heading': 'Equipment',
+  'itemplan.blurb': 'Pick a target item and level for a slot; leave it blank to skip that slot.',
+  'itemplan.noTarget': '— leave as is —',
+  'itemplan.currently': 'currently {item} (lvl {level})',
+  'itemplan.toLevel': 'to level {n}',
+  'itemplan.alreadyMet': 'Already there',
+  'itemplan.dust': '{n} Dust',
+  'itemplan.gold': '{n} Gold',
+  'itemplan.mythicDust': '{n} Mythic Dust',
+  'itemplan.forgeBadges': '{held}/{need} {rarity} Forge Badges',
+  'itemplan.notOnChain':
+    '{item} is not reachable by ascending from {from} — the game can also offer a different item when you ascend. Costed as {item} from level 1.',
+  'itemplan.freshStart': 'Nothing worn here yet — costed as {item} from level 1.',
+
+  /* ---- equipment catalogue ---------------------------------------------- */
+  'equip.blurb':
+    'Every piece of equipment the game publishes, whether you hold it or not — who can wear it, what it costs to max, and what you already have.',
+  'equip.search': 'Search equipment…',
+  'equip.filterAll': 'All',
+  'equip.filterHeld': 'I hold',
+  'equip.rarityAll': 'Any rarity',
+  'equip.count.held': 'held',
+  'equip.count.known': 'known',
+  'equip.noMatch': 'Nothing matches “{query}”.',
+  'equip.usableBy': '{n} unit can use this',
+  'equip.usableByPlural': '{n} units can use this',
+  'equip.noOneCan': 'No unit in the database can equip this.',
+  'equip.worn': 'Worn by {unit} (lvl {level})',
+  'equip.loose': '{n}× loose at level {level}',
+  'equip.compatibleHeading': 'Can be equipped by:',
 
   /* ---- errors --------------------------------------------------------- */
   'err.gamedataLoad': 'Could not load gamedata.json (HTTP {status}). Run `npm run gamedata:snapshot` from the repository root.',

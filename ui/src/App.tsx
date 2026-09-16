@@ -4,6 +4,7 @@ import { NavLink, Navigate, Route, Routes } from 'react-router-dom';
 import { loadGameData } from './data/gamedata.ts';
 import { fetchPlayer, storage } from './data/player.ts';
 import { BadgesPage } from './routes/BadgesPage.tsx';
+import { EquipmentPage } from './routes/EquipmentPage.tsx';
 import { UpgradesPage } from './routes/UpgradesPage.tsx';
 import { currentLang, t, useLang } from './i18n/locale.ts';
 import { PlanDetailPage } from './routes/PlanDetailPage.tsx';
@@ -120,6 +121,9 @@ export function App() {
           </NavLink>
           <NavLink to="/upgrades" className={({ isActive }) => (isActive ? 'active' : '')}>
             {t('nav.upgrades')}
+          </NavLink>
+          <NavLink to="/equipment" className={({ isActive }) => (isActive ? 'active' : '')}>
+            {t('nav.equipment')}
           </NavLink>
           <NavLink to="/badges" className={({ isActive }) => (isActive ? 'active' : '')}>
             {t('nav.badges')}
@@ -238,6 +242,16 @@ export function App() {
             {/* The page was called Items before it was named after the game's
                 own word for these. Kept so an existing bookmark still lands. */}
             <Route path="/items" element={<Navigate to="/upgrades" replace />} />
+            <Route
+              path="/equipment"
+              element={
+                player ? (
+                  <EquipmentPage db={db} player={player} />
+                ) : (
+                  <Navigate to="/player" replace />
+                )
+              }
+            />
             <Route
               path="/badges"
               element={

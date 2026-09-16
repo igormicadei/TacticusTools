@@ -496,6 +496,7 @@ export function normalize(input: NormalizeInput): GameDatabase {
         }),
       ),
       allowedFactions: raw.allowedFactions ?? [],
+      allowedUnits: raw.allowedUnits ?? [],
     });
   }
 

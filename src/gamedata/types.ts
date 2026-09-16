@@ -124,6 +124,11 @@ export interface ItemDefinition {
   levels: ItemLevel[];
   /** Factions permitted to equip this item. Empty means unrestricted. */
   allowedFactions: string[];
+  /**
+   * Units permitted to equip this item, e.g. a character-bound Relic. Empty
+   * means unrestricted by unit — {@link allowedFactions} still applies.
+   */
+  allowedUnits: UnitId[];
 }
 
 /* -------------------------------------------------------------------------- */
@@ -495,7 +500,7 @@ export interface GameDatabaseStats {
  * stored version differs, so an older cache is refetched rather than served
  * with fields the current code expects but the file never had.
  */
-export const GAME_DATABASE_SCHEMA_VERSION = 10;
+export const GAME_DATABASE_SCHEMA_VERSION = 11;
 
 export interface GameDatabase {
   /** Value of {@link GAME_DATABASE_SCHEMA_VERSION} when this was assembled. */

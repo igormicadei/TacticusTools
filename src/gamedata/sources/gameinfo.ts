@@ -96,6 +96,8 @@ export interface RawGameInfoItem {
   nextInSeries?: string | null;
   levels?: RawGameInfoItemLevel[] | null;
   allowedFactions?: string[] | null;
+  /** Present on unique/relic items, restricting the item to specific units. */
+  allowedUnits?: string[] | null;
 }
 
 export interface RawGameInfoAbility {

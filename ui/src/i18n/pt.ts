@@ -13,6 +13,7 @@ export const PT: Record<keyof typeof EN, string> = {
   'nav.plans': 'Planos',
   'nav.teams': 'Equipes',
   'nav.upgrades': 'Melhorias',
+  'nav.equipment': 'Equipamento',
   'nav.badges': 'Emblemas',
   'nav.player': 'Dados do jogador',
   'shell.power': '{name} · poder {power}',
@@ -521,6 +522,17 @@ export const PT: Record<keyof typeof EN, string> = {
   'plans.none': 'Nenhum plano ainda. Crie um para descobrir o que subir de nível, de rank e ascender, em ordem.',
   'plans.formBlurb':
     'Defina só o que te importa. Tudo de que isso depende é calculado e acrescentado para você — um alvo de habilidade puxa o nível do personagem junto, e alvos de nível ou rank puxam a raridade. Cada campo oferece apenas o que está à frente da unidade, já que um alvo que ela já atende não é um plano.',
+  'plans.groupBy': 'Agrupar por',
+  'plans.groupNone': 'Nenhum',
+  'plans.groupFaction': 'Facção',
+  'plans.groupAlliance': 'Aliança',
+  'plans.groupStatus': 'Status',
+  'plans.sortBy': 'Ordenar por',
+  'plans.sortCreated': 'Mais recentes primeiro',
+  'plans.sortName': 'Nome',
+  'plans.sortEnergy': 'Recursos para farmar',
+  'plans.sortSteps': 'Passos restantes',
+  'plans.inProgress': 'Em andamento',
   'plan.projected':
     'Projetado em {rank} com {stars} estrelas (×{multiplier}), sem contar nenhuma melhoria de rank aplicada — alcançar um rank consome as do rank anterior, então um rank recém-alcançado começa vazio. O equipamento não muda.',
   'plan.orderBlurb':
@@ -551,6 +563,7 @@ export const PT: Record<keyof typeof EN, string> = {
   'ud.shardsUnknown':
     'A quantidade de fragmentos necessária para desbloquear um personagem não é publicada nas fontes de dados, então nenhum alvo é mostrado.',
   'ud.levelCapped': 'Nível limitado por esta raridade — ascenda para elevar o limite.',
+  'ud.noPlans': 'Nenhum plano ainda para esta unidade.',
   'ud.armourNote':
     'A armadura subtrai de cada golpe recebido um a um, mas nunca abaixo da parcela de perfuração daquele ataque — contra um ataque totalmente perfurante ela não faz nada. Quanto ela vale depende inteiramente de quem está atirando em você.',
   'ud.noStatBlock': 'Nenhum bloco de atributos publicado para este rank.',
@@ -626,6 +639,38 @@ export const PT: Record<keyof typeof EN, string> = {
   'ud.critDamage': 'Dano crítico',
   'ud.blockChance': 'Chance de bloqueio',
   'ud.blockDamage': 'Dano bloqueado',
+
+  /* ---- planos de equipamento ------------------------------------------- */
+  'itemplan.heading': 'Equipamento',
+  'itemplan.blurb': 'Escolha um item e nível alvo para um slot; deixe em branco para pular esse slot.',
+  'itemplan.noTarget': '— manter como está —',
+  'itemplan.currently': 'atualmente {item} (nív. {level})',
+  'itemplan.toLevel': 'até o nível {n}',
+  'itemplan.alreadyMet': 'Já está lá',
+  'itemplan.dust': '{n} Pó',
+  'itemplan.gold': '{n} Ouro',
+  'itemplan.mythicDust': '{n} Pó Mítico',
+  'itemplan.forgeBadges': '{held}/{need} Emblemas de Forja {rarity}',
+  'itemplan.notOnChain':
+    '{item} não é alcançável ascendendo a partir de {from} — o jogo também pode oferecer um item diferente ao ascender. Custo calculado como {item} a partir do nível 1.',
+  'itemplan.freshStart': 'Nada equipado nesse slot ainda — custo calculado como {item} a partir do nível 1.',
+
+  /* ---- catálogo de equipamento ------------------------------------------ */
+  'equip.blurb':
+    'Todo equipamento que o jogo publica, tendo você ou não — quem pode usar, quanto custa levar ao máximo, e o que você já tem.',
+  'equip.search': 'Buscar equipamento…',
+  'equip.filterAll': 'Todos',
+  'equip.filterHeld': 'Eu tenho',
+  'equip.rarityAll': 'Qualquer raridade',
+  'equip.count.held': 'em posse',
+  'equip.count.known': 'conhecidos',
+  'equip.noMatch': 'Nada corresponde a “{query}”.',
+  'equip.usableBy': '{n} unidade pode usar isso',
+  'equip.usableByPlural': '{n} unidades podem usar isso',
+  'equip.noOneCan': 'Nenhuma unidade no banco de dados pode equipar isso.',
+  'equip.worn': 'Usado por {unit} (nív. {level})',
+  'equip.loose': '{n}× solto no nível {level}',
+  'equip.compatibleHeading': 'Pode ser equipado por:',
 
   /* ---- erros ----------------------------------------------------------- */
   'err.gamedataLoad': 'Não foi possível carregar gamedata.json (HTTP {status}). Rode `npm run gamedata:snapshot` na raiz do repositório.',

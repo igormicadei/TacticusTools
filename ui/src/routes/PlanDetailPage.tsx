@@ -13,6 +13,7 @@ import { computeUnitStats, type ComputedUnitStats } from '@lib/gamedata/stats.js
 import type { GameDatabase } from '@lib/gamedata/types.js';
 import type { PlayerResponse } from '@lib/types/player.js';
 
+import { ItemTargetsSummary } from '../components/ItemTargets.tsx';
 import { PlanRoadmap } from '../components/PlanRoadmap.tsx';
 import { StepItems } from '../components/StepItems.tsx';
 import { plansStore } from '../data/plans.ts';
@@ -118,6 +119,7 @@ export function PlanDetailPage({ db, player }: { db: GameDatabase; player: Playe
       {editing && (
         <PlanForm
           db={db}
+          player={player}
           units={units}
           plan={stored}
           onSaved={() => {
@@ -162,6 +164,13 @@ export function PlanDetailPage({ db, player }: { db: GameDatabase; player: Playe
           </>
         )}
       </section>
+
+      {stored.itemTargets && stored.itemTargets.length > 0 && (
+        <section className="panel" style={{ marginBottom: 16 }}>
+          <h3>{t('itemplan.heading')}</h3>
+          <ItemTargetsSummary db={db} player={player} unit={unit} targets={stored.itemTargets} />
+        </section>
+      )}
 
       <section className="panel">
         <h3>{t('plan.orderOfWork')}</h3>

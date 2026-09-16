@@ -1,13 +1,16 @@
-import { Fragment, useMemo } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useMemo, useState, Fragment } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { parseRarity } from '@lib/gamedata/enums.js';
+import { currentState, markProgress, resolvePlan } from '@lib/gamedata/plan.js';
 import { computeTierStarLevel, computeUnitStats } from '@lib/gamedata/stats.js';
 import { resolveAbility, unitCombat } from '@lib/gamedata/combat.js';
 import type { GameDatabase } from '@lib/gamedata/types.js';
 import type { PlayerResponse, Unit } from '@lib/types/player.js';
 
 import { buildRoster, humaniseFaction, rarityLabel } from '../data/roster.ts';
+import { plansStore } from '../data/plans.ts';
+import { describeTarget, PlanForm } from './PlansPage.tsx';
 import {
   abilityIcon,
   attackIcon,
@@ -116,6 +119,7 @@ export function UnitDetailPage({
       {unit && (
         <div className="panels">
           <Progress unit={unit} db={db} />
+          <Plans unit={unit} db={db} player={player} />
           <Attributes unit={unit} db={db} />
           <Attacks unit={unit} db={db} />
           <Abilities unit={unit} db={db} />
@@ -217,6 +221,70 @@ function Progress({ unit, db }: { unit: Unit; db: GameDatabase }) {
         <p className="small" style={{ color: 'var(--accent)', marginBottom: 0 }}>
           {t('ud.levelCapped')}
         </p>
+      )}
+    </section>
+  );
+}
+
+/**
+ * Every saved plan for this unit, and a form to start a new one without
+ * leaving the page.
+ *
+ * The form is the same one the Plans list uses, locked to this unit —
+ * editing an existing plan still happens from the Plans page or the plan's
+ * own detail page, which already do it in full.
+ */
+function Plans({ unit, db, player }: { unit: Unit; db: GameDatabase; player: PlayerResponse }) {
+  useIcons();
+  const navigate = useNavigate();
+  const [creating, setCreating] = useState(false);
+  const plans = useMemo(
+    () => plansStore.list().filter((p) => p.unitId === unit.id),
+    [unit.id],
+  );
+
+  return (
+    <section className="panel">
+      <div className="row wrap" style={{ marginBottom: plans.length > 0 ? 8 : 0 }}>
+        <h3 style={{ margin: 0 }}>{t('nav.plans')}</h3>
+        <span style={{ flex: 1 }} />
+        <button className="small" onClick={() => setCreating((v) => !v)}>
+          {creating ? t('common.cancel') : t('common.newPlan')}
+        </button>
+      </div>
+
+      {plans.length === 0 && !creating && (
+        <p className="small muted" style={{ margin: 0 }}>{t('ud.noPlans')}</p>
+      )}
+
+      {plans.map((stored) => {
+        const plan = markProgress(
+          resolvePlan(unit, stored.target, db, stored.origin),
+          currentState(unit, db),
+        );
+        const left = plan.steps.filter((s) => !s.done).length;
+        return (
+          <Link className="list-item" to={`/plans/${stored.id}`} key={stored.id}>
+            <div className="title">
+              <strong>{describeTarget(stored.target, db)}</strong>
+              <span className="chip">
+                {left === 0
+                  ? t('common.complete')
+                  : t('common.stepsLeft', { n: left, total: plan.steps.length })}
+              </span>
+            </div>
+          </Link>
+        );
+      })}
+
+      {creating && (
+        <PlanForm
+          db={db}
+          player={player}
+          units={[unit]}
+          fixedUnitId={unit.id}
+          onSaved={(id) => navigate(`/plans/${id}`)}
+        />
       )}
     </section>
   );

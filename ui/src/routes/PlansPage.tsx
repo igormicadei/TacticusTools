@@ -2,19 +2,37 @@ import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
 import {  Rarity } from '@lib/gamedata/enums.js';
+import type { ItemTarget } from '@lib/gamedata/itemPlan.js';
 import { currentState, markProgress, projectedStats, resolvePlan } from '@lib/gamedata/plan.js';
 import { computeUnitStats, type ComputedUnitStats } from '@lib/gamedata/stats.js';
 import { buildTimeline, type StatPriority } from '@lib/gamedata/timeline.js';
 import type { GameDatabase } from '@lib/gamedata/types.js';
 import type { PlayerResponse } from '@lib/types/player.js';
 
+import { humaniseFaction } from '../data/roster.ts';
 import { plansStore, type StoredPlan } from '../data/plans.ts';
 import { unitIcon } from '../data/icons.ts';
 import { Icon, useIcons } from '../components/Icon.tsx';
-import { localRank, localRarity } from '../i18n/game.ts';
+import { ItemTargetsEditor, ItemTargetsSummary } from '../components/ItemTargets.tsx';
+import { localAlliance, localRank, localRarity } from '../i18n/game.ts';
 import { PlanCost } from '../components/PlanCost.tsx';
 import { ProjectedStats } from '../components/ProjectedStats.tsx';
 import { t, tn } from '../i18n/locale.ts';
+
+type GroupMode = 'none' | 'faction' | 'alliance' | 'status';
+type SortMode = 'created' | 'name' | 'energy' | 'steps';
+
+const VIEW_KEY = 'tacticus-tools:plans-view';
+
+function readView(): { group: GroupMode; sort: SortMode } {
+  try {
+    const raw = localStorage.getItem(VIEW_KEY);
+    if (raw) return { group: 'none', sort: 'created', ...JSON.parse(raw) };
+  } catch {
+    /* Private mode, or a corrupt value — the defaults still work. */
+  }
+  return { group: 'none', sort: 'created' };
+}
 
 export function PlansPage({ db, player }: { db: GameDatabase; player: PlayerResponse }) {
   useIcons();
@@ -22,6 +40,30 @@ export function PlansPage({ db, player }: { db: GameDatabase; player: PlayerResp
   const [plans, setPlans] = useState(() => plansStore.list());
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<string>();
+  const [view, setView] = useState(readView);
+
+  const setGroup = (group: GroupMode) => {
+    setView((v) => {
+      const next = { ...v, group };
+      try {
+        localStorage.setItem(VIEW_KEY, JSON.stringify(next));
+      } catch {
+        /* Private mode, or storage disabled — the choice still holds for this render. */
+      }
+      return next;
+    });
+  };
+  const setSort = (sort: SortMode) => {
+    setView((v) => {
+      const next = { ...v, sort };
+      try {
+        localStorage.setItem(VIEW_KEY, JSON.stringify(next));
+      } catch {
+        /* Private mode, or storage disabled — the choice still holds for this render. */
+      }
+      return next;
+    });
+  };
 
   const owned = useMemo(
     () => [...player.player.units].sort((a, b) => (a.name ?? a.id).localeCompare(b.name ?? b.id)),
@@ -76,15 +118,123 @@ export function PlansPage({ db, player }: { db: GameDatabase; player: PlayerResp
     setPlans(plansStore.list());
   };
 
+  // Resolved once per plan, so grouping and sorting read off the same numbers
+  // the cards themselves show rather than recomputing per row.
+  const rows = useMemo(() => {
+    const list: {
+      stored: StoredPlan;
+      unit: PlayerResponse['player']['units'][number];
+      plan: ReturnType<typeof resolvePlan>;
+      left: number;
+      done: boolean;
+    }[] = [];
+    for (const stored of plans) {
+      const unit = owned.find((u) => u.id === stored.unitId);
+      if (!unit) continue;
+      const plan = markProgress(
+        resolvePlan(unit, stored.target, db, stored.origin),
+        currentState(unit, db),
+      );
+      const left = plan.steps.filter((s) => !s.done).length;
+      list.push({ stored, unit, plan, left, done: left === 0 });
+    }
+    return list;
+  }, [plans, owned, db]);
+
+  type Row = (typeof rows)[number];
+
+  const sortRows = (list: Row[]): Row[] => {
+    const sorted = [...list];
+    switch (view.sort) {
+      case 'name':
+        sorted.sort((a, b) => (a.unit.name ?? a.unit.id).localeCompare(b.unit.name ?? b.unit.id));
+        break;
+      case 'energy':
+        // Ascending: the quickest wins lead, the same reading order the
+        // energy chip itself invites.
+        sorted.sort(
+          (a, b) =>
+            (summaries.get(a.stored.id)?.cost.energy ?? 0) -
+            (summaries.get(b.stored.id)?.cost.energy ?? 0),
+        );
+        break;
+      case 'steps':
+        sorted.sort((a, b) => a.left - b.left);
+        break;
+      case 'created':
+      default:
+        sorted.sort((a, b) => b.stored.createdAt - a.stored.createdAt);
+        break;
+    }
+    return sorted;
+  };
+
+  /**
+   * Rows bucketed the way the toolbar asks, each bucket sorted the same way.
+   *
+   * "None" still goes through this so the page has exactly one rendering path
+   * — a single unlabelled bucket — rather than a second branch to keep in sync.
+   */
+  const groups = useMemo(() => {
+    if (view.group === 'none') {
+      return [{ key: 'all', label: '', rows: sortRows(rows) }];
+    }
+    const keyOf = (row: Row): { key: string; label: string } => {
+      if (view.group === 'faction') {
+        const id = db.units[row.unit.id]?.factionId ?? row.unit.faction ?? 'unknown';
+        return { key: id, label: humaniseFaction(id) };
+      }
+      if (view.group === 'alliance') {
+        const alliance = db.units[row.unit.id]?.grandAlliance;
+        return { key: String(alliance ?? 'unknown'), label: localAlliance(alliance) };
+      }
+      return row.done
+        ? { key: 'done', label: t('common.complete') }
+        : { key: 'active', label: t('plans.inProgress') };
+    };
+    const buckets = new Map<string, { label: string; rows: Row[] }>();
+    for (const row of rows) {
+      const { key, label } = keyOf(row);
+      const bucket = buckets.get(key);
+      if (bucket) bucket.rows.push(row);
+      else buckets.set(key, { label, rows: [row] });
+    }
+    return [...buckets.entries()]
+      .map(([key, bucket]) => ({ key, label: bucket.label, rows: sortRows(bucket.rows) }))
+      .sort((a, b) => b.rows.length - a.rows.length || a.label.localeCompare(b.label));
+    // `sortRows` closes over `view.sort` and `summaries`, both already listed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, view, summaries, db]);
+
   return (
     <>
       <div className="toolbar">
         <h2 style={{ margin: 0, fontSize: 18 }}>{t('plans.heading')}</h2>
         <span style={{ flex: 1 }} />
         {plans.length > 0 && (
-          <Link className="chip" to="/plans/timeline">
-            {t('plans.everythingInOrder')}
-          </Link>
+          <>
+            <label className="row small" style={{ gap: 4 }}>
+              <span className="muted">{t('plans.groupBy')}</span>
+              <select value={view.group} onChange={(e) => setGroup(e.target.value as GroupMode)}>
+                <option value="none">{t('plans.groupNone')}</option>
+                <option value="faction">{t('plans.groupFaction')}</option>
+                <option value="alliance">{t('plans.groupAlliance')}</option>
+                <option value="status">{t('plans.groupStatus')}</option>
+              </select>
+            </label>
+            <label className="row small" style={{ gap: 4 }}>
+              <span className="muted">{t('plans.sortBy')}</span>
+              <select value={view.sort} onChange={(e) => setSort(e.target.value as SortMode)}>
+                <option value="created">{t('plans.sortCreated')}</option>
+                <option value="name">{t('plans.sortName')}</option>
+                <option value="energy">{t('plans.sortEnergy')}</option>
+                <option value="steps">{t('plans.sortSteps')}</option>
+              </select>
+            </label>
+            <Link className="chip" to="/plans/timeline">
+              {t('plans.everythingInOrder')}
+            </Link>
+          </>
         )}
         <button
           className="primary"
@@ -98,7 +248,7 @@ export function PlansPage({ db, player }: { db: GameDatabase; player: PlayerResp
       </div>
 
       {creating && (
-        <PlanForm db={db} units={owned} onSaved={(id) => navigate(`/plans/${id}`)} />
+        <PlanForm db={db} player={player} units={owned} onSaved={(id) => navigate(`/plans/${id}`)} />
       )}
 
       {plans.length === 0 && !creating && (
@@ -107,77 +257,85 @@ export function PlansPage({ db, player }: { db: GameDatabase; player: PlayerResp
         </div>
       )}
 
-      <div className="grid">
-        {plans.map((stored) => {
-          const unit = owned.find((u) => u.id === stored.unitId);
-          if (!unit) return null;
-          const plan = markProgress(
-            resolvePlan(unit, stored.target, db, stored.origin),
-            currentState(unit, db),
-          );
-          const left = plan.steps.filter((s) => !s.done).length;
-          const done = left === 0;
-          const summary = summaries.get(stored.id);
-          return (
-            <div className="card" key={stored.id} style={{ '--status': done ? 'var(--status-owned)' : 'var(--status-unlockable)' } as React.CSSProperties}>
-              <Link to={`/plans/${stored.id}`}>
-                <div className="card-head">
-                  <Icon src={unitIcon(unit.id)} alt="" size={40} className="portrait" />
-                  <div className="card-title">
-                    <div className="name">{stored.name || unit.name || unit.id}</div>
-                    <div className="sub">{describeTarget(stored.target)}</div>
-                  </div>
-                </div>
-                <div className="meta">
-                  <span className="chip">
-                    {done
-                      ? t('common.complete')
-                      : t('common.stepsLeft', { n: left, total: plan.steps.length })}
-                  </span>
-                  {/* No "unreachable" chip beside this: it counted copies of
-                      the named requirements with no route, which is the same
-                      idea as "with no route" below but measured before recipes
-                      are resolved — two different numbers for one fact. */}
-                  {summary && <PlanCost cost={summary.cost} />}
-                </div>
-                <div className="meta">
-                  <ProjectedStats
-                    from={projections.get(stored.id)?.from}
-                    to={projections.get(stored.id)?.to}
-                    compact
-                  />
-                  {plan.blocked && <span className="chip">{t('common.blocked')}</span>}
-                </div>
-              </Link>
-              <div className="row" style={{ marginTop: 10 }}>
-                <button
-                  className="small"
-                  onClick={() => {
-                    setCreating(false);
-                    setEditing((current) => (current === stored.id ? undefined : stored.id));
-                  }}
-                >
-                  {editing === stored.id ? t('common.cancel') : t('common.edit')}
-                </button>
-                <button className="danger small" onClick={() => remove(stored.id)}>
-                  {t('common.delete')}
-                </button>
-              </div>
-              {editing === stored.id && (
-                <PlanForm
-                  db={db}
-                  units={owned}
-                  plan={stored}
-                  onSaved={() => {
-                    setEditing(undefined);
-                    setPlans(plansStore.list());
-                  }}
-                />
-              )}
+      {groups.map((group) => (
+        <section className={group.label ? 'group' : undefined} key={group.key}>
+          {group.label && (
+            <div className="group-head">
+              <h2>{group.label}</h2>
+              <span className="pill">{group.rows.length}</span>
             </div>
-          );
-        })}
-      </div>
+          )}
+          <div className="grid">
+            {group.rows.map(({ stored, unit, plan, left, done }) => {
+              const summary = summaries.get(stored.id);
+              return (
+                <div className="card" key={stored.id} style={{ '--status': done ? 'var(--status-owned)' : 'var(--status-unlockable)' } as React.CSSProperties}>
+                  <Link to={`/plans/${stored.id}`}>
+                    <div className="card-head">
+                      <Icon src={unitIcon(unit.id)} alt="" size={40} className="portrait" />
+                      <div className="card-title">
+                        <div className="name">{stored.name || unit.name || unit.id}</div>
+                        <div className="sub">{describeTarget(stored.target)}</div>
+                      </div>
+                    </div>
+                    <div className="meta">
+                      <span className="chip">
+                        {done
+                          ? t('common.complete')
+                          : t('common.stepsLeft', { n: left, total: plan.steps.length })}
+                      </span>
+                      {/* No "unreachable" chip beside this: it counted copies of
+                          the named requirements with no route, which is the same
+                          idea as "with no route" below but measured before recipes
+                          are resolved — two different numbers for one fact. */}
+                      {summary && <PlanCost cost={summary.cost} />}
+                    </div>
+                    <div className="meta">
+                      <ProjectedStats
+                        from={projections.get(stored.id)?.from}
+                        to={projections.get(stored.id)?.to}
+                        compact
+                      />
+                      {plan.blocked && <span className="chip">{t('common.blocked')}</span>}
+                    </div>
+                    {stored.itemTargets && stored.itemTargets.length > 0 && (
+                      <div className="meta">
+                        <ItemTargetsSummary db={db} player={player} unit={unit} targets={stored.itemTargets} compact />
+                      </div>
+                    )}
+                  </Link>
+                  <div className="row" style={{ marginTop: 10 }}>
+                    <button
+                      className="small"
+                      onClick={() => {
+                        setCreating(false);
+                        setEditing((current) => (current === stored.id ? undefined : stored.id));
+                      }}
+                    >
+                      {editing === stored.id ? t('common.cancel') : t('common.edit')}
+                    </button>
+                    <button className="danger small" onClick={() => remove(stored.id)}>
+                      {t('common.delete')}
+                    </button>
+                  </div>
+                  {editing === stored.id && (
+                    <PlanForm
+                      db={db}
+                      player={player}
+                      units={owned}
+                      plan={stored}
+                      onSaved={() => {
+                        setEditing(undefined);
+                        setPlans(plansStore.list());
+                      }}
+                    />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      ))}
     </>
   );
 }
@@ -223,17 +381,22 @@ export function describeTarget(
  */
 export function PlanForm({
   db,
+  player,
   units,
   plan: existing,
   onSaved,
+  /** Locks the unit selector to one unit — used from that unit's own page. */
+  fixedUnitId,
 }: {
   db: GameDatabase;
+  player: PlayerResponse;
   units: PlayerResponse['player']['units'];
   plan?: StoredPlan;
   onSaved: (id: string) => void;
+  fixedUnitId?: string;
 }) {
   const field = (value: number | undefined) => (value === undefined ? '' : String(value));
-  const [unitId, setUnitId] = useState(existing?.unitId ?? units[0]?.id ?? '');
+  const [unitId, setUnitId] = useState(existing?.unitId ?? fixedUnitId ?? units[0]?.id ?? '');
   const [rarity, setRarity] = useState(field(existing?.target.rarity));
   const [rank, setRank] = useState(field(existing?.target.rank));
   const [xpLevel, setXpLevel] = useState(field(existing?.target.xpLevel));
@@ -241,6 +404,7 @@ export function PlanForm({
   const [passive, setPassive] = useState(field(existing?.target.passiveAbilityLevel));
   const [stars, setStars] = useState(field(existing?.target.progressionIndex));
   const [priority, setPriority] = useState<StatPriority | ''>(existing?.priority ?? '');
+  const [itemTargets, setItemTargets] = useState<ItemTarget[]>(existing?.itemTargets ?? []);
 
   const num = (v: string) => (v === '' ? undefined : Number(v));
   const target = {
@@ -251,8 +415,9 @@ export function PlanForm({
     ...(passive !== '' ? { passiveAbilityLevel: num(passive)! } : {}),
     ...(stars !== '' ? { progressionIndex: num(stars)! } : {}),
   };
-  const empty = Object.keys(target).length === 0;
+  const empty = Object.keys(target).length === 0 && itemTargets.length === 0;
   const unit = units.find((u) => u.id === unitId);
+  const unitDef = db.units[unitId];
   const preview = unit && !empty ? resolvePlan(unit, target, db) : undefined;
 
   const maxLevel = Math.max(...db.rarityCaps.map((c) => c.maxLevel), 50);
@@ -315,6 +480,7 @@ export function PlanForm({
     setActive('');
     setPassive('');
     setStars('');
+    setItemTargets([]);
   };
 
   return (
@@ -327,7 +493,7 @@ export function PlanForm({
       <div className="form-grid">
         <label>
           <span>{t('common.unit')}</span>
-          <select value={unitId} onChange={(e) => onUnit(e.target.value)}>
+          <select value={unitId} onChange={(e) => onUnit(e.target.value)} disabled={Boolean(fixedUnitId)}>
             {units.map((u) => (
               <option value={u.id} key={u.id}>
                 {u.name ?? u.id}
@@ -430,6 +596,19 @@ export function PlanForm({
         </label>
       </div>
 
+      <h4 style={{ marginBottom: 4 }}>{t('itemplan.heading')}</h4>
+      <p className="small muted" style={{ marginTop: 0 }}>
+        {t('itemplan.blurb')}
+      </p>
+      <ItemTargetsEditor
+        db={db}
+        player={player}
+        unitDef={unitDef}
+        unit={unit}
+        value={itemTargets}
+        onChange={setItemTargets}
+      />
+
       {preview && (
         <p className="small" style={{ color: preview.blocked ? 'var(--danger-strong)' : 'var(--text-secondary)' }}>
           {preview.blocked
@@ -450,6 +629,7 @@ export function PlanForm({
             unitId,
             target,
             priority: priority === '' ? undefined : priority,
+            itemTargets: itemTargets.length > 0 ? itemTargets : undefined,
             // A plan is a plan for one unit, so the unit's own name is the only
             // name it needs. Cleared on save so a name typed by an older build
             // does not linger under a field that no longer exists.
@@ -465,6 +645,7 @@ export function PlanForm({
                 target,
                 ...(unit ? { origin: currentState(unit, db) } : {}),
                 ...(priority ? { priority } : {}),
+                ...(itemTargets.length > 0 ? { itemTargets } : {}),
               }).id,
             );
           }

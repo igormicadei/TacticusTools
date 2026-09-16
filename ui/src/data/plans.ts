@@ -7,6 +7,7 @@
  */
 
 import type { EvolutionTarget, UnitState } from '@lib/gamedata/plan.js';
+import type { ItemTarget } from '@lib/gamedata/itemPlan.js';
 import type { StatPriority } from '@lib/gamedata/timeline.js';
 
 const STORAGE_KEY = 'tacticus-tools:plans';
@@ -34,6 +35,14 @@ export interface StoredPlan {
    * formula to convert between them — so the choice is the player's, per unit.
    */
   priority?: StatPriority | undefined;
+  /**
+   * Equipment goals for this unit: what to put in a slot, and at what level.
+   *
+   * Kept alongside the rank/rarity target rather than as a plan of its own,
+   * since both are the same thing a player already thinks of as "this unit's
+   * plan" — one screen, one edit, one place to look.
+   */
+  itemTargets?: ItemTarget[] | undefined;
   createdAt: number;
 }
 

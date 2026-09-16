@@ -723,7 +723,11 @@ export class EquipmentPool {
       if ((spec.rarity ?? 0) > rarity) return false;
       // Only Rare and above may wear a Booster at all, whatever the slot says.
       if (spec.itemType.startsWith('I_Booster') && rarity < Rarity.Rare) return false;
-      if (spec.allowedFactions.length > 0 && !spec.allowedFactions.includes(unit.factionId)) {
+      // A character-bound Relic names its units outright; only when it does
+      // not does the faction restriction apply on its own.
+      if (spec.allowedUnits.length > 0) {
+        if (!spec.allowedUnits.includes(unit.id)) return false;
+      } else if (spec.allowedFactions.length > 0 && !spec.allowedFactions.includes(unit.factionId)) {
         return false;
       }
       return true;
