@@ -85,7 +85,7 @@ export function UnitDetailPage({
         <Icon src={unitIcon(entry.id)} alt="" size={104} className="portrait ornate" />
         <div>
           <h1>{entry.name}</h1>
-          <div className="muted row">
+          <div className="muted row wrap">
             {definition?.fullName && definition.fullName !== entry.name
               ? `${definition.fullName} · `
               : ''}
