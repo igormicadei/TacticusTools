@@ -291,6 +291,15 @@ export function PlansPage({ db, player }: { db: GameDatabase; player: PlayerResp
                           are resolved — two different numbers for one fact. */}
                       {summary && <PlanCost cost={summary.cost} />}
                     </div>
+                    {plan.steps.length > 0 && (
+                      <div className="bar">
+                        <span
+                          style={{
+                            width: `${Math.round(((plan.steps.length - left) / plan.steps.length) * 100)}%`,
+                          }}
+                        />
+                      </div>
+                    )}
                     {plan.blocked && (
                       <div className="meta">
                         <span className="chip">{t('common.blocked')}</span>
@@ -336,7 +345,39 @@ export function PlansPage({ db, player }: { db: GameDatabase; player: PlayerResp
           </div>
         </section>
       ))}
+
+      <PlansFooter />
     </>
+  );
+}
+
+/**
+ * A quiet close to the list — an original skyline silhouette (plain
+ * rectangles, not a recreation of any in-game city) behind the app's own
+ * tagline, echoing the reference's footer banner without copying its art.
+ */
+function PlansFooter() {
+  return (
+    <div className="plans-footer">
+      <svg viewBox="0 0 400 70" className="plans-footer-skyline" aria-hidden="true" preserveAspectRatio="none">
+        <rect x="0" y="30" width="26" height="40" />
+        <rect x="30" y="18" width="18" height="52" />
+        <rect x="52" y="38" width="22" height="32" />
+        <rect x="78" y="10" width="16" height="60" />
+        <rect x="98" y="26" width="30" height="44" />
+        <rect x="132" y="42" width="20" height="28" />
+        <rect x="156" y="6" width="14" height="64" />
+        <rect x="174" y="24" width="26" height="46" />
+        <rect x="204" y="34" width="18" height="36" />
+        <rect x="226" y="14" width="22" height="56" />
+        <rect x="252" y="40" width="30" height="30" />
+        <rect x="286" y="22" width="16" height="48" />
+        <rect x="306" y="30" width="24" height="40" />
+        <rect x="334" y="12" width="18" height="58" />
+        <rect x="356" y="36" width="26" height="34" />
+      </svg>
+      <p className="plans-footer-tagline">{t('plans.tagline')}</p>
+    </div>
   );
 }
 

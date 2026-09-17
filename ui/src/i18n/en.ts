@@ -414,6 +414,9 @@ export const EN = {
   'si.triesLeft': '{n} tries left today',
   'si.noTriesLeft': 'no tries left today',
   'si.locked': 'locked',
+  'si.nodeBest': 'Best',
+  'si.nodeGood': 'Good',
+  'si.nodeLocked': 'Locked',
   'si.perRun': 'per run',
   'si.each': 'each',
   'si.dropRate': '{n}% drop',
@@ -553,6 +556,7 @@ export const EN = {
   'nav.backUnits': '← All units',
   'nav.viewUnit': 'View unit',
   'plans.everythingInOrder': 'Everything in order',
+  'plans.tagline': 'Plan. Farm. Advance.',
   'plans.none': 'No unit has a target set yet. Open a unit’s page to set one — every unit has a plan, this just lists the ones with something to do.',
   'plans.formBlurb':
     'Set only what you care about. Anything else it depends on is worked out and added for you — an ability target pulls the character level with it, and level or rank targets pull rarity. Each field offers only what lies ahead of the unit, since a target it already meets is not a plan.',

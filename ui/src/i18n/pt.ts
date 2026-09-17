@@ -408,6 +408,9 @@ export const PT: Record<keyof typeof EN, string> = {
   'si.triesLeft': 'restam {n} tentativas hoje',
   'si.noTriesLeft': 'sem tentativas hoje',
   'si.locked': 'bloqueado',
+  'si.nodeBest': 'Melhor',
+  'si.nodeGood': 'Bom',
+  'si.nodeLocked': 'Bloqueado',
   'si.perRun': 'por batalha',
   'si.each': 'cada',
   'si.dropRate': '{n}% de drop',
@@ -547,6 +550,7 @@ export const PT: Record<keyof typeof EN, string> = {
   'nav.backUnits': '← Todas as unidades',
   'nav.viewUnit': 'Ver unidade',
   'plans.everythingInOrder': 'Tudo em ordem',
+  'plans.tagline': 'Planeje. Farme. Avance.',
   'plans.none': 'Nenhuma unidade tem um alvo definido ainda. Abra a página de uma unidade para definir um — toda unidade tem um plano, esta lista só mostra as que têm algo pendente.',
   'plans.formBlurb':
     'Defina só o que te importa. Tudo de que isso depende é calculado e acrescentado para você — um alvo de habilidade puxa o nível do personagem junto, e alvos de nível ou rank puxam a raridade. Cada campo oferece apenas o que está à frente da unidade, já que um alvo que ela já atende não é um plano.',

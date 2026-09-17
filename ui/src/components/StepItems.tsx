@@ -26,7 +26,7 @@ import type { PlayerResponse, Unit } from '@lib/types/player.js';
 
 import { campaignIcon, requirementIcon, uiIcon } from '../data/icons.ts';
 import { Icon, useIcons } from './Icon.tsx';
-import { CheckIcon } from './icons/ChromeIcons.tsx';
+import { CheckIcon, LightbulbIcon } from './icons/ChromeIcons.tsx';
 import { PlanCost, energyLabel } from './PlanCost.tsx';
 import { localNumber, localRank, localRarity, localStat, localStepLabel } from '../i18n/game.ts';
 import { t, tn } from '../i18n/locale.ts';
@@ -838,16 +838,27 @@ export function NodeTable({ nodes }: { nodes: ReturnType<typeof nodeStatuses> })
                   </>
                 )}
               </td>
+              <td>
+                <NodeTag best={node.unlocked && node.energyPerDrop === best} unlocked={node.unlocked} />
+              </td>
             </tr>
           ))}
         </tbody>
       </table>
       </div>
-      <p className="small muted" style={{ margin: '6px 0 0' }}>
+      <p className="small muted node-tip">
+        <LightbulbIcon size={14} />
         {t('si.dropRatesNote')}
       </p>
     </div>
   );
+}
+
+/** Best/Good/Locked at a glance, alongside the exact per-drop cost the pill summarises. */
+function NodeTag({ best, unlocked }: { best: boolean; unlocked: boolean }) {
+  if (!unlocked) return <span className="chip node-tag locked">{t('si.nodeLocked')}</span>;
+  if (best) return <span className="chip node-tag best">{t('si.nodeBest')}</span>;
+  return <span className="chip node-tag good">{t('si.nodeGood')}</span>;
 }
 
 /** The game's energy glyph, falling back to the character it stands in for. */
