@@ -18,6 +18,7 @@ import { localAlliance, localRank, localRarity } from '../i18n/game.ts';
 import { NextStep } from '../components/NextStep.tsx';
 import { PlanCost } from '../components/PlanCost.tsx';
 import { StatCard, type StatCardRow } from '../components/StatCard.tsx';
+import { SelectField, SwitchField, Toolbar, ToolbarCounts } from '../components/Toolbar.tsx';
 import { t, tn } from '../i18n/locale.ts';
 
 type GroupMode = 'none' | 'faction' | 'alliance' | 'status';
@@ -219,43 +220,37 @@ export function PlansPage({ db, player }: { db: GameDatabase; player: PlayerResp
 
   return (
     <>
-      <div className="toolbar">
+      <Toolbar>
         <h2 style={{ margin: 0, fontSize: 18 }}>{t('plans.heading')}</h2>
-        <span style={{ flex: 1 }} />
         {plans.length > 0 && (
           <>
-            <label className="switch">
-              <input
-                type="checkbox"
-                checked={view.hideDone}
-                onChange={(e) => setHideDone(e.target.checked)}
-              />
-              <span>{t('plans.hideDone')}</span>
-            </label>
-            <label className="row small" style={{ gap: 4 }}>
-              <span className="muted">{t('plans.groupBy')}</span>
-              <select value={view.group} onChange={(e) => setGroup(e.target.value as GroupMode)}>
-                <option value="none">{t('plans.groupNone')}</option>
-                <option value="faction">{t('plans.groupFaction')}</option>
-                <option value="alliance">{t('plans.groupAlliance')}</option>
-                <option value="status">{t('plans.groupStatus')}</option>
-              </select>
-            </label>
-            <label className="row small" style={{ gap: 4 }}>
-              <span className="muted">{t('plans.sortBy')}</span>
-              <select value={view.sort} onChange={(e) => setSort(e.target.value as SortMode)}>
-                <option value="created">{t('plans.sortCreated')}</option>
-                <option value="name">{t('plans.sortName')}</option>
-                <option value="energy">{t('plans.sortEnergy')}</option>
-                <option value="steps">{t('plans.sortSteps')}</option>
-              </select>
-            </label>
+            <SwitchField
+              checked={view.hideDone}
+              onChange={setHideDone}
+              label={t('plans.hideDone')}
+            />
+            <SelectField label={t('plans.groupBy')} value={view.group} onChange={setGroup}>
+              <option value="none">{t('plans.groupNone')}</option>
+              <option value="faction">{t('plans.groupFaction')}</option>
+              <option value="alliance">{t('plans.groupAlliance')}</option>
+              <option value="status">{t('plans.groupStatus')}</option>
+            </SelectField>
+            <SelectField label={t('plans.sortBy')} value={view.sort} onChange={setSort}>
+              <option value="created">{t('plans.sortCreated')}</option>
+              <option value="name">{t('plans.sortName')}</option>
+              <option value="energy">{t('plans.sortEnergy')}</option>
+              <option value="steps">{t('plans.sortSteps')}</option>
+            </SelectField>
+            <ToolbarCounts items={[{ value: plans.length, label: t('plans.count') }]} />
             <Link className="chip" to="/plans/timeline">
               {t('plans.everythingInOrder')}
             </Link>
+            <Link className="chip" to="/plans/shopping-list">
+              {t('shopping.heading')}
+            </Link>
           </>
         )}
-      </div>
+      </Toolbar>
 
       {plans.length === 0 && (
         <div className="empty">

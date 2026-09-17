@@ -153,6 +153,7 @@ export const PT: Record<keyof typeof EN, string> = {
 
   /* ---- planos --------------------------------------------------------- */
   'plans.heading': 'Planos de evolução',
+  'plans.count': 'ativos',
   'plans.unitName': 'Nome da unidade',
   'plans.noPreference': 'Sem preferência',
   'plans.favourHint': 'Qual atributo priorizar para esta unidade ao gastar energia',
@@ -257,6 +258,7 @@ export const PT: Record<keyof typeof EN, string> = {
   'teams.sortBy': 'Ordenar por',
   'teams.minRank': 'Rank mínimo',
   'teams.any': 'Qualquer',
+  'teams.ofTotal': 'de {n}',
   'teams.faction': 'Facção',
   'teams.damageType': 'Tipo de dano',
   'teams.trait': 'Característica',
@@ -555,6 +557,22 @@ export const PT: Record<keyof typeof EN, string> = {
   'timeline.craftedNote':
     'Forjado — o preço acima é o dos ingredientes, farmados nos nós abertos mais baratos.',
 
+  /* ---- lista de compras -------------------------------------------------- */
+  'shopping.none': 'Nenhum plano ainda. A lista de compras soma os alvos de equipamento de cada plano.',
+  'shopping.heading': 'Lista de compras',
+  'shopping.acrossPlans': 'Ainda necessário em {n} planos',
+  'shopping.account': 'Considerar estoque',
+  'shopping.accountHint':
+    'Abate cada alvo pelas cópias soltas já no seu estoque, começando o custo do nível dessa cópia em vez do nível 1. Quando mais de um plano quer o mesmo item, a ordem atual da lista de planos decide quem leva as cópias soltas primeiro.',
+  'shopping.blurb':
+    'Os alvos de equipamento de cada plano ativo, somados. Pó, Ouro e Pó Mítico são custos, não uma necessidade líquida — o jogo não informa um saldo deles — mas os Emblemas da Forja são conferidos contra o que você realmente tem.',
+  'shopping.allMet': 'Todo item planejado já está equipado.',
+  'shopping.oneUnit': 'desejado por 1 unidade',
+  'shopping.manyUnits': 'desejado por {n} unidades',
+  'shopping.fromLoose': 'de uma cópia solta (nv {n})',
+  'shopping.fromLooseHint':
+    'Uma cópia deste item já está no seu estoque — custada a partir do nível dela em vez de começar do zero.',
+
   /* ---- textos de equipe ------------------------------------------------ */
   'td.objectiveBlurb':
     'Equipamento concede Crítico e Bloqueio com muito mais frequência do que Vida ou Armadura — 626 níveis de item carregam Chance de Crítico contra 215 com Vida — então um objetivo que lesse só os atributos principais classificaria quase todo item de Crítico como inútil. “Sobreviver” e “Bater mais forte” precificam o que o item de fato faz; os objetivos crus estão aí para quando é isso mesmo que você quer.',
@@ -664,6 +682,10 @@ export const PT: Record<keyof typeof EN, string> = {
   'itemplan.freshStart': 'Nada equipado nesse slot ainda — custo calculado como {item} a partir do nível 1.',
   'itemplan.pickRarityFirst': 'Escolha uma raridade primeiro',
   'itemplan.noItemsHere': 'Nenhum item dessa raridade alcança esse nível.',
+  'itemplan.critHint':
+    'Uma arma com mais golpes aproveita melhor a Chance de Crítico, já que ela se acumula a cada golpe; um golpe único e forte aproveita melhor o Dano Crítico.',
+  'itemplan.critBest': 'Maior dano esperado',
+  'itemplan.expectedDamage': '≈{n} de dano esperado/ataque',
 
   /* ---- catálogo de equipamento ------------------------------------------ */
   'equip.blurb':

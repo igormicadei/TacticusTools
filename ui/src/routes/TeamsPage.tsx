@@ -16,6 +16,7 @@ import type { GameDatabase } from '@lib/gamedata/types.js';
 import type { PlayerResponse } from '@lib/types/player.js';
 
 import { Icon, useIcons } from '../components/Icon.tsx';
+import { SearchField, SelectField, Toolbar, ToolbarCounts } from '../components/Toolbar.tsx';
 import { factionIcon, rankIcon, rarityIcon, unitIcon } from '../data/icons.ts';
 import { teamsStore, type StoredTeam } from '../data/teams.ts';
 import { localRarity } from '../i18n/game.ts';
@@ -210,41 +211,29 @@ export function RosterPicker({
     <section className="panel">
       <h3>{t('teams.chooseUnits')}</h3>
 
-      <div className="toolbar" style={{ marginBottom: 12 }}>
-        <input
-          className="search"
-          placeholder={t('teams.searchUnits')}
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
-        <label className="inline-field">
-          <span>{t('teams.sortBy')}</span>
-          <select value={sort} onChange={(e) => setSort(e.target.value as SortKey)}>
-            {SORTS.map((s) => (
-              <option key={s.key} value={s.key}>
-                {t(s.label)}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="inline-field">
-          <span>{t('teams.minRank')}</span>
-          <select
-            value={minRank ?? ''}
-            onChange={(e) => setMinRank(e.target.value === '' ? undefined : Number(e.target.value))}
-          >
-            <option value="">{t('teams.any')}</option>
-            {Array.from({ length: 20 }, (_, rank) => (
-              <option key={rank} value={rank}>
-                {rankName(rank)}
-              </option>
-            ))}
-          </select>
-        </label>
-        <span className="muted small" style={{ marginLeft: 'auto' }}>
-          {rows.length} of {roster.length}
-        </span>
-      </div>
+      <Toolbar>
+        <SearchField value={query} onChange={setQuery} placeholder={t('teams.searchUnits')} />
+        <SelectField label={t('teams.sortBy')} value={sort} onChange={setSort}>
+          {SORTS.map((s) => (
+            <option key={s.key} value={s.key}>
+              {t(s.label)}
+            </option>
+          ))}
+        </SelectField>
+        <SelectField
+          label={t('teams.minRank')}
+          value={minRank === undefined ? '' : String(minRank)}
+          onChange={(v) => setMinRank(v === '' ? undefined : Number(v))}
+        >
+          <option value="">{t('teams.any')}</option>
+          {Array.from({ length: 20 }, (_, rank) => (
+            <option key={rank} value={rank}>
+              {rankName(rank)}
+            </option>
+          ))}
+        </SelectField>
+        <ToolbarCounts items={[{ value: rows.length, label: t('teams.ofTotal', { n: roster.length }) }]} />
+      </Toolbar>
 
       <ChipFilter
         label={t('common.rarity')}

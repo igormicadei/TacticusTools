@@ -16,6 +16,7 @@ import type { GameDatabase } from '@lib/gamedata/types.js';
 import type { PlayerResponse } from '@lib/types/player.js';
 
 import { Icon, useIcons } from '../components/Icon.tsx';
+import { SearchField, SegmentedControl, Toolbar, ToolbarCounts } from '../components/Toolbar.tsx';
 import { localRank, localRarity, localStat } from '../i18n/game.ts';
 import { t, tn, type StringKey } from '../i18n/locale.ts';
 import { rankIcon, requirementIcon, unitIcon } from '../data/icons.ts';
@@ -135,61 +136,38 @@ export function UpgradesPage({ db, player }: { db: GameDatabase; player: PlayerR
 
   return (
     <>
-      <div className="toolbar">
-        <div className="tabs">
-          <button className={view === 'inventory' ? 'active' : ''} onClick={() => setView('inventory')}>
-            {t('upg.tab.where')}
-          </button>
-          <button className={view === 'ranks' ? 'active' : ''} onClick={() => setView('ranks')}>
-            {t('upg.tab.nextRank')}
-          </button>
-        </div>
+      <Toolbar>
+        <SegmentedControl
+          value={view}
+          onChange={setView}
+          options={[
+            { value: 'inventory', label: t('upg.tab.where') },
+            { value: 'ranks', label: t('upg.tab.nextRank') },
+          ]}
+        />
         {view === 'inventory' && (
           <>
-            <div className="tabs">
-              {FILTERS.map((f) => (
-                <button
-                  key={f.key}
-                  className={filter === f.key ? 'active' : ''}
-                  onClick={() => setFilter(f.key)}
-                  title={t(f.hint)}
-                >
-                  {t(f.label)}
-                </button>
-              ))}
-            </div>
-            <div className="tabs">
-              {SCOPES.map((sc) => (
-                <button
-                  key={sc.key}
-                  className={scope === sc.key ? 'active' : ''}
-                  onClick={() => setScope(sc.key)}
-                  title={t(sc.hint)}
-                >
-                  {t(sc.label)}
-                </button>
-              ))}
-            </div>
-            <input
-              className="search"
-              placeholder={t('upg.search')}
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
+            <SegmentedControl
+              value={filter}
+              onChange={setFilter}
+              options={FILTERS.map((f) => ({ value: f.key, label: t(f.label), hint: t(f.hint) }))}
             />
-            <div className="counts small muted">
-              <span className="count">
-                <b>{spendable}</b> {t('upg.count.spendable')}
-              </span>
-              <span className="count">
-                <b>{held}</b> {t('upg.count.stock')}
-              </span>
-              <span className="count">
-                <b>{catalogue.length}</b> {t('upg.count.known')}
-              </span>
-            </div>
+            <SegmentedControl
+              value={scope}
+              onChange={setScope}
+              options={SCOPES.map((sc) => ({ value: sc.key, label: t(sc.label), hint: t(sc.hint) }))}
+            />
+            <SearchField value={query} onChange={setQuery} placeholder={t('upg.search')} />
+            <ToolbarCounts
+              items={[
+                { value: spendable, label: t('upg.count.spendable') },
+                { value: held, label: t('upg.count.stock') },
+                { value: catalogue.length, label: t('upg.count.known') },
+              ]}
+            />
           </>
         )}
-      </div>
+      </Toolbar>
 
       {view === 'inventory' ? (
         <section className="panel">

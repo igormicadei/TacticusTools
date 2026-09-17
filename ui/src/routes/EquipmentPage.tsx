@@ -8,6 +8,7 @@ import type { PlayerResponse } from '@lib/types/player.js';
 import { requirementIcon, unitIcon } from '../data/icons.ts';
 import { Icon, useIcons } from '../components/Icon.tsx';
 import { slotCategoryLabel } from '../components/ItemTargets.tsx';
+import { SearchField, SegmentedControl, SelectField, SwitchField, Toolbar, ToolbarCounts } from '../components/Toolbar.tsx';
 import { localNumber, localRarity } from '../i18n/game.ts';
 import { t, tn } from '../i18n/locale.ts';
 
@@ -90,44 +91,32 @@ export function EquipmentPage({ db, player }: { db: GameDatabase; player: Player
 
   return (
     <>
-      <div className="toolbar">
-        <div className="tabs">
-          <button className={category === '' ? 'active' : ''} onClick={() => setCategory('')}>
-            {t('equip.filterAll')}
-          </button>
-          {CATEGORIES.map((c) => (
-            <button key={c} className={category === c ? 'active' : ''} onClick={() => setCategory(c)}>
-              {slotCategoryLabel(c)}
-            </button>
-          ))}
-        </div>
-        <select value={rarity} onChange={(e) => setRarity(e.target.value)}>
+      <Toolbar>
+        <SegmentedControl
+          value={category}
+          onChange={setCategory}
+          options={[
+            { value: '', label: t('equip.filterAll') },
+            ...CATEGORIES.map((c) => ({ value: c, label: slotCategoryLabel(c) })),
+          ]}
+        />
+        <SelectField label={t('common.rarity')} value={rarity} onChange={setRarity}>
           <option value="">{t('equip.rarityAll')}</option>
           {[0, 1, 2, 3, 4, 5].map((r) => (
             <option value={r} key={r}>
               {localRarity(r)}
             </option>
           ))}
-        </select>
-        <label className="switch">
-          <input type="checkbox" checked={heldOnly} onChange={(e) => setHeldOnly(e.target.checked)} />
-          <span>{t('equip.filterHeld')}</span>
-        </label>
-        <input
-          className="search"
-          placeholder={t('equip.search')}
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
+        </SelectField>
+        <SwitchField checked={heldOnly} onChange={setHeldOnly} label={t('equip.filterHeld')} />
+        <SearchField value={query} onChange={setQuery} placeholder={t('equip.search')} />
+        <ToolbarCounts
+          items={[
+            { value: held, label: t('equip.count.held') },
+            { value: catalogue.length, label: t('equip.count.known') },
+          ]}
         />
-        <div className="counts small muted">
-          <span className="count">
-            <b>{held}</b> {t('equip.count.held')}
-          </span>
-          <span className="count">
-            <b>{catalogue.length}</b> {t('equip.count.known')}
-          </span>
-        </div>
-      </div>
+      </Toolbar>
 
       <section className="panel">
         <p className="small muted" style={{ marginTop: 0 }}>

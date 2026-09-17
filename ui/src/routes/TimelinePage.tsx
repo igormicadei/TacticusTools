@@ -14,6 +14,7 @@ import type { GameDatabase } from '@lib/gamedata/types.js';
 import type { PlayerResponse } from '@lib/types/player.js';
 
 import { ItemRow, NodeTable, toggleOpen } from '../components/StepItems.tsx';
+import { SegmentedControl, SelectField, SwitchField, Toolbar } from '../components/Toolbar.tsx';
 import { plansStore } from '../data/plans.ts';
 import { rankIcon, requirementIcon, unitIcon } from '../data/icons.ts';
 import { Icon, useIcons } from '../components/Icon.tsx';
@@ -287,7 +288,7 @@ function SpendEnergy({ db, player }: { db: GameDatabase; player: PlayerResponse 
 
   return (
     <section className="panel">
-      <div className="row wrap" style={{ gap: 16, marginBottom: 12 }}>
+      <Toolbar>
         <label className="inline-field">
           <span>{t('timeline.energy')}</span>
           <input
@@ -301,54 +302,41 @@ function SpendEnergy({ db, player }: { db: GameDatabase; player: PlayerResponse 
             style={{ width: 100 }}
           />
         </label>
-        <label className="inline-field">
-          <span>{t('common.favour')}</span>
-          <select
-            value={stat}
-            onChange={(e) => {
-              const next = e.target.value as StatPriority | '';
-              setStat(next);
-              localStorage.setItem(STAT_KEY, next);
-            }}
-          >
-            <option value="">{t('timeline.anyAttribute')}</option>
-            <option value="health">{t('common.health')}</option>
-            <option value="damage">{t('common.damage')}</option>
-            <option value="armour">{t('common.armour')}</option>
-          </select>
-        </label>
-        <div className="tabs">
-          <button
-            className={plannedOnly ? '' : 'active'}
-            onClick={() => {
-              setPlannedOnly(false);
-              localStorage.setItem(PLANNED_KEY, '0');
-            }}
-          >
-            {t('spend.allUnits')}
-          </button>
-          <button
-            className={plannedOnly ? 'active' : ''}
-            onClick={() => {
-              setPlannedOnly(true);
-              localStorage.setItem(PLANNED_KEY, '1');
-            }}
-          >
-            {t('spend.onlyPlans')}
-          </button>
-        </div>
-        <label className="switch" title={t('spend.todayHint')}>
-          <input
-            type="checkbox"
-            checked={todayOnly}
-            onChange={(e) => {
-              setTodayOnly(e.target.checked);
-              localStorage.setItem(TODAY_KEY, e.target.checked ? '1' : '0');
-            }}
-          />
-          <span>{t('spend.today')}</span>
-        </label>
-      </div>
+        <SelectField
+          label={t('common.favour')}
+          value={stat}
+          onChange={(next) => {
+            setStat(next);
+            localStorage.setItem(STAT_KEY, next);
+          }}
+        >
+          <option value="">{t('timeline.anyAttribute')}</option>
+          <option value="health">{t('common.health')}</option>
+          <option value="damage">{t('common.damage')}</option>
+          <option value="armour">{t('common.armour')}</option>
+        </SelectField>
+        <SegmentedControl
+          value={plannedOnly ? 'plans' : 'all'}
+          onChange={(v) => {
+            const next = v === 'plans';
+            setPlannedOnly(next);
+            localStorage.setItem(PLANNED_KEY, next ? '1' : '0');
+          }}
+          options={[
+            { value: 'all', label: t('spend.allUnits') },
+            { value: 'plans', label: t('spend.onlyPlans') },
+          ]}
+        />
+        <SwitchField
+          checked={todayOnly}
+          onChange={(checked) => {
+            setTodayOnly(checked);
+            localStorage.setItem(TODAY_KEY, checked ? '1' : '0');
+          }}
+          label={t('spend.today')}
+          hint={t('spend.todayHint')}
+        />
+      </Toolbar>
 
       <p className="small muted" style={{ marginTop: 0 }}>
         {t('spend.blurb')} {t('spend.energyNote')}

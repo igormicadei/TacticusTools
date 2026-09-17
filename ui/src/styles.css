@@ -122,13 +122,30 @@ textarea {
   padding: var(--space-6); resize: vertical;
 }
 
+/*
+ * The one shape every list page's group/filter/sort row uses: a raised strip
+ * — the same surface a `.panel` sits on — holding whatever mix of segmented
+ * controls, selects, switches and search a page needs. Its own controls sit a
+ * step further in, on `--bg-sunken`, the same raised-holds-sunken pairing a
+ * `.panel` uses for its `.stat` tiles, so a page's toolbar always reads as one
+ * cohesive bar rather than a row of controls floating on the page.
+ */
 .toolbar {
-  display: flex; align-items: center; gap: var(--space-8);
+  display: flex; align-items: center; gap: var(--space-6);
   flex-wrap: wrap; margin-bottom: var(--space-9);
+  padding: var(--space-5) var(--space-6);
+  background: var(--bg-raised);
+  border: var(--border-w) solid var(--border-default);
+  border-radius: var(--radius-lg);
 }
+/* A toolbar nested inside a panel steps up a tone from it, the same way a
+   `.card` steps up from the page — so the two never sit at the same fill with
+   only a border between them. */
+.panel .toolbar { background: var(--bg-hover); }
+
 .tabs {
   display: flex; gap: var(--space-2);
-  background: var(--bg-raised); padding: var(--space-2);
+  background: var(--bg-sunken); padding: var(--space-2);
   border-radius: var(--radius-pill);
 }
 .tabs button {
@@ -139,7 +156,7 @@ textarea {
 .tabs button.active { background: var(--bg-hover); color: var(--accent); font-weight: 600; }
 
 .search {
-  font: inherit; background: var(--bg-raised); color: var(--text-primary);
+  font: inherit; background: var(--bg-sunken); color: var(--text-primary);
   border: var(--border-w) solid var(--border-default); border-radius: var(--radius-pill);
   padding: var(--space-4) var(--space-7); min-width: 240px;
 }
@@ -749,7 +766,10 @@ table.split-head thead tr:last-child th { font-weight: 400; }
   .session-name { display: none; }
 
   /* ---- generic ---- */
-  .toolbar { gap: var(--space-5); margin-bottom: var(--space-7); }
+  .toolbar {
+    gap: var(--space-5); margin-bottom: var(--space-7);
+    padding: var(--space-4) var(--space-5);
+  }
   .toolbar .search, .search { min-width: 0; width: 100%; }
   .counts { margin-left: 0; }
   .tabs { flex-wrap: wrap; border-radius: var(--radius-lg); }

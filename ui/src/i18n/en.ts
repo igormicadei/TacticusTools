@@ -159,6 +159,7 @@ export const EN = {
 
   /* ---- plans ---------------------------------------------------------- */
   'plans.heading': 'Evolution plans',
+  'plans.count': 'active',
   'plans.unitName': 'Unit name',
   'plans.noPreference': 'No preference',
   'plans.favourHint': 'Which attribute to favour for this unit when spending energy',
@@ -263,6 +264,7 @@ export const EN = {
   'teams.sortBy': 'Sort by',
   'teams.minRank': 'Min rank',
   'teams.any': 'Any',
+  'teams.ofTotal': 'of {n}',
   'teams.faction': 'Faction',
   'teams.damageType': 'Damage type',
   'teams.trait': 'Trait',
@@ -561,6 +563,22 @@ export const EN = {
   'timeline.craftedNote':
     'Crafted — the price above is its ingredients, farmed at their cheapest open nodes.',
 
+  /* ---- shopping list ----------------------------------------------------- */
+  'shopping.none': 'No plans yet. The shopping list adds up every plan’s equipment targets.',
+  'shopping.heading': 'Shopping list',
+  'shopping.acrossPlans': 'Still needed across {n} plans',
+  'shopping.account': 'Account for inventory',
+  'shopping.accountHint':
+    'Nets each target against loose copies already sitting in your inventory, starting the cost from that copy’s level instead of level 1. When more than one plan wants the same item, the Plans list’s current sort decides who gets the loose copies first.',
+  'shopping.blurb':
+    'Every active plan’s equipment targets, added up. Dust, Gold and Mythic Dust are costs, not a netted need — the game does not report a balance for them — but Forge Badges are checked against what you actually hold.',
+  'shopping.allMet': 'Every planned item is already worn.',
+  'shopping.oneUnit': 'wanted by 1 unit',
+  'shopping.manyUnits': 'wanted by {n} units',
+  'shopping.fromLoose': 'from a loose copy (lvl {n})',
+  'shopping.fromLooseHint':
+    'A copy of this item is already sitting in your inventory — costed from its level instead of starting fresh.',
+
   /* ---- team prose ------------------------------------------------------ */
   'td.objectiveBlurb':
     'Equipment grants Crit and Block far more often than Health or Armour — 626 item levels carry Crit Chance against 215 carrying Health — so an objective that read only the headline stats would rate almost every Crit item as worthless. “Survive” and “Hit hardest” price what the item actually does; the raw ones are there for when that is what you actually want.',
@@ -670,6 +688,10 @@ export const EN = {
   'itemplan.freshStart': 'Nothing worn here yet — costed as {item} from level 1.',
   'itemplan.pickRarityFirst': 'Pick a rarity first',
   'itemplan.noItemsHere': 'No item of this rarity reaches that level.',
+  'itemplan.critHint':
+    'A weapon that hits more times gets more out of Crit Chance, since it compounds per hit; a single big hit gets more out of Crit Damage instead.',
+  'itemplan.critBest': 'Higher expected damage',
+  'itemplan.expectedDamage': '≈{n} expected dmg/attack',
 
   /* ---- equipment catalogue ---------------------------------------------- */
   'equip.blurb':

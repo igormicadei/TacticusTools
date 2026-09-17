@@ -120,3 +120,29 @@ export const plansStore = {
     writeAll(readAll().filter((p) => p.unitId !== unitId));
   },
 };
+
+const VIEW_KEY = 'tacticus-tools:plans-view';
+
+/**
+ * The Plans list's own sort choice, read independently of that page.
+ *
+ * Used to order allocation on the shopping list: when two plans want the same
+ * loose copy of an item, the one earlier in the Plans list's current order
+ * claims it, so resorting that list is how a player reprioritises without a
+ * second control to learn. Only `name` and `created` are honoured here —
+ * `energy` and `steps` need a plan's resolved timeline to sort by, which is
+ * more than an allocation order justifies computing twice, so both fall back
+ * to `created`.
+ */
+export function readPlansSort(): 'created' | 'name' {
+  try {
+    const raw = localStorage.getItem(VIEW_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as { sort?: string };
+      if (parsed.sort === 'name') return 'name';
+    }
+  } catch {
+    /* Private mode, or a corrupt value — the default still works. */
+  }
+  return 'created';
+}

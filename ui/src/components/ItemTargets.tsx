@@ -4,6 +4,7 @@ import { parseRarity, type Rarity } from '@lib/gamedata/enums.js';
 import { itemOptionsForSlot } from '@lib/gamedata/items.js';
 import { projectedItemStats, resolveItemTarget, type ItemPlan, type ItemTarget } from '@lib/gamedata/itemPlan.js';
 import { computeUnitStats, type ComputedUnitStats } from '@lib/gamedata/stats.js';
+import { RosterUnit } from '@lib/gamedata/teams.js';
 import type { GameDatabase, ItemDefinition, UnitDefinition } from '@lib/gamedata/types.js';
 import { UNIT_ITEM_SLOTS } from '@lib/types/player.js';
 import type { PlayerResponse, Unit, UnitItem, UnitItemSlot } from '@lib/types/player.js';
@@ -81,6 +82,7 @@ export function ItemTargetsEditor({
           <ItemSlotEditor
             key={`${unitDef.id}:${slotId}`}
             db={db}
+            unit={unit}
             unitDef={unitDef}
             slotId={slotId}
             itemType={itemType}
@@ -109,8 +111,39 @@ export function ItemTargetsEditor({
  * that is exactly the number the rarity+level choice fixed — no need to pick
  * an item first to find out.
  */
+/** Item categories where the choice is genuinely chance vs. damage. */
+const CRIT_TRADEOFF_TYPES = new Set(['I_Crit', 'I_Booster_Crit']);
+
+/**
+ * Expected damage per attack with `item` (at `level`) worn in `slotId`,
+ * everything else about the unit unchanged.
+ *
+ * Swaps a synthetic item into the unit's own item list — leaving the other two
+ * slots as actually equipped — and reads {@link RosterUnit.expectedDamage},
+ * which already folds crit chance and crit damage into `hits x (perHit +
+ * chance x critDmg)`, picking the unit's best attack. That formula is exactly
+ * what makes a hard-hitting single strike favour Crit Damage while a
+ * five-hit weapon favours Crit Chance: chance compounds once per hit, damage
+ * only once per crit. Nothing here reimplements that; it just asks the
+ * library for the number under each candidate.
+ */
+function expectedDamageWithItem(
+  unit: Unit,
+  db: GameDatabase,
+  slotId: UnitItemSlot,
+  itemId: string,
+  level: number,
+): number {
+  const hypothetical: Unit = {
+    ...unit,
+    items: [...unit.items.filter((i) => i.slotId !== slotId), { slotId, id: itemId, level }],
+  };
+  return new RosterUnit(hypothetical, db).expectedDamage;
+}
+
 function ItemSlotEditor({
   db,
+  unit,
   unitDef,
   slotId,
   itemType,
@@ -119,6 +152,8 @@ function ItemSlotEditor({
   onChange,
 }: {
   db: GameDatabase;
+  /** The unit's live state, used only to compare crit chance vs. crit damage picks. */
+  unit: Unit | undefined;
   unitDef: UnitDefinition;
   slotId: UnitItemSlot;
   itemType: string;
@@ -148,6 +183,23 @@ function ItemSlotEditor({
   const maxLevel = atRarity.reduce((max, opt) => Math.max(max, opt.levels.length), 0);
   const levelOptions = Array.from({ length: maxLevel }, (_, i) => i + 1);
   const choices = level === '' ? [] : atRarity.filter((opt) => opt.levels.length >= level);
+
+  /**
+   * Expected damage per choice, only when there is an actual chance-vs-damage
+   * decision to help with: two or more items at this same rarity and level,
+   * in a slot category that trades crit chance against crit damage.
+   */
+  const expectedByItem = useMemo(() => {
+    if (!unit || level === '' || choices.length < 2 || !CRIT_TRADEOFF_TYPES.has(itemType)) {
+      return undefined;
+    }
+    const byId = new Map<string, number>();
+    for (const item of choices) byId.set(item.id, expectedDamageWithItem(unit, db, slotId, item.id, level));
+    const best = Math.max(...byId.values());
+    // No attack resolved for this unit — nothing to compare against.
+    if (best <= 0) return undefined;
+    return { byId, best };
+  }, [unit, db, slotId, itemType, choices, level]);
 
   const onRarity = (raw: string) => {
     setRarity(raw === '' ? '' : (Number(raw) as Rarity));
@@ -200,17 +252,29 @@ function ItemSlotEditor({
           {choices.length === 0 ? (
             <p className="small muted">{t('itemplan.noItemsHere')}</p>
           ) : (
-            choices.map((item) => (
-              <ItemChoiceButton
-                key={item.id}
-                item={item}
-                level={level}
-                selected={current?.itemId === item.id}
-                onClick={() =>
-                  onChange(current?.itemId === item.id ? undefined : { itemId: item.id, level })
-                }
-              />
-            ))
+            <>
+              {expectedByItem && (
+                <p className="small muted" style={{ width: '100%', margin: '0 0 4px' }}>
+                  {t('itemplan.critHint')}
+                </p>
+              )}
+              {choices.map((item) => (
+                <ItemChoiceButton
+                  key={item.id}
+                  item={item}
+                  level={level}
+                  selected={current?.itemId === item.id}
+                  expectedDamage={expectedByItem?.byId.get(item.id)}
+                  best={
+                    expectedByItem !== undefined &&
+                    expectedByItem.byId.get(item.id) === expectedByItem.best
+                  }
+                  onClick={() =>
+                    onChange(current?.itemId === item.id ? undefined : { itemId: item.id, level })
+                  }
+                />
+              ))}
+            </>
           )}
         </div>
       )}
@@ -223,11 +287,17 @@ function ItemChoiceButton({
   item,
   level,
   selected,
+  expectedDamage,
+  best,
   onClick,
 }: {
   item: ItemDefinition;
   level: number;
   selected: boolean;
+  /** This choice's expected damage per attack, when it is worth comparing at all. */
+  expectedDamage?: number | undefined;
+  /** Whether this choice is the (a) highest-expected-damage pick among its siblings. */
+  best?: boolean | undefined;
   onClick: () => void;
 }) {
   const levelData = item.levels[level - 1];
@@ -245,8 +315,14 @@ function ItemChoiceButton({
     >
       <Icon src={requirementIcon(`upgrade:${item.id}`)} size={28} className="portrait" reserve />
       <span className="item-choice-body">
-        <span className="item-choice-name">{item.name}</span>
+        <span className="item-choice-name">
+          {item.name}
+          {best && <span className="chip ok-chip" style={{ marginLeft: 6 }}>{t('itemplan.critBest')}</span>}
+        </span>
         {gains.length > 0 && <span className="item-choice-gain muted small">{gains.join(', ')}</span>}
+        {expectedDamage !== undefined && (
+          <span className="muted small">{t('itemplan.expectedDamage', { n: localNumber(Math.round(expectedDamage)) })}</span>
+        )}
       </span>
     </button>
   );

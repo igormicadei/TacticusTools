@@ -7,6 +7,7 @@ import type { GameDatabase } from '@lib/gamedata/types.js';
 import type { PlayerResponse } from '@lib/types/player.js';
 
 import { Icon, useIcons } from '../components/Icon.tsx';
+import { SegmentedControl, Toolbar } from '../components/Toolbar.tsx';
 import { abilityIcon, requirementIcon, unitIcon } from '../data/icons.ts';
 import { localAlliance, localNumber, localRarity } from '../i18n/game.ts';
 import { t, tn } from '../i18n/locale.ts';
@@ -49,16 +50,16 @@ export function BadgesPage({ db, player }: { db: GameDatabase; player: PlayerRes
 
   return (
     <>
-      <div className="toolbar">
-        <div className="tabs">
-          <button className={nextOnly ? 'active' : ''} onClick={() => setNextOnly(true)}>
-            {t('badges.nextOnly')}
-          </button>
-          <button className={nextOnly ? '' : 'active'} onClick={() => setNextOnly(false)}>
-            {t('badges.everyLevel')}
-          </button>
-        </div>
-      </div>
+      <Toolbar>
+        <SegmentedControl
+          value={nextOnly ? 'next' : 'all'}
+          onChange={(v) => setNextOnly(v === 'next')}
+          options={[
+            { value: 'next', label: t('badges.nextOnly') },
+            { value: 'all', label: t('badges.everyLevel') },
+          ]}
+        />
+      </Toolbar>
 
       <section className="panel" style={{ marginBottom: 16 }}>
         <p className="small muted" style={{ margin: 0 }}>

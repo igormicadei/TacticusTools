@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 
+import { SearchField, SegmentedControl, Toolbar, ToolbarCounts } from '../components/Toolbar.tsx';
 import { UnitCard } from '../components/UnitCard.tsx';
 import { t } from '../i18n/locale.ts';
 import {
@@ -40,43 +41,26 @@ export function UnitsPage({ db, player }: { db: GameDatabase; player: PlayerResp
 
   return (
     <>
-      <div className="toolbar">
-        <div className="tabs">
-          <button
-            className={mode === 'ownership' ? 'active' : ''}
-            onClick={() => setMode('ownership')}
-          >
-            {t('units.byStatus')}
-          </button>
-          <button
-            className={mode === 'faction' ? 'active' : ''}
-            onClick={() => setMode('faction')}
-          >
-            {t('units.byFaction')}
-          </button>
-        </div>
-
-        <input
-          className="search"
-          placeholder={t('units.search')}
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
+      <Toolbar>
+        <SegmentedControl
+          value={mode}
+          onChange={setMode}
+          options={[
+            { value: 'ownership', label: t('units.byStatus') },
+            { value: 'faction', label: t('units.byFaction') },
+          ]}
         />
 
-        <div className="counts small muted">
-          <span className="count">
-            <b style={{ color: 'var(--status-owned)' }}>{counts.owned}</b>{' '}
-            {t('units.available')}
-          </span>
-          <span className="count">
-            <b style={{ color: 'var(--status-unlockable)' }}>{counts.unlockable}</b>{' '}
-            {t('units.inProgress')}
-          </span>
-          <span className="count">
-            <b>{counts.locked}</b> {t('units.notStarted')}
-          </span>
-        </div>
-      </div>
+        <SearchField value={query} onChange={setQuery} placeholder={t('units.search')} />
+
+        <ToolbarCounts
+          items={[
+            { value: counts.owned, label: t('units.available'), color: 'var(--status-owned)' },
+            { value: counts.unlockable, label: t('units.inProgress'), color: 'var(--status-unlockable)' },
+            { value: counts.locked, label: t('units.notStarted') },
+          ]}
+        />
+      </Toolbar>
 
       {groups.length === 0 && (
         <div className="empty">{t('units.noMatch', { query })}</div>

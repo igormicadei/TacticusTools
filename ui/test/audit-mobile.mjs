@@ -190,6 +190,7 @@ const routes = [
   // The same route in its other mode. It is state rather than a URL, so the
   // stored choice is set below before the page loads.
   ['timeline-energy', '#/plans/timeline'],
+  ['shopping-list', '#/plans/shopping-list'],
   ['teams', '#/teams'],
   ['team-detail', '#/teams/probe-team'],
   ['upgrades', '#/upgrades'],
