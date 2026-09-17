@@ -19,7 +19,12 @@
 --danger:#e88;--danger-strong:#ffb4b4;--danger-bg:#2a1616;--danger-border:#6b2b2b;
 --warn:#e8a06a;--caution:#d8c46a;
 /* ornate surface gradients, matching the game's banner headers & portrait frames */
---gradient-banner:linear-gradient(180deg, var(--n-4) 0%, var(--n-2) 100%); /* @kind other */
+--gradient-banner:linear-gradient(180deg, color-mix(in srgb, var(--n-4) 100%, white 4%) 0%, var(--n-3) 55%, var(--n-1) 100%); /* @kind other */
 --gradient-gold-rule:linear-gradient(90deg, transparent, var(--gold-5), transparent); /* @kind other */
+--gradient-gold-rule-dim:linear-gradient(90deg, transparent, var(--gold-2), transparent); /* @kind other */
 --gradient-frame:radial-gradient(circle at 50% 30%, var(--n-4), var(--n-1) 80%); /* @kind other */
+/* A soft void vignette behind the whole app — an abstract glow, not
+   photographic art, so it stays inside the system's no-full-bleed-imagery
+   rule while giving the flat navy page some depth. */
+--gradient-vignette:radial-gradient(ellipse 1200px 800px at 50% -8%, color-mix(in srgb, var(--n-4) 60%, transparent), transparent 65%); /* @kind other */
 }

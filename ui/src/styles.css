@@ -4,9 +4,12 @@
  * Every colour, size, radius and duration below comes from a token in
  * `design/tokens/` — see `.claude/skills/tacticus-tools-design/README.md` for
  * the conventions those tokens encode. The short version, because it governs
- * nearly every rule here: navy surfaces carry the app, gold is the single
- * accent and is spent sparingly, ornament lives in the chrome rather than in
- * the data, and depth comes from surface-tone steps rather than from shadow.
+ * nearly every rule here: navy/gunmetal surfaces carry the app, gold is the
+ * single accent, and depth reads as forged and engraved metal — a bevel of
+ * light and shadow on every raised or sunken surface, faked entirely with
+ * gradients and box-shadow, never a photographic texture or an image asset.
+ * Ornament (rivets, bevels, banner texture) lives in the chrome; the data
+ * itself — names, numbers, tables — stays as flat and legible as before.
  */
 @import './design/tokens.css';
 
@@ -21,7 +24,8 @@ html { color-scheme: dark; }
 
 body {
   margin: 0;
-  background: var(--bg-app);
+  background: var(--gradient-vignette), var(--bg-app);
+  background-attachment: fixed;
   color: var(--text-primary);
   font: var(--text-base)/var(--leading-normal) var(--font-body);
 }
@@ -35,6 +39,7 @@ a { color: inherit; text-decoration: none; }
  * chrome's, not the data's. */
 .brand, .group-head h2, .panel h3, .tier-head, .stat .value, .count b {
   font-family: var(--font-display);
+  text-shadow: var(--text-emboss);
 }
 
 /* ---- top bar ----
@@ -58,28 +63,34 @@ a { color: inherit; text-decoration: none; }
   display: flex; align-items: center; gap: var(--space-10);
   padding: 0 var(--space-9); height: 56px;
   background: var(--gradient-banner);
+  box-shadow: inset 0 -1px 0 rgba(0,0,0,.5), 0 2px 12px rgba(0,0,0,.45);
   position: sticky; top: 0; z-index: 10;
 }
+/* The masthead's one ornate flourish: a bright gold rule with a dim echo
+   beneath it, the way an engraved banner carries a groove under its edge. */
 .topbar::after {
-  content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 1px;
+  content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 2px;
   background: var(--gradient-gold-rule);
+  box-shadow: 0 2px 0 -1px var(--gold-1), 0 3px 6px rgba(212,163,74,.25);
 }
 .topbar .brand {
   font-weight: 600; font-size: var(--text-lg);
   letter-spacing: var(--tracking-widest); text-transform: uppercase;
   color: var(--accent);
+  text-shadow: var(--text-emboss), 0 0 14px rgba(212,163,74,.35);
 }
 .topbar nav { display: flex; gap: var(--space-2); }
 .topbar nav a {
   padding: var(--space-3) var(--space-6); border-radius: var(--radius-pill);
   color: var(--text-secondary); font-weight: 500;
   transition: background var(--duration-fast) var(--ease-standard),
-              color var(--duration-fast) var(--ease-standard);
+              color var(--duration-fast) var(--ease-standard),
+              box-shadow var(--duration-fast) var(--ease-standard);
 }
 .topbar nav a:hover { background: var(--bg-hover); color: var(--text-primary); }
 .topbar nav a.active {
   background: var(--bg-hover); color: var(--accent);
-  box-shadow: inset 0 0 0 1px var(--accent-dim);
+  box-shadow: inset 0 0 0 1px var(--accent-dim), inset 0 1px 2px rgba(0,0,0,.4), var(--shadow-glow-gold);
 }
 .topbar .spacer { flex: 1; }
 
@@ -94,31 +105,45 @@ a { color: inherit; text-decoration: none; }
 .row { display: flex; align-items: center; gap: var(--space-5); }
 .wrap { flex-wrap: wrap; }
 
+/* A button is a small forged plate: metal sheen, a bright top edge and a dark
+   bottom one. Pressed reads as the plate sinking rather than scaling. */
 button, .button {
   font: inherit; cursor: pointer;
-  background: var(--bg-hover); color: var(--text-primary);
-  border: var(--border-w) solid var(--border-default); border-radius: var(--radius-md);
+  background-color: var(--bg-hover); background-image: var(--metal-raised);
+  color: var(--text-primary);
+  border: var(--border-w) solid var(--border-strong); border-radius: var(--radius-md);
   padding: var(--space-4) var(--space-7);
+  box-shadow: var(--bevel-raised-sm);
   transition: border-color var(--duration-fast) var(--ease-standard),
-              background var(--duration-fast) var(--ease-standard);
+              background var(--duration-fast) var(--ease-standard),
+              box-shadow var(--duration-fast) var(--ease-standard);
 }
 button:hover, .button:hover { border-color: var(--accent-dim); }
+button:active, .button:active { box-shadow: var(--bevel-pressed); }
 button.primary {
-  background: var(--accent); color: var(--text-inverse);
-  border-color: var(--accent); font-weight: 600;
+  background-color: var(--accent);
+  background-image: linear-gradient(180deg, var(--gold-6), var(--accent) 55%, var(--gold-3));
+  color: var(--text-inverse);
+  border-color: var(--gold-2); font-weight: 600;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.4), inset 0 -2px 0 rgba(0,0,0,.3), 0 2px 8px rgba(212,163,74,.25);
 }
-button.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+button.primary:hover { background-color: var(--accent-hover); border-color: var(--accent-hover); }
+button.primary:active { box-shadow: inset 0 2px 4px rgba(0,0,0,.4); }
 button.danger { color: var(--danger); }
 button:focus-visible, a:focus-visible, input:focus-visible,
 select:focus-visible, textarea:focus-visible {
   outline: none; box-shadow: var(--shadow-glow-gold);
 }
 
+/* A sunken slot cut into the metal — every text entry point shares this
+   groove, so a form always reads as carved into the same plate. */
 textarea {
   width: 100%; min-height: 220px;
   font: var(--text-sm)/1.45 var(--font-mono);
-  background: var(--bg-sunken); color: var(--text-primary);
+  background-color: var(--bg-sunken); background-image: var(--metal-sunken);
+  color: var(--text-primary);
   border: var(--border-w) solid var(--border-default); border-radius: var(--radius-lg);
+  box-shadow: var(--bevel-sunken);
   padding: var(--space-6); resize: vertical;
 }
 
@@ -134,30 +159,40 @@ textarea {
   display: flex; align-items: center; gap: var(--space-6);
   flex-wrap: wrap; margin-bottom: var(--space-9);
   padding: var(--space-5) var(--space-6);
-  background: var(--bg-raised);
-  border: var(--border-w) solid var(--border-default);
+  background-color: var(--bg-raised);
+  background-image: var(--texture-hairline), var(--metal-raised);
+  border: var(--border-w) solid var(--border-strong);
   border-radius: var(--radius-lg);
+  box-shadow: var(--bevel-raised-sm);
 }
 /* A toolbar nested inside a panel steps up a tone from it, the same way a
    `.card` steps up from the page — so the two never sit at the same fill with
    only a border between them. */
-.panel .toolbar { background: var(--bg-hover); }
+.panel .toolbar { background-color: var(--bg-hover); }
 
 .tabs {
   display: flex; gap: var(--space-2);
-  background: var(--bg-sunken); padding: var(--space-2);
+  background-color: var(--bg-sunken); background-image: var(--metal-sunken);
+  padding: var(--space-2);
   border-radius: var(--radius-pill);
+  box-shadow: var(--bevel-sunken);
 }
 .tabs button {
-  background: transparent; border: none;
+  background: transparent; border: none; box-shadow: none;
   padding: var(--space-3) var(--space-7); border-radius: var(--radius-pill);
   color: var(--text-secondary);
 }
-.tabs button.active { background: var(--bg-hover); color: var(--accent); font-weight: 600; }
+.tabs button.active {
+  background-color: var(--bg-hover); background-image: var(--metal-raised);
+  color: var(--accent); font-weight: 600;
+  box-shadow: var(--bevel-raised-sm);
+}
 
 .search {
-  font: inherit; background: var(--bg-sunken); color: var(--text-primary);
+  font: inherit; background-color: var(--bg-sunken); background-image: var(--metal-sunken);
+  color: var(--text-primary);
   border: var(--border-w) solid var(--border-default); border-radius: var(--radius-pill);
+  box-shadow: var(--bevel-sunken);
   padding: var(--space-4) var(--space-7); min-width: 240px;
 }
 
@@ -183,16 +218,34 @@ textarea {
   grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
 }
 
+/*
+ * A unit card is a small forged plate with a status rail cut into its left
+ * edge and a stud at each corner — the same frame language as `.panel`, just
+ * riveted, since a grid of these is the app's own roster wall. The rail's
+ * colour is ownership status (`--status`, set inline per entry); a card also
+ * warms its border toward the unit's own rarity colour (`--rarity`, set the
+ * same way) so a Legendary reads gold-ish and a Mythic red-ish without a
+ * second rail competing with the first.
+ */
 .card {
   display: block; padding: var(--space-6);
-  background: var(--bg-raised);
-  border: var(--border-w) solid var(--border-default);
-  border-left: 3px solid var(--status); border-radius: var(--radius-lg);
+  background-color: var(--bg-raised);
+  background-image: var(--rivets), var(--texture-hairline), var(--metal-raised);
+  border: var(--border-w) solid color-mix(in srgb, var(--rarity, var(--border-strong)) 55%, var(--border-strong));
+  border-left: 3px solid var(--status);
+  box-shadow: var(--bevel-raised-sm), inset 3px 0 6px -4px rgba(0,0,0,.7),
+    0 0 14px -6px color-mix(in srgb, var(--rarity, transparent) 50%, transparent);
+  border-radius: var(--radius-lg);
   transition: background var(--duration-fast) var(--ease-standard),
-              border-color var(--duration-fast) var(--ease-standard);
+              border-color var(--duration-fast) var(--ease-standard),
+              box-shadow var(--duration-fast) var(--ease-standard);
 }
-.card:hover { background: var(--bg-hover); border-color: var(--accent-dim); }
-.card.locked { opacity: .62; }
+.card:hover {
+  background-color: var(--bg-hover);
+  border-color: var(--accent-dim);
+  box-shadow: var(--bevel-raised-sm), inset 3px 0 6px -4px rgba(0,0,0,.7), 0 0 16px -4px color-mix(in srgb, var(--rarity, var(--accent)) 55%, transparent);
+}
+.card.locked { opacity: .62; background-image: var(--texture-hairline), var(--metal-raised); }
 .card-head { display: flex; align-items: center; gap: var(--space-5); }
 .card-title { min-width: 0; }
 .card .name {
@@ -209,7 +262,9 @@ textarea {
   display: inline-flex; align-items: center; gap: var(--space-2);
   font-size: var(--text-2xs); padding: var(--space-1) var(--space-4);
   border-radius: var(--radius-pill);
+  background-color: var(--bg-sunken); background-image: var(--metal-sunken);
   border: var(--border-w) solid var(--border-default);
+  box-shadow: var(--bevel-sunken);
   color: var(--text-secondary); white-space: nowrap;
 }
 .chip.rarity { color: var(--rarity); border-color: color-mix(in srgb, var(--rarity) 45%, transparent); }
@@ -221,8 +276,9 @@ textarea {
 .icon { display: inline-block; vertical-align: middle; object-fit: contain; flex: none; }
 .portrait {
   border-radius: var(--radius-md); object-fit: cover;
-  background: var(--bg-sunken);
-  border: var(--border-w) solid var(--border-default);
+  background-color: var(--bg-sunken); background-image: var(--metal-sunken);
+  border: var(--border-w) solid var(--border-strong);
+  box-shadow: var(--bevel-raised-sm);
 }
 /* Reserved for the one portrait a page is actually about. */
 .portrait.ornate { border: none; box-shadow: var(--frame-ring); }
@@ -240,6 +296,7 @@ textarea {
   font-family: var(--font-display); font-weight: 600;
   font-size: var(--text-2xl); letter-spacing: var(--tracking-wide);
   text-transform: uppercase;
+  text-shadow: var(--text-emboss);
 }
 
 .panels {
@@ -253,8 +310,10 @@ textarea {
 .panels > *, .form-grid > *, .grid > *, .stat-grid > * { min-width: 0; }
 .form-grid select, .form-grid input, .inline-field select { max-width: 100%; }
 .panel {
-  background: var(--bg-raised);
-  border: var(--border-w) solid var(--border-default);
+  background-color: var(--bg-raised);
+  background-image: var(--rivets), var(--texture-hairline), var(--metal-raised);
+  border: var(--border-w) solid var(--border-strong);
+  box-shadow: var(--bevel-raised);
   border-radius: var(--radius-lg); padding: var(--space-8);
 }
 .panel h3 {
@@ -264,9 +323,12 @@ textarea {
 }
 
 .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: var(--space-6); }
+/* A stat tile reads as a gauge cut into the panel, not a plate sitting on it —
+   the numbers inside are a readout, so the frame around them recedes. */
 .stat {
-  background: var(--bg-sunken);
+  background-color: var(--bg-sunken); background-image: var(--metal-sunken);
   border: var(--border-w) solid var(--border-default);
+  box-shadow: var(--bevel-sunken);
   border-radius: var(--radius-lg); padding: var(--space-5);
 }
 .stat .label {
@@ -286,8 +348,9 @@ textarea {
 /* A unit's headline stats as their own small card: one row per stat, icon
    leading, stacked rather than run together on one line. */
 .stat-card {
-  background: var(--bg-sunken);
+  background-color: var(--bg-sunken); background-image: var(--metal-sunken);
   border: var(--border-w) solid var(--border-default);
+  box-shadow: var(--bevel-sunken);
   border-radius: var(--radius-lg); padding: var(--space-4) var(--space-5);
   display: flex; flex-direction: column; gap: var(--space-2);
 }
@@ -308,22 +371,47 @@ textarea {
 .item-choice-list { display: flex; flex-wrap: wrap; gap: var(--space-4); }
 .item-choice-btn {
   display: flex; align-items: center; gap: var(--space-4);
-  background: var(--bg-sunken); border: var(--border-w) solid var(--border-default);
+  background-color: var(--bg-sunken); background-image: var(--metal-sunken);
+  border: var(--border-w) solid var(--border-default);
+  box-shadow: var(--bevel-sunken);
   border-radius: var(--radius-lg); padding: var(--space-3) var(--space-5);
   text-align: left; color: inherit; font: inherit; cursor: pointer;
   max-width: 260px;
 }
-.item-choice-btn:hover { background: var(--bg-hover); }
-.item-choice-btn.selected { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--bg-sunken)); }
+.item-choice-btn:hover { background-color: var(--bg-hover); }
+.item-choice-btn.selected { border-color: var(--accent); background-color: color-mix(in srgb, var(--accent) 12%, var(--bg-sunken)); }
 .item-choice-body { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
 .item-choice-name { font-weight: 600; }
 .item-choice-gain { line-height: 1.3; }
 
+/*
+ * A progress bar as a segmented gauge cut into the plate, the way the game's
+ * own rank-up meters read as a strip of pips rather than a smooth fill. The
+ * segments are one repeating gradient overlay (`::after`) so any percentage
+ * still lines up on a tick, with no extra markup and no change to the
+ * component that sets `<span style={{ width }}>`.
+ */
 .bar {
-  height: 6px; background: var(--bg-sunken); border-radius: var(--radius-pill);
+  height: 10px;
+  background-color: var(--bg-sunken); background-image: var(--metal-sunken);
+  border: var(--border-w) solid var(--border-strong);
+  box-shadow: var(--bevel-sunken);
+  border-radius: var(--radius-pill);
   overflow: hidden; margin-top: var(--space-4);
+  position: relative;
 }
-.bar > span { display: block; height: 100%; background: var(--accent); }
+.bar > span {
+  display: block; height: 100%;
+  background: linear-gradient(180deg, var(--gold-6) 0%, var(--accent) 55%, var(--gold-3) 100%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.4), 0 0 8px rgba(212,163,74,.45);
+}
+.bar::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background-image: repeating-linear-gradient(
+    90deg, transparent 0 calc(12.5% - 1px),
+    rgba(5,10,20,.6) calc(12.5% - 1px) 12.5%
+  );
+}
 
 dl.kv { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: var(--space-3) var(--space-8); }
 dl.kv dt { color: var(--text-secondary); font-size: var(--text-sm); }
@@ -347,7 +435,9 @@ dl.kv dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
 .notice {
   padding: var(--space-6) var(--space-7); border-radius: var(--radius-lg);
   margin-bottom: var(--space-8);
-  border: var(--border-w) solid var(--border-default); background: var(--bg-raised);
+  border: var(--border-w) solid var(--border-strong);
+  background-color: var(--bg-raised); background-image: var(--texture-hairline), var(--metal-raised);
+  box-shadow: var(--bevel-raised-sm);
 }
 .notice.error {
   border-color: var(--danger-border); background: var(--danger-bg); color: var(--danger-strong);
@@ -380,8 +470,10 @@ pre.cmd {
   text-transform: uppercase; letter-spacing: var(--tracking-wide);
 }
 .form-grid select, .form-grid input {
-  font: inherit; background: var(--bg-sunken); color: var(--text-primary);
+  font: inherit; background-color: var(--bg-sunken); background-image: var(--metal-sunken);
+  color: var(--text-primary);
   border: var(--border-w) solid var(--border-default);
+  box-shadow: var(--bevel-sunken);
   border-radius: var(--radius-md); padding: var(--space-4) var(--space-5);
 }
 button.small { padding: var(--space-2) var(--space-5); font-size: var(--text-xs); }
@@ -430,8 +522,10 @@ table.steps tr:last-child td { border-bottom: none; }
  * the focus trap, the Esc key and the top layer with it, so none of that is
  * rebuilt here — only the surface is dressed to match a panel. */
 dialog.sheet {
-  background: var(--bg-raised);
-  border: var(--border-w) solid var(--border-default);
+  background-color: var(--bg-raised);
+  background-image: var(--rivets), var(--texture-hairline), var(--metal-raised);
+  border: var(--border-w) solid var(--border-strong);
+  box-shadow: var(--bevel-raised), 0 16px 40px rgba(0,0,0,.6);
   border-radius: var(--radius-lg); padding: var(--space-8);
   color: var(--text-primary); font: inherit;
   width: min(560px, calc(100vw - var(--space-10)));
@@ -450,7 +544,9 @@ dialog.sheet h3 {
   list-style: none; margin: 0; padding: 0;
   max-height: 46vh; overflow-y: auto;
   border: var(--border-w) solid var(--border-default);
-  border-radius: var(--radius-md); background: var(--bg-sunken);
+  border-radius: var(--radius-md);
+  background-color: var(--bg-sunken); background-image: var(--metal-sunken);
+  box-shadow: var(--bevel-sunken);
 }
 .branches li { border-bottom: var(--border-w) solid var(--border-default); }
 .branches li:last-child { border-bottom: none; }
@@ -523,7 +619,9 @@ dialog.sheet h3 {
 .step-num {
   display: inline-flex; align-items: center; justify-content: center;
   width: 22px; height: 22px; border-radius: var(--radius-md);
-  background: var(--bg-sunken); border: var(--border-w) solid var(--border-default);
+  background-color: var(--bg-sunken); background-image: var(--metal-sunken);
+  border: var(--border-w) solid var(--border-default);
+  box-shadow: var(--bevel-sunken);
   font-size: var(--text-xs); color: var(--text-secondary);
 }
 .item-list { list-style: none; margin: var(--space-3) 0 0; padding: 0 0 0 30px; }
@@ -605,8 +703,10 @@ table.steps tr.done td { color: var(--text-secondary); }
  * bright slab in the middle of a navy page. */
 select, input[type='text'], input[type='password'], input[type='search'],
 input[type='number'] {
-  font: inherit; color: var(--text-primary); background: var(--bg-sunken);
+  font: inherit; color: var(--text-primary);
+  background-color: var(--bg-sunken); background-image: var(--metal-sunken);
   border: var(--border-w) solid var(--border-default);
+  box-shadow: var(--bevel-sunken);
   border-radius: var(--radius-md); padding: var(--space-3) var(--space-5);
 }
 select { max-width: 100%; }
@@ -757,11 +857,13 @@ table.split-head thead tr:last-child th { font-weight: 400; }
 .code-card-head { display: flex; align-items: center; gap: var(--space-4); flex-wrap: wrap; }
 .code-chip {
   font-family: var(--font-mono); font-weight: 700; letter-spacing: var(--tracking-wide);
-  background: var(--bg-sunken); color: var(--accent);
+  background-color: var(--bg-sunken); background-image: var(--metal-sunken);
+  color: var(--accent);
   border: var(--border-w) dashed var(--border-accent); border-radius: var(--radius-md);
+  box-shadow: var(--bevel-sunken);
   padding: var(--space-3) var(--space-6); cursor: pointer;
 }
-.code-chip:hover { background: var(--bg-hover); }
+.code-chip:hover { background-color: var(--bg-hover); }
 .code-card-date { margin-left: auto; white-space: nowrap; }
 .code-card-rewards { margin-top: var(--space-5); gap: var(--space-3); }
 .code-card-actions { margin-top: var(--space-6); gap: var(--space-4); }
@@ -801,9 +903,11 @@ table.split-head thead tr:last-child th { font-weight: 400; }
   margin-top: var(--space-4);
   width: min(360px, calc(100vw - var(--space-10)));
   max-height: 70vh; overflow-y: auto;
-  background: var(--bg-raised); border: var(--border-w) solid var(--border-default);
+  background-color: var(--bg-raised);
+  background-image: var(--texture-hairline), var(--metal-raised);
+  border: var(--border-w) solid var(--border-strong);
   border-radius: var(--radius-lg); padding: var(--space-6);
-  box-shadow: 0 12px 32px rgb(5 10 20 / .5);
+  box-shadow: var(--bevel-raised-sm), 0 12px 32px rgb(5 10 20 / .5);
   display: flex; flex-direction: column; gap: var(--space-5);
 }
 
@@ -881,8 +985,10 @@ table.split-head thead tr:last-child th { font-weight: 400; }
   table.stacked thead { display: none; }
   table.stacked { border-collapse: separate; border-spacing: 0; }
   table.stacked tr {
-    background: var(--bg-raised);
-    border: var(--border-w) solid var(--border-default);
+    background-color: var(--bg-raised);
+    background-image: var(--texture-hairline), var(--metal-raised);
+    border: var(--border-w) solid var(--border-strong);
+    box-shadow: var(--bevel-raised-sm);
     border-radius: var(--radius-lg);
     padding: var(--space-5);
     margin-bottom: var(--space-5);
