@@ -4,6 +4,7 @@ import { HashRouter } from 'react-router-dom';
 
 import { App } from './App.tsx';
 import './styles.css';
+import './design/tacticus-theme.css';
 
 /**
  * Register the service worker, which is what makes the app installable and what
@@ -22,8 +23,8 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
   });
 }
 
-// Hash routing keeps deep links working on GitHub Pages, which serves no
-// rewrite rules and would 404 on a refreshed sub-path.
+// Hash routing keeps deep links working on GitHub Pages, which serves no rewrite
+// rules and would 404 on a refreshed sub-path.
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <HashRouter>
