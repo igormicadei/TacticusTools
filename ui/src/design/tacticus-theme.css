@@ -1,0 +1,332 @@
+/*
+ * Reusable visual skin for the Tacticus Tools application.
+ *
+ * This layer deliberately sits after styles.css: the existing design system
+ * remains the structural foundation, while these selectors provide the game-
+ * inspired presentation shared by unit, plan, team and equipment screens.
+ * No footer is defined here.
+ */
+
+:root {
+  --tt-gold: #d8b35a;
+  --tt-gold-bright: #f0d27b;
+  --tt-gold-dim: #8d7139;
+  --tt-ink-0: #080a0d;
+  --tt-ink-1: #0d1117;
+  --tt-ink-2: #151a21;
+  --tt-ink-3: #1c232c;
+  --tt-line: rgba(204, 188, 151, .18);
+  --tt-line-strong: rgba(216, 179, 90, .36);
+  --tt-text: #e8e7e1;
+  --tt-muted: #9da2a8;
+  --tt-green: #68b879;
+  --tt-blue: #5b9fd0;
+  --tt-red: #c86f6f;
+}
+
+html, body {
+  background:
+    radial-gradient(ellipse at 50% -12%, rgba(110, 100, 73, .16), transparent 46%),
+    radial-gradient(ellipse at 0 100%, rgba(25, 32, 41, .9), transparent 48%),
+    var(--tt-ink-0);
+}
+
+body {
+  color: var(--tt-text);
+  background-attachment: fixed;
+}
+
+.app {
+  min-height: 100vh;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.012), transparent 130px),
+    repeating-linear-gradient(0deg, rgba(255,255,255,.009) 0 1px, transparent 1px 4px);
+}
+
+.topbar {
+  height: 62px;
+  gap: 22px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.035), transparent 48%),
+    linear-gradient(180deg, #161b22, #0c1015);
+  border-bottom: 1px solid rgba(216,179,90,.22);
+  box-shadow: 0 8px 24px rgba(0,0,0,.30);
+}
+
+.topbar::after {
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--tt-gold) 18%, var(--tt-gold-bright) 50%, var(--tt-gold) 82%, transparent);
+  opacity: .72;
+}
+
+.topbar .brand {
+  color: var(--tt-gold-bright);
+  text-shadow: 0 1px 12px rgba(216,179,90,.16);
+}
+
+.topbar nav {
+  gap: 3px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.topbar nav::-webkit-scrollbar { display: none; }
+
+.topbar nav a {
+  position: relative;
+  border-radius: 5px;
+  padding: 10px 13px;
+  color: #aeb2b7;
+}
+
+.topbar nav a:hover { background: rgba(255,255,255,.045); }
+
+.topbar nav a.active {
+  background: linear-gradient(180deg, rgba(216,179,90,.18), rgba(216,179,90,.07));
+  color: var(--tt-gold-bright);
+  box-shadow: inset 0 -2px 0 var(--tt-gold);
+}
+
+.content {
+  max-width: 1180px;
+  padding-top: 30px;
+}
+
+.toolbar {
+  padding: 8px;
+  gap: 8px;
+  background: rgba(13,17,23,.88);
+  border-color: var(--tt-line);
+  border-radius: 7px;
+  box-shadow: 0 12px 30px rgba(0,0,0,.20);
+  backdrop-filter: blur(8px);
+}
+
+.tabs {
+  background: #090c10;
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 5px;
+}
+
+.tabs button {
+  border-radius: 3px;
+  padding: 8px 13px;
+}
+
+.tabs button.active {
+  background: linear-gradient(180deg, rgba(216,179,90,.20), rgba(216,179,90,.08));
+  color: var(--tt-gold-bright);
+  box-shadow: inset 0 -1px 0 var(--tt-gold);
+}
+
+.search {
+  min-width: 220px;
+  border-radius: 5px;
+  background: #090c10;
+  border-color: rgba(255,255,255,.08);
+}
+
+.group { margin-bottom: 34px; }
+
+.group-head {
+  margin-bottom: 12px;
+  padding: 0 2px 9px;
+  border-bottom-color: var(--tt-line);
+}
+
+.group-head h2 {
+  color: #d7d9dc;
+  font-size: 14px;
+  letter-spacing: .12em;
+}
+
+.grid {
+  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+}
+
+.card {
+  position: relative;
+  min-height: 148px;
+  overflow: hidden;
+  padding: 14px;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.035), transparent 35%),
+    linear-gradient(180deg, #1a2129, #11161d);
+  border-color: rgba(255,255,255,.09);
+  border-left-width: 3px;
+  border-radius: 6px;
+  box-shadow: 0 8px 22px rgba(0,0,0,.24), inset 0 1px rgba(255,255,255,.025);
+}
+
+.card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(115deg, transparent 0 62%, rgba(216,179,90,.035) 78%, transparent 100%);
+}
+
+.card:hover {
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.05), transparent 35%),
+    linear-gradient(180deg, #202832, #151b23);
+  border-color: rgba(216,179,90,.30);
+  transform: translateY(-1px);
+}
+
+.card .portrait {
+  width: 52px;
+  height: 52px;
+  border-radius: 4px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: #080a0d;
+  box-shadow: 0 3px 10px rgba(0,0,0,.35);
+}
+
+.card .name { color: #eeeae0; }
+.card .sub { color: #989fa6; }
+
+.card .meta { gap: 5px; margin-top: 10px; }
+
+.chip {
+  padding: 3px 7px;
+  border-radius: 3px;
+  background: rgba(4,6,9,.55);
+  border-color: rgba(255,255,255,.09);
+  color: #adb2b8;
+}
+
+.card-stats {
+  gap: 5px 14px;
+  margin-top: 11px;
+  font-size: 11px;
+}
+
+.card-stat { gap: 4px; }
+.card-stat b { color: #e6e4de; }
+
+.stars { filter: drop-shadow(0 0 3px rgba(216,179,90,.22)); }
+
+/* Detail header: shared by every unit detail tab/screen. */
+.detail-head {
+  position: relative;
+  display: grid;
+  grid-template-columns: 104px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+  margin: 0 0 20px;
+  padding: 16px 18px;
+  background:
+    linear-gradient(90deg, rgba(216,179,90,.07), transparent 38%),
+    linear-gradient(180deg, #1a2027, #10151b);
+  border: 1px solid rgba(216,179,90,.19);
+  border-radius: 7px;
+  box-shadow: 0 12px 30px rgba(0,0,0,.28);
+}
+
+.detail-head::before {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; top: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(216,179,90,.52), transparent);
+}
+
+.detail-head h1 {
+  margin: 0 0 6px;
+  color: #eee9dc;
+  font-size: clamp(20px, 3vw, 30px);
+  letter-spacing: -.015em;
+}
+
+.detail-head .portrait.ornate {
+  border: 1px solid rgba(216,179,90,.38);
+  border-radius: 7px;
+  box-shadow: 0 0 0 3px rgba(216,179,90,.045), 0 10px 24px rgba(0,0,0,.35);
+}
+
+.panels { gap: 14px; }
+
+.panel {
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.025), transparent 34%),
+    #141a21;
+  border-color: var(--tt-line);
+  border-radius: 6px;
+  box-shadow: 0 7px 20px rgba(0,0,0,.18);
+}
+
+.panel h3 {
+  color: #d9d5ca;
+  letter-spacing: .08em;
+}
+
+.stat {
+  background: rgba(5,7,10,.42);
+  border-color: rgba(255,255,255,.065);
+  border-radius: 4px;
+}
+
+.stat .value { color: #e9e4d8; }
+
+.bar {
+  background: #080b0e;
+  border-color: rgba(255,255,255,.07);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.bar span {
+  background: linear-gradient(90deg, #8b7139, #dfbc61);
+  box-shadow: 0 0 10px rgba(216,179,90,.22);
+}
+
+.back {
+  display: inline-flex;
+  margin-bottom: 12px;
+  color: var(--tt-gold);
+  font-size: 13px;
+}
+
+/* Compact mobile portrait presentation. This is intentionally a theme rule,
+   so every existing route benefits without duplicating breakpoints. */
+@media (max-width: 720px) {
+  .topbar {
+    height: auto;
+    min-height: 56px;
+    flex-wrap: wrap;
+    gap: 5px 8px;
+    padding-top: 7px;
+    padding-bottom: 7px;
+  }
+
+  .topbar .brand {
+    width: 100%;
+    font-size: 14px;
+  }
+
+  .topbar nav {
+    width: 100%;
+    order: 3;
+  }
+
+  .topbar nav a { padding: 8px 10px; font-size: 12px; }
+  .content { padding: 18px 12px 28px; }
+  .toolbar { margin-bottom: 18px; }
+  .search { min-width: 0; flex: 1 1 180px; }
+
+  .grid { grid-template-columns: 1fr; }
+
+  .detail-head {
+    grid-template-columns: 76px minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .detail-head .row:last-child {
+    grid-column: 1 / -1;
+    margin-left: 0 !important;
+  }
+
+  .detail-head .portrait.ornate { width: 76px; height: 76px; }
+}
