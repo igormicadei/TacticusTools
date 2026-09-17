@@ -1,59 +1,71 @@
-# Publishes the units UI to GitHub Pages.
+# Publishes the units UI to the dedicated GitHub Pages branch.
 #
-# The app is a fully static bundle — the game database ships as a committed
-# snapshot and player data is imported in the browser — so there is nothing to
-# run server-side.
-#
-# Enable this once under Settings -> Pages -> "Build and deployment" ->
-# Source: GitHub Actions. Until then the workflow can be run manually and will
-# simply produce an artifact.
+# The source branch builds the static bundle and force-publishes the result
+# to tacticus-pages, which is the repository's Pages publishing source.
+
 name: Deploy UI
 
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches:
+      - claude/layout-design-eval-trdcmq
     paths:
       - 'ui/**'
       - 'src/**'
       - '.github/workflows/deploy-ui.yml'
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 concurrency:
   group: pages
   cancel-in-progress: true
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            ui/package-lock.json
+
       - name: Install
         run: |
           npm ci
           npm --prefix ui ci
+
       - name: Build
-        # BASE_PATH matches the project-site sub-path GitHub Pages serves from.
         run: npm --prefix ui run build
         env:
           BASE_PATH: /${{ github.event.repository.name }}/
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: ui/dist
 
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Publish to tacticus-pages
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          rm -rf /tmp/pages
+          mkdir -p /tmp/pages
+          cp -r ui/dist/. /tmp/pages/
+          rm -f /tmp/pages/assets/*.map
+          touch /tmp/pages/.nojekyll
+
+          git fetch origin tacticus-pages
+          git checkout --orphan pages-deploy
+          git rm -rf .
+          cp -r /tmp/pages/. .
+
+          git add -A
+          git commit -m "Deploy UI to GitHub Pages"
+          git push --force origin HEAD:tacticus-pages
