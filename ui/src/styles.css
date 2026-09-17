@@ -717,6 +717,96 @@ table.split-head thead tr:last-child th { font-weight: 400; }
 .title-input:hover { border-bottom-color: var(--accent-dim); }
 .title-input:focus-visible { outline: none; border-bottom-color: var(--accent); box-shadow: none; }
 
+/* ---- game codes ----
+ * A card that drags — the background reveal is what shows through as it
+ * moves, so it sits behind the card rather than beside it. */
+.code-list { display: flex; flex-direction: column; gap: var(--space-6); }
+.code-list.compact { gap: var(--space-4); }
+.swipe-card { position: relative; border-radius: var(--radius-lg); overflow: hidden; }
+.swipe-card-bg {
+  position: absolute; inset: 0; display: flex; align-items: center;
+  padding: 0 var(--space-8); font-weight: 600; pointer-events: none;
+}
+.swipe-card-bg.right {
+  justify-content: flex-start;
+  background: color-mix(in srgb, var(--status-owned) 30%, var(--bg-sunken));
+  color: var(--status-owned);
+}
+.swipe-card-bg.left {
+  justify-content: flex-end;
+  background: color-mix(in srgb, var(--warn) 30%, var(--bg-sunken));
+  color: var(--warn);
+}
+.swipe-card-content {
+  position: relative;
+  /* Lets a mostly-vertical drag still scroll the page; only a clearly
+     horizontal one is claimed, in the component's own pointer-move handler. */
+  touch-action: pan-y;
+  cursor: grab;
+  /* Matches SwipeableCard's own FLY_MS, so the fly-off animation and the
+     delay before its commit callback fires agree on how long it takes. */
+  transition: transform 180ms ease, opacity 180ms ease;
+}
+.swipe-card-content:active { cursor: grabbing; }
+/* A live drag follows the pointer with no lag, so its own transform must not
+   ease — only the snap-back or fly-off after release does. */
+.swipe-card-content.dragging { transition: none; }
+.swipe-card-content.flying { opacity: 0; }
+
+.code-card { display: block; }
+.code-card-head { display: flex; align-items: center; gap: var(--space-4); flex-wrap: wrap; }
+.code-chip {
+  font-family: var(--font-mono); font-weight: 700; letter-spacing: var(--tracking-wide);
+  background: var(--bg-sunken); color: var(--accent);
+  border: var(--border-w) dashed var(--border-accent); border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-6); cursor: pointer;
+}
+.code-chip:hover { background: var(--bg-hover); }
+.code-card-date { margin-left: auto; white-space: nowrap; }
+.code-card-rewards { margin-top: var(--space-5); gap: var(--space-3); }
+.code-card-actions { margin-top: var(--space-6); gap: var(--space-4); }
+.code-card.compact { padding: var(--space-5); }
+.code-card.compact .code-card-actions { margin-top: var(--space-4); }
+
+/* ---- notification bell ----
+ * The badge sits at the button's corner, which means overlapping it — the
+ * point of a badge. `.bell-wrap` is sized a few pixels past the button on
+ * every side purely so that overlap lands inside its own box rather than
+ * outside it: an element whose content exceeds its box is exactly the fault
+ * `test/audit-mobile.mjs` exists to catch, badge or not. */
+.bell-wrap {
+  position: relative; display: inline-flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px;
+}
+.bell-button {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; padding: 0; border-radius: var(--radius-pill);
+  color: var(--text-secondary);
+}
+.bell-button:hover { color: var(--text-primary); }
+.bell-badge {
+  position: absolute; top: 2px; right: 2px;
+  min-width: 16px; height: 16px; padding: 0 3px;
+  border-radius: var(--radius-pill); background: var(--danger-strong); color: var(--text-inverse);
+  font-size: 10px; font-weight: 700; line-height: 16px; text-align: center;
+}
+/* Anchored to `.topbar` (the nearest positioned ancestor, already
+   `position: sticky`) rather than to the bell itself: the bell sits at the
+   topbar's left edge on a phone and its right edge on a wide screen, so a
+   panel anchored to the topbar's own right edge — which is inside the
+   viewport at every width, by construction — stays put regardless of which
+   side the bell is actually on. */
+.bell-panel {
+  position: absolute; right: var(--space-6); top: 100%; z-index: 20;
+  margin-top: var(--space-4);
+  width: min(360px, calc(100vw - var(--space-10)));
+  max-height: 70vh; overflow-y: auto;
+  background: var(--bg-raised); border: var(--border-w) solid var(--border-default);
+  border-radius: var(--radius-lg); padding: var(--space-6);
+  box-shadow: 0 12px 32px rgb(5 10 20 / .5);
+  display: flex; flex-direction: column; gap: var(--space-5);
+}
+
 /* ==========================================================================
    Narrow screens
    ==========================================================================

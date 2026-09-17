@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { NavLink, Navigate, Route, Routes } from 'react-router-dom';
 
+import { CodesBell } from './components/CodesBell.tsx';
 import { loadGameData } from './data/gamedata.ts';
+import { resolveGameCodes } from './data/gameCodes.ts';
 import { fetchPlayer, storage } from './data/player.ts';
 import { BadgesPage } from './routes/BadgesPage.tsx';
+import { CodesPage } from './routes/CodesPage.tsx';
 import { EquipmentPage } from './routes/EquipmentPage.tsx';
 import { UpgradesPage } from './routes/UpgradesPage.tsx';
 import { currentLang, t, useLang } from './i18n/locale.ts';
@@ -18,6 +21,7 @@ import { UnitDetailPage } from './routes/UnitDetailPage.tsx';
 import { UnitsPage } from './routes/UnitsPage.tsx';
 
 import type { GameDatabase } from '@lib/gamedata/types.js';
+import type { GameCode } from '@lib/types/gameCodes.js';
 import type { PlayerResponse } from '@lib/types/player.js';
 
 /**
@@ -39,6 +43,7 @@ export function App() {
   const [error, setError] = useState<string>();
   const [refreshing, setRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState<string>();
+  const [gameCodes, setGameCodes] = useState<GameCode[]>();
   const inFlight = useRef(false);
   // Shown whenever a key is stored, not only once a roster has loaded: a failed
   // first fetch would otherwise leave no way to retry from here.
@@ -47,6 +52,21 @@ export function App() {
   useEffect(() => {
     loadGameData().then(setDb, (e: unknown) => setError(String(e)));
   }, []);
+
+  // Resolved from the player response when the relay has started appending
+  // `gameCodes`, and from the bundled snapshot otherwise — see
+  // `resolveGameCodes`. Runs whenever `player` changes, so a fresh refresh is
+  // also a fresh look at the code list, the same cadence the question this
+  // was built for asked for.
+  useEffect(() => {
+    let cancelled = false;
+    resolveGameCodes(player).then((codes) => {
+      if (!cancelled) setGameCodes(codes);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [player]);
 
   const handleLoaded = useCallback((response: PlayerResponse) => {
     storage.writePlayer(response);
@@ -129,11 +149,15 @@ export function App() {
           <NavLink to="/badges" className={({ isActive }) => (isActive ? 'active' : '')}>
             {t('nav.badges')}
           </NavLink>
+          <NavLink to="/codes" className={({ isActive }) => (isActive ? 'active' : '')}>
+            {t('nav.codes')}
+          </NavLink>
           <NavLink to="/player" className={({ isActive }) => (isActive ? 'active' : '')}>
             {t('nav.player')}
           </NavLink>
         </nav>
         <span className="spacer" />
+        {db && <CodesBell db={db} codes={gameCodes} />}
         {hasKey && (
           <span className="session row small muted">
             {player && (
@@ -269,6 +293,7 @@ export function App() {
                 player ? <BadgesPage db={db} player={player} /> : <Navigate to="/player" replace />
               }
             />
+            <Route path="/codes" element={<CodesPage db={db} codes={gameCodes} />} />
             <Route
               path="/player"
               element={

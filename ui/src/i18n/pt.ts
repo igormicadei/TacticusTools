@@ -15,6 +15,7 @@ export const PT: Record<keyof typeof EN, string> = {
   'nav.upgrades': 'Melhorias',
   'nav.equipment': 'Equipamento',
   'nav.badges': 'Emblemas',
+  'nav.codes': 'Códigos',
   'nav.player': 'Dados do jogador',
   'shell.power': '{name} · poder {power}',
   'shell.refresh': 'Atualizar',
@@ -81,6 +82,26 @@ export const PT: Record<keyof typeof EN, string> = {
   'slot.active': 'Ativa',
   'slot.passive': 'Passiva',
   'slot.mythic': 'Mítica',
+
+  /* ---- códigos do jogo -------------------------------------------------- */
+  'codes.heading': 'Códigos',
+  'codes.blurb':
+    'Códigos de resgate do Tacticus Codex, uma lista mantida pela comunidade — não é algo que a Snowprint publica. "Ativo" é a informação do próprio Tacticus Codex de que o jogo ainda aceita o código; marcar como usado ou dispensar só muda o que aparece aqui.',
+  'codes.hideHandled': 'Ocultar tratados',
+  'codes.outstanding': 'ainda para resgatar',
+  'codes.none': 'Nenhum código ainda.',
+  'codes.allHandled': 'Nada pendente — desligue "Ocultar tratados" para ver o resto.',
+  'codes.loading': 'Carregando códigos…',
+  'codes.markUsed': 'Marcar como usado',
+  'codes.dismiss': 'Dispensar',
+  'codes.copyHint': 'Toque para copiar',
+  'codes.copied': 'Copiado!',
+  'codes.enabled': 'Ativo',
+  'codes.disabled': 'Inativo',
+  'codes.bellHint': 'Códigos de resgate',
+  'codes.activeCodes': 'Códigos ativos',
+  'codes.viewAll': 'Ver todos',
+  'codes.bellEmpty': 'Nada pendente no momento.',
 
   /* ---- melhorias ------------------------------------------------------ */
   'upg.tab.where': 'Onde usar os materiais',

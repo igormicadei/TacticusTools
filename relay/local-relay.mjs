@@ -26,6 +26,39 @@ const API_ORIGIN = 'https://api.tacticusgame.com';
 /** Only the read-only Tacticus endpoints are proxied. */
 const ALLOWED_PATHS = /^\/api\/v1\/(player|guild|guildRaid(\/\d+)?)$/;
 
+/**
+ * Tacticus Codex's public redemption-code list, stitched onto `/api/v1/player`
+ * the same way the deployed Cloudflare Worker does — see its own comment for
+ * why. Best-effort: any failure here is silently `undefined`, so a slow or
+ * unreachable Tacticus Codex never breaks a local player refresh.
+ */
+const CODES_ORIGIN = 'https://api.tacticuscodex.com';
+const CODES_PATH = '/api/gamecode';
+
+async function fetchGameCodes() {
+  try {
+    const upstream = await fetch(`${CODES_ORIGIN}${CODES_PATH}`, {
+      headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!upstream.ok) return undefined;
+    const data = await upstream.json();
+    return Array.isArray(data?.gameCodes) ? data.gameCodes : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function mergeGameCodes(body, gameCodes) {
+  if (!gameCodes) return body;
+  try {
+    const parsed = JSON.parse(body);
+    return JSON.stringify({ ...parsed, gameCodes });
+  } catch {
+    return body;
+  }
+}
+
 function corsHeaders(request) {
   return {
     // Bound to whoever asked, so a stray page cannot silently reuse the relay
@@ -69,17 +102,22 @@ const server = createServer(async (request, response) => {
   }
 
   try {
-    const upstream = await fetch(`${API_ORIGIN}${url.pathname}`, {
-      headers: { 'X-API-KEY': apiKey, Accept: 'application/json' },
-    });
+    const isPlayer = url.pathname === '/api/v1/player';
+    const [upstream, gameCodes] = await Promise.all([
+      fetch(`${API_ORIGIN}${url.pathname}`, {
+        headers: { 'X-API-KEY': apiKey, Accept: 'application/json' },
+      }),
+      isPlayer ? fetchGameCodes() : Promise.resolve(undefined),
+    ]);
     const body = await upstream.text();
+    const merged = mergeGameCodes(body, upstream.ok ? gameCodes : undefined);
     console.log(`${new Date().toISOString()}  ${url.pathname} -> ${upstream.status}`);
     response.writeHead(upstream.status, {
       ...cors,
       'Content-Type': upstream.headers.get('content-type') ?? 'application/json',
       'Cache-Control': 'no-store',
     });
-    response.end(body);
+    response.end(merged);
   } catch (error) {
     console.error('upstream failed:', error);
     response.writeHead(502, { ...cors, 'Content-Type': 'application/json' });

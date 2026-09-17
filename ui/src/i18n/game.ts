@@ -201,6 +201,20 @@ export function localDateTime(ms: number): string {
 }
 
 /**
+ * A bare `YYYY-MM-DD` date, in the page's language.
+ *
+ * Built from the parts rather than handed to `new Date(text)`: a date-only
+ * ISO string parses as UTC midnight, which a negative-UTC-offset reader's
+ * browser then renders as the day before — the one thing a "date posted"
+ * label must never do.
+ */
+export function localDate(isoDate: string): string {
+  const [year, month, day] = isoDate.split('-').map(Number);
+  if (!year || !month || !day) return isoDate;
+  return new Date(year, month - 1, day).toLocaleDateString(pt() ? 'pt-BR' : 'en-GB');
+}
+
+/**
  * A plan step's label, in the reader's language.
  *
  * The library builds an English `label` for its own scripts and validators, and

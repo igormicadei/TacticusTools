@@ -21,6 +21,7 @@ export const EN = {
   'nav.upgrades': 'Upgrades',
   'nav.equipment': 'Equipment',
   'nav.badges': 'Badges',
+  'nav.codes': 'Codes',
   'nav.player': 'Player data',
   'shell.power': '{name} · power {power}',
   'shell.refresh': 'Refresh',
@@ -87,6 +88,26 @@ export const EN = {
   'slot.active': 'Active',
   'slot.passive': 'Passive',
   'slot.mythic': 'Mythic',
+
+  /* ---- game codes ------------------------------------------------------- */
+  'codes.heading': 'Codes',
+  'codes.blurb':
+    'Redemption codes from Tacticus Codex, a community-run list — not something Snowprint publishes itself. "Enabled" is Tacticus Codex’s own claim that the game still accepts it; marking one used or dismissing it only affects what shows here.',
+  'codes.hideHandled': 'Hide handled',
+  'codes.outstanding': 'still to redeem',
+  'codes.none': 'No codes yet.',
+  'codes.allHandled': 'Nothing outstanding — turn off "Hide handled" to see the rest.',
+  'codes.loading': 'Loading codes…',
+  'codes.markUsed': 'Mark used',
+  'codes.dismiss': 'Dismiss',
+  'codes.copyHint': 'Tap to copy',
+  'codes.copied': 'Copied!',
+  'codes.enabled': 'Enabled',
+  'codes.disabled': 'Disabled',
+  'codes.bellHint': 'Redemption codes',
+  'codes.activeCodes': 'Active codes',
+  'codes.viewAll': 'View all',
+  'codes.bellEmpty': 'Nothing outstanding right now.',
 
   /* ---- upgrades ------------------------------------------------------- */
   'upg.tab.where': 'Where materials go',

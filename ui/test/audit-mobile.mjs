@@ -196,6 +196,7 @@ const routes = [
   ['upgrades', '#/upgrades'],
   ['equipment', '#/equipment'],
   ['badges', '#/badges'],
+  ['codes', '#/codes'],
   ['player', '#/player'],
 ];
 

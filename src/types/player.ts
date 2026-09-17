@@ -9,6 +9,7 @@ import type {
   Token,
   UnixSeconds,
 } from './common.js';
+import type { GameCode } from './gameCodes.js';
 
 /* -------------------------------------------------------------------------- */
 /* Units                                                                      */
@@ -389,4 +390,11 @@ export interface PlayerMetaData {
 export interface PlayerResponse {
   player: Player;
   metaData: PlayerMetaData;
+  /**
+   * Redemption codes, appended by this project's relay — not part of the
+   * Tacticus API itself. Absent when fetched straight from the naked API (a
+   * server-side caller with no CORS to work around), or when the relay's own
+   * fetch of Tacticus Codex failed; see {@link GameCode}.
+   */
+  gameCodes?: GameCode[];
 }

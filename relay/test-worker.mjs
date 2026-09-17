@@ -11,7 +11,12 @@ import worker from './cloudflare-worker.js';
 
 const realFetch = globalThis.fetch;
 let lastUpstream;
+let codesReply = () =>
+  new Response(JSON.stringify({ gameCodes: [{ id: '1', code: 'TESTCODE' }] }), {
+    status: 200, headers: { 'Content-Type': 'application/json' },
+  });
 globalThis.fetch = async (url, init) => {
+  if (String(url).includes('tacticuscodex.com')) return codesReply();
   lastUpstream = { url: String(url), key: init?.headers?.['X-API-KEY'] };
   if (init?.headers?.['X-API-KEY'] !== 'good') {
     return new Response(JSON.stringify({ type: 'FORBIDDEN', code: 2 }), { status: 403 });
@@ -38,7 +43,22 @@ await show('preflight, unknown origin', await call('/api/v1/player', { method:'O
 await show('GET without key', await call('/api/v1/player'));
 await show('GET with bad key', await call('/api/v1/player', { key:'bad' }));
 const ok = await call('/api/v1/player', { key:'good' });
-await show('GET with good key', ok, `body=${(await ok.text()).slice(0,24)}…`);
+const okBody = await ok.json();
+console.log(`  ${'GET with good key, codes merged'.padEnd(42)} ${ok.status}  gameCodes=${JSON.stringify(okBody.gameCodes)}`);
+
+codesReply = () => { throw new Error('codex unreachable'); };
+const codexDown = await call('/api/v1/player', { key:'good' });
+const codexDownBody = await codexDown.json();
+console.log(`  ${'GET with good key, codex down'.padEnd(42)} ${codexDown.status}  gameCodes=${codexDownBody.gameCodes} player=${JSON.stringify(codexDownBody.player)}`);
+codesReply = () =>
+  new Response(JSON.stringify({ gameCodes: [{ id: '1', code: 'TESTCODE' }] }), {
+    status: 200, headers: { 'Content-Type': 'application/json' },
+  });
+
+const guildRow = await call('/api/v1/guild', { key:'good' });
+const guildBody = await guildRow.json();
+console.log(`  ${'GET /guild does not get codes'.padEnd(42)} ${guildRow.status}  gameCodes=${guildBody.gameCodes}`);
+
 await show('GET /guildRaid/68 (allowed path)', await call('/api/v1/guildRaid/68', { key:'good' }));
 await show('GET /etc/passwd (not proxied)', await call('/etc/passwd', { key:'good' }));
 await show('POST (not proxied)', await call('/api/v1/player', { method:'POST', key:'good' }));
@@ -90,11 +110,12 @@ console.log('\n=== relay key ===');
   console.log('  health, key set    ', JSON.parse(await guarded.text()).requiresRelayKey);
   console.log('  health, no key set ', JSON.parse(await open.text()).warning);
 
-  // The upstream host must not be reachable from the request path.
-  let target = null;
-  globalThis.fetch = async (url) => { target = String(url); return new Response('{}', { status: 200 }); };
+  // The upstream hosts reached must be only the Tacticus API and Tacticus
+  // Codex — nothing else, however the request is shaped.
+  const targets = [];
+  globalThis.fetch = async (url) => { targets.push(String(url)); return new Response('{}', { status: 200 }); };
   await worker.fetch(req({ 'X-API-KEY': 'good', 'X-Relay-Key': 's3cret' }), ENV);
-  console.log('  forwards only to   ', target);
+  console.log('  forwards only to   ', targets);
 }
 
 globalThis.fetch = realFetch;

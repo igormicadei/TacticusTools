@@ -22,6 +22,16 @@
  * Open the Worker's URL in a browser afterwards: it answers with a small JSON
  * health object, which confirms it is live.
  *
+ * `GET /api/v1/player` also carries a `gameCodes` array in its response,
+ * fetched from Tacticus Codex's public, unauthenticated redemption-code list
+ * (tacticuscodex.com — a community-run site, not Snowprint's) and appended
+ * alongside `player`/`metaData`. That fetch is best-effort: if Tacticus Codex
+ * is slow or unreachable, the player response is still returned, just without
+ * `gameCodes`, rather than failing the whole refresh over a third party. It is
+ * also edge-cached for a few minutes (`CODES_CACHE_SECONDS` below), since
+ * codes change a handful of times a day at most and there is no reason to ask
+ * a community-run API fresh on every single player refresh.
+ *
  * Two controls decide who may use it:
  *
  * - ALLOWED_ORIGINS, a comma-separated list, settable as a Worker variable.
@@ -60,6 +70,47 @@ const API_ORIGIN = 'https://api.tacticusgame.com';
 
 /** Only these paths are proxied, so the relay cannot be used against anything else. */
 const ALLOWED_PATHS = /^\/api\/v1\/(player|guild|guildRaid(\/\d+)?)$/;
+
+/**
+ * Tacticus Codex's public redemption-code list — a community-run site, not
+ * Snowprint's, and not the Tacticus API. No key of any kind guards it.
+ */
+const CODES_ORIGIN = 'https://api.tacticuscodex.com';
+const CODES_PATH = '/api/gamecode';
+
+/**
+ * How long a code list is served from Cloudflare's edge cache before this
+ * Worker asks Tacticus Codex again.
+ *
+ * Codes change a handful of times a day at most, so asking on every single
+ * player refresh — which happens on every app open and tab focus — would just
+ * be load on someone else's community-run API for no fresher an answer.
+ */
+const CODES_CACHE_SECONDS = 900;
+
+/**
+ * Fetch Tacticus Codex's code list, best-effort.
+ *
+ * `undefined` on any failure — a timeout, a non-200, a body that is not the
+ * JSON shape expected — so the caller can fall back to returning the player
+ * response without `gameCodes` rather than failing the whole refresh over a
+ * third party this relay does not control.
+ */
+async function fetchGameCodes() {
+  try {
+    const upstream = await fetch(`${CODES_ORIGIN}${CODES_PATH}`, {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+      cf: { cacheTtl: CODES_CACHE_SECONDS, cacheEverything: true },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!upstream.ok) return undefined;
+    const data = await upstream.json();
+    return Array.isArray(data?.gameCodes) ? data.gameCodes : undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 /** Constant-time compare, so a wrong key cannot be found byte by byte. */
 function timingSafeEqual(a, b) {
@@ -183,17 +234,26 @@ export default {
       });
     }
 
-    const upstream = await fetch(`${API_ORIGIN}${url.pathname}`, {
-      method: 'GET',
-      headers: { 'X-API-KEY': apiKey, Accept: 'application/json' },
-      // The response below says no-store, but that governs the caller's cache,
-      // not Cloudflare's own edge cache in front of this subrequest. Without
-      // this a refresh can be answered with a roster minutes old.
-      cf: { cacheTtl: 0, cacheEverything: false },
-    });
+    const isPlayer = url.pathname === '/api/v1/player';
+
+    // Kicked off alongside the player request rather than after it: the two
+    // origins are unrelated, so there is no reason to pay their latencies one
+    // after the other only to then staple the results together.
+    const [upstream, gameCodes] = await Promise.all([
+      fetch(`${API_ORIGIN}${url.pathname}`, {
+        method: 'GET',
+        headers: { 'X-API-KEY': apiKey, Accept: 'application/json' },
+        // The response below says no-store, but that governs the caller's cache,
+        // not Cloudflare's own edge cache in front of this subrequest. Without
+        // this a refresh can be answered with a roster minutes old.
+        cf: { cacheTtl: 0, cacheEverything: false },
+      }),
+      isPlayer ? fetchGameCodes() : Promise.resolve(undefined),
+    ]);
 
     const body = await upstream.text();
-    return new Response(body, {
+    const merged = mergeGameCodes(body, upstream.ok ? gameCodes : undefined);
+    return new Response(merged, {
       status: upstream.status,
       headers: {
         ...cors,
@@ -203,3 +263,23 @@ export default {
     });
   },
 };
+
+/**
+ * Stitches `gameCodes` onto a player response body, when there is anything to
+ * stitch — otherwise returns `body` exactly as it arrived.
+ *
+ * Reparsing and re-serialising a response nobody asked to have touched is the
+ * one thing to avoid here: a body that fails to parse as JSON, or a call
+ * where the codex fetch came back empty, is returned byte-for-byte so this
+ * enrichment can never be the reason a player response looks different from
+ * what the Tacticus API actually sent.
+ */
+function mergeGameCodes(body, gameCodes) {
+  if (!gameCodes) return body;
+  try {
+    const parsed = JSON.parse(body);
+    return JSON.stringify({ ...parsed, gameCodes });
+  } catch {
+    return body;
+  }
+}
