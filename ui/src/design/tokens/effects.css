@@ -1,5 +1,5 @@
 :root{
---radius-sm:4px;--radius-md:6px;--radius-lg:8px;--radius-xl:10px;--radius-pill:999px;
+--radius-sm:6px;--radius-md:10px;--radius-lg:16px;--radius-xl:20px;--radius-pill:999px;
 --border-w:1px;--border-w-thick:2px;
 --shadow-sm:0 1px 2px rgba(0,0,0,.5);
 --shadow-md:0 6px 16px rgba(0,0,0,.55);
@@ -12,42 +12,17 @@
 --duration-fast:120ms; /* @kind other */
 --duration-normal:180ms; /* @kind other */
 
-/* ---- metal bevel system ----
- * Every "frame" in the reference render is two edges faked with light —
- * a bright highlight where the metal catches light, a dark shadow where it
- * falls away — never a photograph. `--bevel-raised` is a plate standing
- * proud of the page (cards, panels, buttons); `--bevel-sunken` is a groove
- * cut into it (inputs, stat tiles, the progress track's floor). Both are
- * box-shadow recipes, composed alongside a surface's own border rather than
- * replacing it, so they layer onto any element with one extra declaration. */
---bevel-hi:rgba(180,205,235,.16); /* @kind other */
---bevel-lo:rgba(0,0,0,.7); /* @kind other */
---bevel-raised:inset 0 1px 0 var(--bevel-hi),inset 0 -2px 0 var(--bevel-lo),0 1px 0 rgba(0,0,0,.45),0 4px 10px rgba(0,0,0,.4); /* @kind shadow */
---bevel-raised-sm:inset 0 1px 0 var(--bevel-hi),inset 0 -1px 0 var(--bevel-lo),0 1px 0 rgba(0,0,0,.4); /* @kind shadow */
---bevel-sunken:inset 0 2px 5px rgba(0,0,0,.75),inset 0 -1px 0 var(--bevel-hi); /* @kind shadow */
---bevel-pressed:inset 0 2px 3px rgba(0,0,0,.6); /* @kind shadow */
-
-/* Brushed-steel sheen — a vertical gradient standing in for the game's metal
- * panels, not a photographic texture. Layered as a `background-image` under
- * the hairline scratch below. */
---metal-raised:linear-gradient(180deg,color-mix(in srgb,var(--n-4) 100%,white 5%) 0%,var(--n-3) 45%,var(--n-2) 100%); /* @kind other */
---metal-sunken:linear-gradient(165deg,var(--n-0) 0%,var(--n-1) 100%); /* @kind other */
---metal-banner:linear-gradient(180deg,var(--n-3) 0%,var(--n-2) 55%,var(--n-0) 100%); /* @kind other */
-
-/* Scratch/grain texture, faked with a diagonal hairline repeat at near-zero
- * opacity — the closest CSS gets to brushed metal without a raster asset.
- * Kept subtle on purpose: the system still has to read as a dense data tool,
- * not a poster. */
---texture-hairline:repeating-linear-gradient(115deg,rgba(255,255,255,.028) 0px,rgba(255,255,255,.028) 1px,transparent 1px,transparent 3px); /* @kind other */
-
-/* Corner rivets — four small gold studs pinned to a box's corners, each a
- * self-contained radial-gradient (position + size in one function), so they
- * add as a single extra `background-image` layer with no extra markup and no
- * separate `background-position`/`background-size` list to keep in sync. */
---rivets:radial-gradient(circle 2.5px at 8px 8px,var(--gold-6),var(--gold-3) 70%,transparent 76%),radial-gradient(circle 2.5px at calc(100% - 8px) 8px,var(--gold-6),var(--gold-3) 70%,transparent 76%),radial-gradient(circle 2.5px at 8px calc(100% - 8px),var(--gold-6),var(--gold-3) 70%,transparent 76%),radial-gradient(circle 2.5px at calc(100% - 8px) calc(100% - 8px),var(--gold-6),var(--gold-3) 70%,transparent 76%); /* @kind other */
-
-/* Engraved-letter treatment for headline type only (brand, page titles, panel
- * eyebrows) — a dark drop plus a hair of light beneath, so display type reads
- * as cut or cast metal. Never applied to body copy. */
---text-emboss:0 1px 0 rgba(0,0,0,.7),0 -1px 0 rgba(255,255,255,.08); /* @kind other */
+/* ---- surface lift ----
+ * The reference render is much flatter than a first pass here assumed: no
+ * embossed highlight/shadow edges, no rivets, no scratch texture. A raised
+ * surface (card, panel, button) gets a barely-there sheen and a soft ambient
+ * shadow; nothing else reads as "raised" in the source image. Kept as a
+ * token (not inlined per selector) so the whole system moves together if a
+ * closer look at the reference ever calls for a second adjustment. */
+--shadow-lift:0 2px 10px rgba(0,0,0,.35); /* @kind shadow */
+--shadow-lift-sm:0 1px 4px rgba(0,0,0,.3); /* @kind shadow */
+/* A near-imperceptible vertical sheen — the one texture cue actually visible
+ * on the reference's cards. Two stops, ~4% apart; anything stronger reads as
+ * invented "metal" rather than the reference's flat-with-a-hint-of-gloss. */
+--sheen-raised:linear-gradient(180deg,color-mix(in srgb,var(--n-3) 100%,white 4%) 0%,var(--n-3) 100%); /* @kind other */
 }
