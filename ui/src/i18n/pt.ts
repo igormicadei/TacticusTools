@@ -41,6 +41,7 @@ export const PT: Record<keyof typeof EN, string> = {
   'units.byStatus': 'Por status',
   'units.byFaction': 'Por facção',
   'units.search': 'Buscar unidades ou facções…',
+  'units.all': 'todas',
   'units.available': 'disponíveis',
   'units.inProgress': 'em progresso',
   'units.notStarted': 'não iniciadas',

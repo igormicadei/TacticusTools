@@ -8,6 +8,7 @@ import {
   projectedStats,
   projectedStatsAt,
   resolvePlan,
+  type EvolutionPlan,
 } from '@lib/gamedata/plan.js';
 import { computeUnitStats, type ComputedUnitStats } from '@lib/gamedata/stats.js';
 import type { GameDatabase } from '@lib/gamedata/types.js';
@@ -19,6 +20,7 @@ import { StepItems } from '../components/StepItems.tsx';
 import { plansStore } from '../data/plans.ts';
 import { unitIcon } from '../data/icons.ts';
 import { Icon, useIcons } from '../components/Icon.tsx';
+import { CheckIcon, LockIcon } from '../components/icons/ChromeIcons.tsx';
 import { describeTarget, PlanForm } from './PlansPage.tsx';
 import { ProjectedStats } from '../components/ProjectedStats.tsx';
 import { localRank, localStepLabel, localStepReason } from '../i18n/game.ts';
@@ -173,6 +175,7 @@ export function PlanDetailPage({ db, player }: { db: GameDatabase; player: Playe
         <p className="small muted" style={{ marginTop: 0 }}>
           {t('plan.orderBlurb')}
         </p>
+        <RankStepper steps={plan.steps} />
         <PlanRoadmap steps={plan.steps} />
 
         {plan.steps.length > 0 && (
@@ -219,6 +222,38 @@ export function PlanDetailPage({ db, player }: { db: GameDatabase; player: Playe
 
       <StepItems unit={unit} plan={plan} db={db} player={player} />
     </>
+  );
+}
+
+/**
+ * The plan's steps as a numbered, connected sequence — done (check), the one
+ * that's next (numbered, active), everything after it (locked) — rather than
+ * only the flat table below. The table stays: it carries from/to, why, and
+ * the projected stats this stepper doesn't.
+ */
+function RankStepper({ steps }: { steps: EvolutionPlan['steps'] }) {
+  if (steps.length === 0) return null;
+  const activeIndex = steps.findIndex((s) => !s.done);
+  return (
+    <ol className="rank-stepper">
+      {steps.map((step, i) => {
+        const state = step.done ? 'done' : i === activeIndex ? 'active' : 'locked';
+        return (
+          <li className={`rank-step ${state}`} key={step.order}>
+            <span className="rank-step-num">
+              {state === 'done' ? (
+                <CheckIcon size={14} />
+              ) : state === 'locked' ? (
+                <LockIcon size={13} />
+              ) : (
+                step.order
+              )}
+            </span>
+            <span className="rank-step-label">{localStepLabel(step)}</span>
+          </li>
+        );
+      })}
+    </ol>
   );
 }
 

@@ -8,6 +8,7 @@ import {
   groupByFaction,
   groupByOwnership,
   summarise,
+  type OwnershipStatus,
   type RosterEntry,
 } from '../data/roster.ts';
 
@@ -15,24 +16,28 @@ import type { GameDatabase } from '@lib/gamedata/types.js';
 import type { PlayerResponse } from '@lib/types/player.js';
 
 type GroupMode = 'ownership' | 'faction';
+type StatusFilter = OwnershipStatus | 'all';
 
 export function UnitsPage({ db, player }: { db: GameDatabase; player: PlayerResponse }) {
   const [mode, setMode] = useState<GroupMode>('ownership');
   const [query, setQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
 
   const entries = useMemo(() => buildRoster(player, db), [player, db]);
   const counts = useMemo(() => summarise(entries), [entries]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return entries;
-    return entries.filter(
-      (e) =>
+    return entries.filter((e) => {
+      if (statusFilter !== 'all' && e.status !== statusFilter) return false;
+      if (!q) return true;
+      return (
         e.name.toLowerCase().includes(q) ||
         e.factionId.toLowerCase().includes(q) ||
-        e.id.toLowerCase().includes(q),
-    );
-  }, [entries, query]);
+        e.id.toLowerCase().includes(q)
+      );
+    });
+  }, [entries, query, statusFilter]);
 
   const groups = useMemo(
     () => (mode === 'ownership' ? groupByOwnership(filtered) : groupByFaction(filtered)),
@@ -54,10 +59,18 @@ export function UnitsPage({ db, player }: { db: GameDatabase; player: PlayerResp
         <SearchField value={query} onChange={setQuery} placeholder={t('units.search')} />
 
         <ToolbarCounts
+          activeKey={statusFilter}
+          onSelect={setStatusFilter}
           items={[
-            { value: counts.owned, label: t('units.available'), color: 'var(--status-owned)' },
-            { value: counts.unlockable, label: t('units.inProgress'), color: 'var(--status-unlockable)' },
-            { value: counts.locked, label: t('units.notStarted') },
+            { key: 'all', value: counts.total, label: t('units.all') },
+            { key: 'owned', value: counts.owned, label: t('units.available'), color: 'var(--status-owned)' },
+            {
+              key: 'unlockable',
+              value: counts.unlockable,
+              label: t('units.inProgress'),
+              color: 'var(--status-unlockable)',
+            },
+            { key: 'locked', value: counts.locked, label: t('units.notStarted'), color: 'var(--status-locked)' },
           ]}
         />
       </Toolbar>

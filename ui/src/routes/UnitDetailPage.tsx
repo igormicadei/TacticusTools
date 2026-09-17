@@ -82,7 +82,7 @@ export function UnitDetailPage({
       </Link>
 
       <div className="detail-head">
-        <Icon src={unitIcon(entry.id)} alt="" size={72} className="portrait ornate" />
+        <Icon src={unitIcon(entry.id)} alt="" size={104} className="portrait ornate" />
         <div>
           <h1>{entry.name}</h1>
           <div className="muted row">

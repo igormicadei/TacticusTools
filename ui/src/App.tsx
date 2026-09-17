@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { NavLink, Navigate, Route, Routes } from 'react-router-dom';
 
 import { CodesBell } from './components/CodesBell.tsx';
+import { EmblemMark } from './components/icons/ChromeIcons.tsx';
 import { loadGameData } from './data/gamedata.ts';
 import { resolveGameCodes } from './data/gameCodes.ts';
 import { fetchPlayer, storage } from './data/player.ts';
@@ -129,7 +130,10 @@ export function App() {
   return (
     <div className="app">
       <header className="topbar">
-        <span className="brand">TACTICUS TOOLS</span>
+        <span className="brand">
+          <EmblemMark size={20} />
+          TACTICUS TOOLS
+        </span>
         <nav>
           <NavLink to="/units" className={({ isActive }) => (isActive ? 'active' : '')}>
             {t('nav.units')}

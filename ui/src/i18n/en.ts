@@ -47,6 +47,7 @@ export const EN = {
   'units.byStatus': 'By status',
   'units.byFaction': 'By faction',
   'units.search': 'Search units or factions…',
+  'units.all': 'all',
   'units.available': 'available',
   'units.inProgress': 'in progress',
   'units.notStarted': 'not started',

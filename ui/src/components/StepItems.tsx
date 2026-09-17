@@ -26,6 +26,7 @@ import type { PlayerResponse, Unit } from '@lib/types/player.js';
 
 import { campaignIcon, requirementIcon, uiIcon } from '../data/icons.ts';
 import { Icon, useIcons } from './Icon.tsx';
+import { CheckIcon } from './icons/ChromeIcons.tsx';
 import { PlanCost, energyLabel } from './PlanCost.tsx';
 import { localNumber, localRank, localRarity, localStat, localStepLabel } from '../i18n/game.ts';
 import { t, tn } from '../i18n/locale.ts';
@@ -42,6 +43,40 @@ export function toggleOpen(current: ReadonlySet<string>, id: string): Set<string
   const next = new Set(current);
   if (!next.delete(id)) next.add(id);
   return next;
+}
+
+/**
+ * A glanceable strip of the plan's aggregated materials — icon, name, rarity,
+ * held-so-far — ahead of the full per-step or totalled breakdown below. Capped
+ * at six: this is a summary, and the detailed views right underneath already
+ * show everything.
+ */
+function ResourceCards({ items }: { items: readonly AggregatedItem[] }) {
+  return (
+    <div className="resource-cards">
+      {items.slice(0, 6).map((item) => {
+        const style = item.rarity !== undefined
+          ? ({ '--rarity': `var(--rarity-${item.rarity})` } as React.CSSProperties)
+          : undefined;
+        const done = item.missing === 0;
+        return (
+          <div className="resource-card" key={item.key} style={style}>
+            <div className="resource-card-icon">
+              <Icon src={requirementIcon(item.key)} size={22} reserve />
+            </div>
+            <div className="resource-card-name">{item.name}</div>
+            {item.rarity !== undefined && (
+              <div className="resource-card-rarity">{localRarity(item.rarity)}</div>
+            )}
+            <div className={`resource-card-count${done ? ' done' : ''}`}>
+              {done && <CheckIcon size={13} />}
+              {localNumber(item.covered)} / {localNumber(item.amount)}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 export function StepItems({
@@ -130,6 +165,8 @@ export function StepItems({
       </div>
 
       <p className="small muted" style={{ marginTop: 0 }}>{t('si.blurb')}</p>
+
+      {totals.length > 0 && <ResourceCards items={totals} />}
 
       {view === 'steps'
         ? plan.steps.map((step) => {
