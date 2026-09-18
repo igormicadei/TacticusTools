@@ -85,28 +85,61 @@ function campaignOptionOf(node: NodeStatus, db: GameDatabase): CampaignOption {
   };
 }
 
+/**
+ * Whether an item is *fully* farmable in the selected campaign(s) — every
+ * one of its flattened base materials has a node there, not merely one of
+ * them.
+ *
+ * A crafted item often needs several distinct base materials, and those do
+ * not all come from the same place: "Otherworldly Nano Swarm" needs both
+ * Advanced Filaments (Fall of Cadia, not Indomitus) and Nano Swarm (also
+ * Indomitus). Matching on "at least one ingredient drops here" showed that
+ * item under an Indomitus filter even though the other half of its recipe
+ * never does — which reads as the filter being wrong, not as a partial
+ * match. Requiring every ingredient answers the question a campaign filter
+ * is actually for: "could I finish this by farming just here."
+ */
+function farmableEntirelyIn(targets: readonly FarmTarget[], campaignIds: ReadonlySet<string>): boolean {
+  return (
+    targets.length > 0 &&
+    targets.every((target) => target.nodes.some((node) => campaignIds.has(node.campaignId)))
+  );
+}
+
 /** Families/sides/difficulties actually on offer, and which campaign ids the
- * current pick resolves to — the same derivation every scope needs. */
-function deriveCascade(options: readonly CampaignOption[], family: string, mirror: boolean, level: BattleLevel) {
+ * current pick resolves to — the same derivation every scope needs. Side
+ * stays single — you are on one end of a board or the other, never both —
+ * but difficulty does not: Standard and Elite are separate node sets a
+ * player can equally well be working, so `levels` is a set. */
+function deriveCascade(
+  options: readonly CampaignOption[],
+  family: string,
+  mirror: boolean,
+  levels: ReadonlySet<BattleLevel>,
+) {
   const families = [...new Set(options.map((o) => o.family))].sort((a, b) => a.localeCompare(b));
   const inFamily = options.filter((o) => o.family === family);
   const sides = [...new Set(inFamily.map((o) => o.mirror))].sort();
   const onSide = inFamily.filter((o) => o.mirror === mirror);
-  const levels = LEVEL_ORDER.filter((l) => onSide.some((o) => o.level === l));
-  const campaignIds = new Set(onSide.filter((o) => o.level === level).map((o) => o.campaignId));
-  return { families, inFamily, sides, onSide, levels, campaignIds };
+  const availableLevels = LEVEL_ORDER.filter((l) => onSide.some((o) => o.level === l));
+  const activeLevels = availableLevels.filter((l) => levels.has(l));
+  const campaignIds = new Set(
+    onSide.filter((o) => activeLevels.includes(o.level)).map((o) => o.campaignId),
+  );
+  return { families, inFamily, sides, onSide, availableLevels, campaignIds };
 }
 
 interface CascadeState {
   family: string;
   mirror: boolean;
-  level: BattleLevel;
+  levels: ReadonlySet<BattleLevel>;
   setFamily: (v: string) => void;
   setMirror: (v: boolean) => void;
-  setLevel: (v: BattleLevel) => void;
+  setLevels: (v: ReadonlySet<BattleLevel>) => void;
 }
 
-/** The Campaign/Side/Difficulty three-select, shared by every scope. */
+/** The Campaign/Side/Difficulty picker, shared by every scope — Side a
+ * single choice, Difficulty a set of toggle chips. */
 function CampaignCascade({
   options,
   state,
@@ -114,31 +147,35 @@ function CampaignCascade({
   options: readonly CampaignOption[];
   state: CascadeState;
 }) {
-  const { family, mirror, level, setFamily, setMirror, setLevel } = state;
-  const { families, inFamily, sides, levels } = deriveCascade(options, family, mirror, level);
+  const { family, mirror, levels, setFamily, setMirror, setLevels } = state;
+  const { families, inFamily, sides, availableLevels } = deriveCascade(options, family, mirror, levels);
 
   if (families.length === 0) return null;
 
   /** Re-point side/difficulty at a combination the new campaign actually has,
-   * the same way `BattlePicker` keeps its own three selects in step. */
+   * the same way `BattlePicker` keeps its own three selects in step —
+   * defaulting difficulty to every level the new combination offers, since
+   * a level chosen for the old one may not exist here at all. */
   const chooseFamily = (nextFamily: string) => {
     const pool = options.filter((o) => o.family === nextFamily);
     const nextMirror = pool.some((o) => o.mirror === mirror) ? mirror : (pool[0]?.mirror ?? false);
     const onThatSide = pool.filter((o) => o.mirror === nextMirror);
-    const nextLevel = onThatSide.some((o) => o.level === level)
-      ? level
-      : (LEVEL_ORDER.find((l) => onThatSide.some((o) => o.level === l)) ?? 'Standard');
     setFamily(nextFamily);
     setMirror(nextMirror);
-    setLevel(nextLevel);
+    setLevels(new Set(LEVEL_ORDER.filter((l) => onThatSide.some((o) => o.level === l))));
   };
   const chooseMirror = (nextMirror: boolean) => {
     const onThatSide = inFamily.filter((o) => o.mirror === nextMirror);
-    const nextLevel = onThatSide.some((o) => o.level === level)
-      ? level
-      : (LEVEL_ORDER.find((l) => onThatSide.some((o) => o.level === l)) ?? 'Standard');
     setMirror(nextMirror);
-    setLevel(nextLevel);
+    setLevels(new Set(LEVEL_ORDER.filter((l) => onThatSide.some((o) => o.level === l))));
+  };
+  const toggleLevel = (l: BattleLevel) => {
+    const next = new Set(levels);
+    if (!next.delete(l)) next.add(l);
+    // Never left with nothing selected — that would silently match every
+    // campaign again rather than none, the opposite of what clearing the
+    // last chip should do.
+    if (next.size > 0) setLevels(next);
   };
 
   return (
@@ -175,17 +212,19 @@ function CampaignCascade({
         </label>
         <label>
           <span>{t('td.level')}</span>
-          <select
-            value={level}
-            onChange={(e) => setLevel(e.target.value as BattleLevel)}
-            disabled={!family || levels.length < 2}
-          >
-            {(levels.length > 0 ? levels : LEVEL_ORDER.slice(0, 1)).map((l) => (
-              <option key={l} value={l}>
+          <div className="counts">
+            {availableLevels.map((l) => (
+              <button
+                key={l}
+                type="button"
+                className={`count filterable${levels.has(l) ? ' active' : ''}`}
+                disabled={!family}
+                onClick={() => toggleLevel(l)}
+              >
                 {localCampaignType(l)}
-              </option>
+              </button>
             ))}
-          </select>
+          </div>
         </label>
       </div>
     </>
@@ -295,22 +334,34 @@ function useAllStepsData({ db, player, stored, kinds, cascade, energyBudget, cus
     [timeline, kinds],
   );
 
-  const withEnergy = useMemo(
-    () => kindFiltered.map((bundle) => ({ bundle, energy: farmingCost(bundle.items, db, player).energy })),
-    [kindFiltered, db, player],
-  );
+  // Priced and given its farm targets once per bundle, then reused for the
+  // campaign options, the campaign filter itself, and the item list a
+  // filtered bundle actually renders — rather than re-walking every item's
+  // recipe three times over.
+  const withTargets = useMemo(() => {
+    return kindFiltered.map((bundle) => {
+      const targetsByItem = new Map<string, FarmTarget[]>();
+      for (const item of bundle.items) {
+        if (item.applied) continue;
+        targetsByItem.set(
+          item.key,
+          farmTargets(
+            { kind: item.kind, key: item.key, name: item.name, ...(item.rarity !== undefined ? { rarity: item.rarity } : {}) },
+            item.missing,
+            db,
+            player,
+          ),
+        );
+      }
+      return { bundle, energy: farmingCost(bundle.items, db, player).energy, targetsByItem };
+    });
+  }, [kindFiltered, db, player]);
 
   const campaignOptions = useMemo(() => {
     const map = new Map<string, CampaignOption>();
-    for (const { bundle } of withEnergy) {
-      for (const item of bundle.items) {
-        if (item.applied) continue;
-        for (const target of farmTargets(
-          { kind: item.kind, key: item.key, name: item.name, ...(item.rarity !== undefined ? { rarity: item.rarity } : {}) },
-          item.missing,
-          db,
-          player,
-        )) {
+    for (const { targetsByItem } of withTargets) {
+      for (const targets of targetsByItem.values()) {
+        for (const target of targets) {
           for (const node of target.nodes) {
             if (!map.has(node.campaignId)) map.set(node.campaignId, campaignOptionOf(node, db));
           }
@@ -318,30 +369,27 @@ function useAllStepsData({ db, player, stored, kinds, cascade, energyBudget, cus
       }
     }
     return [...map.values()];
-  }, [withEnergy, db, player]);
+  }, [withTargets, db]);
 
-  const { campaignIds } = deriveCascade(campaignOptions, cascade.family, cascade.mirror, cascade.level);
+  const { campaignIds } = deriveCascade(campaignOptions, cascade.family, cascade.mirror, cascade.levels);
   const budget = energyBudget === '' ? undefined : Number(energyBudget);
 
   const visible = useMemo(() => {
-    return withEnergy.filter(({ bundle, energy }) => {
-      if (budget !== undefined && energy > budget) return false;
-      if (!cascade.family) return true;
-      return bundle.items.some((item) => {
-        if (item.applied) return false;
-        return farmTargets(
-          { kind: item.kind, key: item.key, name: item.name, ...(item.rarity !== undefined ? { rarity: item.rarity } : {}) },
-          item.missing,
-          db,
-          player,
-        ).some((target) => target.nodes.some((node) => campaignIds.has(node.campaignId)));
-      });
-    });
-  }, [withEnergy, budget, cascade.family, campaignIds, db, player]);
+    return withTargets
+      .filter(({ energy }) => budget === undefined || energy <= budget)
+      .map(({ bundle, targetsByItem }) => {
+        if (!cascade.family) return bundle;
+        const items = bundle.items.filter(
+          (item) => !item.applied && farmableEntirelyIn(targetsByItem.get(item.key) ?? [], campaignIds),
+        );
+        return { ...bundle, items };
+      })
+      .filter((bundle) => !cascade.family || bundle.items.length > 0);
+  }, [withTargets, budget, cascade.family, campaignIds]);
 
-  const order = useMemo(() => [...new Set(visible.map(({ bundle }) => bundle.unitId))], [visible]);
+  const order = useMemo(() => [...new Set(visible.map((bundle) => bundle.unitId))], [visible]);
 
-  return { bundles: visible.map((v) => v.bundle), presentKinds, campaignOptions, order };
+  return { bundles: visible, presentKinds, campaignOptions, order };
 }
 
 function AllStepsScope(props: SharedFilters) {
@@ -512,7 +560,7 @@ function useNextStepData({ db, player, stored, kinds, cascade, energyBudget }: S
     return [...map.values()];
   }, [kindFiltered, db]);
 
-  const { campaignIds } = deriveCascade(campaignOptions, cascade.family, cascade.mirror, cascade.level);
+  const { campaignIds } = deriveCascade(campaignOptions, cascade.family, cascade.mirror, cascade.levels);
   const budget = energyBudget === '' ? undefined : Number(energyBudget);
 
   const visible = useMemo(() => {
@@ -521,9 +569,7 @@ function useNextStepData({ db, player, stored, kinds, cascade, energyBudget }: S
       .map((row) => {
         if (!cascade.family) return row;
         const items = row.items.filter((item) =>
-          (row.targetsByItem.get(item.key) ?? []).some((target) =>
-            target.nodes.some((node) => campaignIds.has(node.campaignId)),
-          ),
+          farmableEntirelyIn(row.targetsByItem.get(item.key) ?? [], campaignIds),
         );
         return { ...row, items };
       })
@@ -622,14 +668,14 @@ function useSlotData(props: SlotFilters) {
     return [...map.values()];
   }, [allCandidates, db]);
 
-  const { campaignIds } = deriveCascade(campaignOptions, cascade.family, cascade.mirror, cascade.level);
+  const { campaignIds } = deriveCascade(campaignOptions, cascade.family, cascade.mirror, cascade.levels);
   const budget = energyBudget === '' ? undefined : Number(energyBudget);
 
   const filtered = useMemo(() => {
     return allCandidates.filter((c) => {
       if (budget !== undefined && c.energy > budget) return false;
       if (!cascade.family) return true;
-      return c.targets.some((target) => target.nodes.some((node) => campaignIds.has(node.campaignId)));
+      return farmableEntirelyIn(c.targets, campaignIds);
     });
   }, [allCandidates, budget, cascade.family, campaignIds]);
 
@@ -882,8 +928,8 @@ export function FarmingPlanTab({ db, player }: { db: GameDatabase; player: Playe
 
   const [family, setFamily] = useState('');
   const [mirror, setMirror] = useState(false);
-  const [level, setLevel] = useState<BattleLevel>('Standard');
-  const cascade: CascadeState = { family, mirror, level, setFamily, setMirror, setLevel };
+  const [levels, setLevels] = useState<ReadonlySet<BattleLevel>>(() => new Set(LEVEL_ORDER));
+  const cascade: CascadeState = { family, mirror, levels, setFamily, setMirror, setLevels };
 
   const [energyBudget, setEnergyBudget] = useState(() => localStorage.getItem(BUDGET_KEY) ?? '');
   const [todayOnly, setTodayOnly] = useState(() => localStorage.getItem(TODAY_KEY) === '1');
