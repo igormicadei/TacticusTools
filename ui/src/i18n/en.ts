@@ -606,6 +606,24 @@ export const EN = {
   'shopping.fromLooseHint':
     'A copy of this item is already sitting in your inventory — costed from its level instead of starting fresh.',
 
+  /* ---- next steps --------------------------------------------------------
+     Every plan's immediate next step, gathered into one list and filterable
+     by what kind of step it is and by where its materials can be farmed. */
+  'nextSteps.heading': 'Next steps',
+  'nextSteps.none': 'No plans yet. This lists every plan’s next step in one place.',
+  'nextSteps.acrossUnits': '{n} units with a next step',
+  'nextSteps.allDone': 'Every plan is fully done — nothing left to do.',
+  'nextSteps.noMatch': 'Nothing matches the filters above.',
+  'nextSteps.filterByType': 'Filter by step type',
+  'nextSteps.filterByCampaign': 'Filter by campaign',
+  'nextSteps.campaignBlurb':
+    'Pick one or more campaigns to see only the materials you still need that drop there.',
+  'nextSteps.kind.rank': 'Rank up',
+  'nextSteps.kind.level': 'Level up',
+  'nextSteps.kind.ability': 'Ability',
+  'nextSteps.kind.ascension': 'Ascension',
+  'nextSteps.kind.promotion': 'Promotion',
+
   /* ---- team prose ------------------------------------------------------ */
   'td.objectiveBlurb':
     'Equipment grants Crit and Block far more often than Health or Armour — 626 item levels carry Crit Chance against 215 carrying Health — so an objective that read only the headline stats would rate almost every Crit item as worthless. “Survive” and “Hit hardest” price what the item actually does; the raw ones are there for when that is what you actually want.',

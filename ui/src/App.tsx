@@ -22,6 +22,7 @@ import { CodesPage } from './routes/CodesPage.tsx';
 import { EquipmentPage } from './routes/EquipmentPage.tsx';
 import { UpgradesPage } from './routes/UpgradesPage.tsx';
 import { currentLang, t, useLang } from './i18n/locale.ts';
+import { NextStepsPage } from './routes/NextStepsPage.tsx';
 import { PlanDetailPage } from './routes/PlanDetailPage.tsx';
 import { TeamDetailPage } from './routes/TeamDetailPage.tsx';
 import { TeamsPage } from './routes/TeamsPage.tsx';
@@ -248,7 +249,7 @@ export function App() {
                 player ? <PlansPage db={db} player={player} /> : <Navigate to="/player" replace />
               }
             />
-            {/* Before the :planId route, or "timeline"/"shopping-list" is read as a plan id. */}
+            {/* Before the :planId route, or "timeline"/"shopping-list"/"next-steps" is read as a plan id. */}
             <Route
               path="/plans/timeline"
               element={
@@ -264,6 +265,16 @@ export function App() {
               element={
                 player ? (
                   <ShoppingListPage db={db} player={player} />
+                ) : (
+                  <Navigate to="/player" replace />
+                )
+              }
+            />
+            <Route
+              path="/plans/next-steps"
+              element={
+                player ? (
+                  <NextStepsPage db={db} player={player} />
                 ) : (
                   <Navigate to="/player" replace />
                 )

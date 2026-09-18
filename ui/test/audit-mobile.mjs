@@ -191,6 +191,7 @@ const routes = [
   // stored choice is set below before the page loads.
   ['timeline-energy', '#/plans/timeline'],
   ['shopping-list', '#/plans/shopping-list'],
+  ['next-steps', '#/plans/next-steps'],
   ['teams', '#/teams'],
   ['team-detail', '#/teams/probe-team'],
   ['upgrades', '#/upgrades'],

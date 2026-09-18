@@ -249,6 +249,9 @@ export function PlansPage({ db, player }: { db: GameDatabase; player: PlayerResp
             <Link className="chip" to="/plans/shopping-list">
               {t('shopping.heading')}
             </Link>
+            <Link className="chip" to="/plans/next-steps">
+              {t('nextSteps.heading')}
+            </Link>
           </>
         )}
       </Toolbar>

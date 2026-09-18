@@ -600,6 +600,24 @@ export const PT: Record<keyof typeof EN, string> = {
   'shopping.fromLooseHint':
     'Uma cópia deste item já está no seu estoque — custada a partir do nível dela em vez de começar do zero.',
 
+  /* ---- próximos passos ----------------------------------------------------
+     O próximo passo de cada plano, reunidos em uma lista e filtráveis pelo
+     tipo do passo e por onde os materiais podem ser farmados. */
+  'nextSteps.heading': 'Próximos passos',
+  'nextSteps.none': 'Nenhum plano ainda. Isto lista o próximo passo de cada plano em um só lugar.',
+  'nextSteps.acrossUnits': '{n} unidades com um próximo passo',
+  'nextSteps.allDone': 'Todo plano está completo — nada a fazer.',
+  'nextSteps.noMatch': 'Nada corresponde aos filtros acima.',
+  'nextSteps.filterByType': 'Filtrar por tipo de passo',
+  'nextSteps.filterByCampaign': 'Filtrar por campanha',
+  'nextSteps.campaignBlurb':
+    'Escolha uma ou mais campanhas para ver só os materiais que você ainda precisa e que caem lá.',
+  'nextSteps.kind.rank': 'Subir de rank',
+  'nextSteps.kind.level': 'Subir de nível',
+  'nextSteps.kind.ability': 'Habilidade',
+  'nextSteps.kind.ascension': 'Ascensão',
+  'nextSteps.kind.promotion': 'Promoção',
+
   /* ---- textos de equipe ------------------------------------------------ */
   'td.objectiveBlurb':
     'Equipamento concede Crítico e Bloqueio com muito mais frequência do que Vida ou Armadura — 626 níveis de item carregam Chance de Crítico contra 215 com Vida — então um objetivo que lesse só os atributos principais classificaria quase todo item de Crítico como inútil. “Sobreviver” e “Bater mais forte” precificam o que o item de fato faz; os objetivos crus estão aí para quando é isso mesmo que você quer.',
