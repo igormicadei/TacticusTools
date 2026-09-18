@@ -12,6 +12,7 @@ import type { PlayerResponse } from '@lib/types/player.js';
 import { humaniseFaction } from '../data/roster.ts';
 import { plansStore, type StoredPlan } from '../data/plans.ts';
 import { uiIcon, unitIcon } from '../data/icons.ts';
+import { FarmingPlanTab } from './FarmingPlanTab.tsx';
 import { Icon, useIcons } from '../components/Icon.tsx';
 import { MoreIcon } from '../components/icons/ChromeIcons.tsx';
 import { ItemTargetsEditor, ItemTargetsSummary } from '../components/ItemTargets.tsx';
@@ -24,8 +25,10 @@ import { t, tn } from '../i18n/locale.ts';
 
 type GroupMode = 'none' | 'faction' | 'alliance' | 'status';
 type SortMode = 'created' | 'name' | 'energy' | 'steps';
+type Tab = 'mine' | 'farming';
 
 const VIEW_KEY = 'tacticus-tools:plans-view';
+const TAB_KEY = 'tacticus-tools:plans-tab';
 
 function readView(): { group: GroupMode; sort: SortMode; hideDone: boolean } {
   try {
@@ -38,6 +41,34 @@ function readView(): { group: GroupMode; sort: SortMode; hideDone: boolean } {
 }
 
 export function PlansPage({ db, player }: { db: GameDatabase; player: PlayerResponse }) {
+  const [tab, setTab] = useState<Tab>(
+    () => (localStorage.getItem(TAB_KEY) === 'farming' ? 'farming' : 'mine'),
+  );
+  const chooseTab = (next: Tab) => {
+    setTab(next);
+    try {
+      localStorage.setItem(TAB_KEY, next);
+    } catch {
+      /* Private mode — the choice still holds for this render. */
+    }
+  };
+
+  return (
+    <>
+      <div className="tabs" style={{ marginBottom: 16 }}>
+        <button className={tab === 'mine' ? 'active' : ''} onClick={() => chooseTab('mine')}>
+          {t('plans.tabMine')}
+        </button>
+        <button className={tab === 'farming' ? 'active' : ''} onClick={() => chooseTab('farming')}>
+          {t('plans.tabFarming')}
+        </button>
+      </div>
+      {tab === 'mine' ? <MyPlansTab db={db} player={player} /> : <FarmingPlanTab db={db} player={player} />}
+    </>
+  );
+}
+
+function MyPlansTab({ db, player }: { db: GameDatabase; player: PlayerResponse }) {
   useIcons();
   const [plans, setPlans] = useState(() => plansStore.list());
   const [editing, setEditing] = useState<string>();
@@ -243,14 +274,8 @@ export function PlansPage({ db, player }: { db: GameDatabase; player: PlayerResp
               <option value="steps">{t('plans.sortSteps')}</option>
             </SelectField>
             <ToolbarCounts items={[{ value: plans.length, label: t('plans.count') }]} />
-            <Link className="chip" to="/plans/timeline">
-              {t('plans.everythingInOrder')}
-            </Link>
             <Link className="chip" to="/plans/shopping-list">
               {t('shopping.heading')}
-            </Link>
-            <Link className="chip" to="/plans/next-steps">
-              {t('nextSteps.heading')}
             </Link>
           </>
         )}

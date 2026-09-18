@@ -22,13 +22,11 @@ import { CodesPage } from './routes/CodesPage.tsx';
 import { EquipmentPage } from './routes/EquipmentPage.tsx';
 import { UpgradesPage } from './routes/UpgradesPage.tsx';
 import { currentLang, t, useLang } from './i18n/locale.ts';
-import { NextStepsPage } from './routes/NextStepsPage.tsx';
 import { PlanDetailPage } from './routes/PlanDetailPage.tsx';
 import { TeamDetailPage } from './routes/TeamDetailPage.tsx';
 import { TeamsPage } from './routes/TeamsPage.tsx';
 import { PlansPage } from './routes/PlansPage.tsx';
 import { ShoppingListPage } from './routes/ShoppingListPage.tsx';
-import { TimelinePage } from './routes/TimelinePage.tsx';
 import { PlayerDataPage } from './routes/PlayerDataPage.tsx';
 import { UnitDetailPage } from './routes/UnitDetailPage.tsx';
 import { UnitsPage } from './routes/UnitsPage.tsx';
@@ -249,17 +247,7 @@ export function App() {
                 player ? <PlansPage db={db} player={player} /> : <Navigate to="/player" replace />
               }
             />
-            {/* Before the :planId route, or "timeline"/"shopping-list"/"next-steps" is read as a plan id. */}
-            <Route
-              path="/plans/timeline"
-              element={
-                player ? (
-                  <TimelinePage db={db} player={player} />
-                ) : (
-                  <Navigate to="/player" replace />
-                )
-              }
-            />
+            {/* Before the :planId route, or "shopping-list" is read as a plan id. */}
             <Route
               path="/plans/shopping-list"
               element={
@@ -270,16 +258,10 @@ export function App() {
                 )
               }
             />
-            <Route
-              path="/plans/next-steps"
-              element={
-                player ? (
-                  <NextStepsPage db={db} player={player} />
-                ) : (
-                  <Navigate to="/player" replace />
-                )
-              }
-            />
+            {/* Order of Work and Next Steps both folded into the Plans page's
+                Farming Plan tab — old links land there instead of 404ing. */}
+            <Route path="/plans/timeline" element={<Navigate to="/plans" replace />} />
+            <Route path="/plans/next-steps" element={<Navigate to="/plans" replace />} />
             <Route
               path="/plans/:unitId"
               element={

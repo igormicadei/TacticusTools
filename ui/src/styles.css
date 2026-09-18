@@ -263,6 +263,19 @@ textarea {
   width: 28px; height: 28px; padding: 0; border-radius: var(--radius-pill);
   color: var(--text-secondary);
 }
+
+/* The Farming Plan tab's "Custom order" nudge buttons — the same small,
+   quiet icon-button look as `.card-menu-button`, just two side by side
+   rather than one that opens a menu. */
+.priority-buttons { display: inline-flex; gap: var(--space-2); margin-left: var(--space-4); }
+.priority-button {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; padding: 0; border-radius: var(--radius-sm);
+  border: var(--border-w) solid var(--border-default);
+  color: var(--text-secondary); font-size: var(--text-2xs); line-height: 1;
+}
+.priority-button:hover:not(:disabled) { color: var(--text-primary); background: var(--bg-hover); }
+.priority-button:disabled { opacity: .35; }
 .card-menu-button:hover { color: var(--text-primary); background: var(--bg-hover); }
 .card-menu-panel {
   position: absolute; top: 100%; right: 0; z-index: 3;

@@ -175,6 +175,8 @@ export const PT: Record<keyof typeof EN, string> = {
 
   /* ---- planos --------------------------------------------------------- */
   'plans.heading': 'Planos de evolução',
+  'plans.tabMine': 'Meus planos',
+  'plans.tabFarming': 'Plano de farming',
   'plans.count': 'ativos',
   'plans.unitName': 'Nome da unidade',
   'plans.noPreference': 'Sem preferência',
@@ -617,6 +619,24 @@ export const PT: Record<keyof typeof EN, string> = {
   'nextSteps.kind.ability': 'Habilidade',
   'nextSteps.kind.ascension': 'Ascensão',
   'nextSteps.kind.promotion': 'Promoção',
+
+  /* ---- aba de plano de farming --------------------------------------------
+     Ordem de trabalho, Próximos passos e Gastar energia fundidos em uma
+     aba, três escopos sobre a mesma pergunta em vez de três páginas. */
+  'farming.noPlansYet':
+    'Nenhum plano ainda. Isto acompanha os materiais de rank pendentes de cada plano em um só lugar.',
+  'farming.scopeAll': 'Todos os passos pendentes',
+  'farming.scopeNext': 'Só o próximo passo',
+  'farming.scopeSlots': 'Slots do rank atual',
+  'farming.filterByEnergy': 'Filtrar por energia',
+  'farming.maxEnergy': 'Energia máxima por item',
+  'farming.noLimit': 'Sem limite',
+  'farming.customOrder': 'Ordem personalizada',
+  'farming.customOrderHint':
+    'Decida você mesmo qual unidade reivindica materiais compartilhados escassos primeiro, em vez da ordem automática.',
+  'farming.moveUp': 'Subir na prioridade',
+  'farming.moveDown': 'Descer na prioridade',
+  'spend.units': 'Unidades',
 
   /* ---- textos de equipe ------------------------------------------------ */
   'td.objectiveBlurb':

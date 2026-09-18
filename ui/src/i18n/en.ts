@@ -181,6 +181,8 @@ export const EN = {
 
   /* ---- plans ---------------------------------------------------------- */
   'plans.heading': 'Evolution plans',
+  'plans.tabMine': 'My plans',
+  'plans.tabFarming': 'Farming plan',
   'plans.count': 'active',
   'plans.unitName': 'Unit name',
   'plans.noPreference': 'No preference',
@@ -623,6 +625,24 @@ export const EN = {
   'nextSteps.kind.ability': 'Ability',
   'nextSteps.kind.ascension': 'Ascension',
   'nextSteps.kind.promotion': 'Promotion',
+
+  /* ---- farming plan tab --------------------------------------------------
+     Order of Work, Next Steps and Spend Energy merged into one tab, three
+     scopes over the same question rather than three separate pages. */
+  'farming.noPlansYet':
+    'No plans yet. This tracks every plan’s outstanding rank-up materials in one place.',
+  'farming.scopeAll': 'All outstanding steps',
+  'farming.scopeNext': 'Next step only',
+  'farming.scopeSlots': 'Current rank slots',
+  'farming.filterByEnergy': 'Filter by energy',
+  'farming.maxEnergy': 'Max energy per item',
+  'farming.noLimit': 'No limit',
+  'farming.customOrder': 'Custom order',
+  'farming.customOrderHint':
+    'Decide yourself which unit claims scarce shared materials first, instead of the automatic order.',
+  'farming.moveUp': 'Move up in priority',
+  'farming.moveDown': 'Move down in priority',
+  'spend.units': 'Units',
 
   /* ---- team prose ------------------------------------------------------ */
   'td.objectiveBlurb':

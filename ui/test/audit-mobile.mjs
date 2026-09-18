@@ -186,12 +186,12 @@ const routes = [
   ['unit-detail', `#/units/${encodeURIComponent(roster[0].id)}`],
   ['plans', '#/plans'],
   ['plan-detail', `#/plans/${encodeURIComponent(roster[0].id)}`],
-  ['timeline', '#/plans/timeline'],
-  // The same route in its other mode. It is state rather than a URL, so the
-  // stored choice is set below before the page loads.
-  ['timeline-energy', '#/plans/timeline'],
+  // The three Farming Plan scopes share one route; each is state rather
+  // than its own URL, so the stored choice is set below before the reload.
+  ['farming-all', '#/plans'],
+  ['farming-next', '#/plans'],
+  ['farming-slots', '#/plans'],
   ['shopping-list', '#/plans/shopping-list'],
-  ['next-steps', '#/plans/next-steps'],
   ['teams', '#/teams'],
   ['team-detail', '#/teams/probe-team'],
   ['upgrades', '#/upgrades'],
@@ -242,10 +242,13 @@ const NOT_OURS = '.item-name, .name, .unit-name, .desc, .cmd, .use-unit, .card-t
 const leaks = new Map();
 for (const [name, hash] of routes) {
   await page.goto(`http://127.0.0.1:${PORT}${BASE}${hash}`);
-  if (name.startsWith('timeline')) {
+  if (name.startsWith('farming-')) {
     await page.evaluate(
-      (mode) => localStorage.setItem('tacticus-tools:timelineMode', mode),
-      name === 'timeline-energy' ? 'energy' : 'order',
+      (scope) => {
+        localStorage.setItem('tacticus-tools:plans-tab', 'farming');
+        localStorage.setItem('tacticus-tools:farming-scope', scope);
+      },
+      name.slice('farming-'.length),
     );
   }
   await page.reload({ waitUntil: 'domcontentloaded' });
