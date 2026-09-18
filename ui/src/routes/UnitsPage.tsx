@@ -64,31 +64,6 @@ export function UnitsPage({ db, player }: { db: GameDatabase; player: PlayerResp
         />
       </Toolbar>
 
-      <section className="mobile-units-toolbar" aria-label="Unit filters">
-        <div className="mobile-filter-row">
-          <label><span className="sr-only">Faction</span><select defaultValue="all"><option value="all">All factions</option><option value="imperial">Imperial</option><option value="chaos">Chaos</option><option value="xenos">Xenos</option></select></label>
-          <label><span className="sr-only">Group</span><select value={mode} onChange={(e) => setMode(e.target.value as GroupMode)}><option value="ownership">By status</option><option value="faction">By faction</option></select></label>
-        </div>
-        <div className="mobile-search-row">
-          <SearchField value={query} onChange={setQuery} placeholder="Search units..." />
-          <button type="button" className="mobile-filter-button" aria-label="Filter units">
-            <span></span><span></span><span></span>
-          </button>
-        </div>
-        <div className="mobile-status-row">
-          {[
-            ['all', counts.total, t('units.all')],
-            ['owned', counts.owned, t('units.available')],
-            ['unlockable', counts.unlockable, t('units.inProgress')],
-            ['locked', counts.locked, t('units.notStarted')],
-          ].map(([key, value, label]) => (
-            <button key={key} type="button" className={statusFilter === key ? 'active' : ''} onClick={() => setStatusFilter(key as StatusFilter)}>
-              <b>{value}</b><span>{label}</span>
-            </button>
-          ))}
-        </div>
-      </section>
-
       {groups.length === 0 && <div className="empty">{t('units.noMatch', { query })}</div>}
 
       {groups.map((group) => (

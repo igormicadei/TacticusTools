@@ -208,12 +208,22 @@ body {
 
 .stars { filter: drop-shadow(0 0 3px rgba(216,179,90,.22)); }
 
-/* Detail header: shared by every unit detail tab/screen. */
+/* Detail header: a unit's own hero card, but also the plain title+subtitle
+   header on Plan detail, Team detail, the plan timeline and the shopping
+   list — some of those have no portrait, and Team detail has no trailing
+   row either. A positional 3-column grid (portrait / title / trailing)
+   assumed all three were always present: with only one or two, auto-
+   placement filled column 1 first regardless of what the child actually
+   was, so a title landed in a 104px portrait-width column. Flexbox with
+   `:has()` targets the title block by what it contains rather than by
+   position, so it works whichever of the three actually showed up — the
+   same reason the trailing rarity/action row on every page already used
+   `margin-left: auto` rather than relying on a grid column for it. */
 .detail-head {
   position: relative;
-  display: grid;
-  grid-template-columns: 104px minmax(0, 1fr) auto;
+  display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 18px;
   margin: 0 0 20px;
   padding: 16px 18px;
@@ -233,14 +243,18 @@ body {
   background: linear-gradient(90deg, transparent, rgba(216,179,90,.52), transparent);
 }
 
+.detail-head > div:has(> h1) { flex: 1 1 200px; min-width: 0; }
+
 .detail-head h1 {
   margin: 0 0 6px;
   color: #eee9dc;
   font-size: clamp(20px, 3vw, 30px);
   letter-spacing: -.015em;
+  overflow-wrap: break-word;
 }
 
 .detail-head .portrait.ornate {
+  flex: none;
   border: 1px solid rgba(216,179,90,.38);
   border-radius: 7px;
   box-shadow: 0 0 0 3px rgba(216,179,90,.045), 0 10px 24px rgba(0,0,0,.35);
@@ -268,7 +282,7 @@ body {
   border-radius: 4px;
 }
 
-.stat .value { color: #e9e4d8; }
+.stat .value { color: #e9e4d8; overflow-wrap: break-word; }
 
 .bar {
   background: #080b0e;
@@ -318,13 +332,15 @@ body {
 
   .grid { grid-template-columns: 1fr; }
 
-  .detail-head {
-    grid-template-columns: 76px minmax(0, 1fr);
-    gap: 12px;
-  }
+  .detail-head { gap: 12px; }
 
-  .detail-head .row:last-child {
-    grid-column: 1 / -1;
+  /* Forces the trailing rarity/action row or mode-tabs (`margin-left: auto`
+     at desktop width, to sit flush against the far edge) onto its own
+     full-width line instead — there isn't room beside a title at this width
+     once a portrait is also in the row. */
+  .detail-head > .row:last-child,
+  .detail-head > .tabs:last-child {
+    flex: 1 0 100%;
     margin-left: 0 !important;
   }
 
@@ -344,8 +360,6 @@ body {
    buttons, real routes) rather than `nth-child` position hacks standing in
    for content that isn't actually there.
    ========================================================================== */
-
-.mobile-units-toolbar { display: none; }
 
 @media (max-width: 720px) {
   :root {
@@ -528,13 +542,20 @@ body {
     padding: 20px 20px calc(24px + env(safe-area-inset-bottom));
   }
 
-  /* --- ornate filter console (visual pass only; still the same controls) - */
-  .content > .toolbar { display: none; }
-
-  .mobile-units-toolbar {
-    display: block;
-    margin: 0 0 25px;
-    padding: 14px 15px 16px;
+  /* --- toolbar (search, group tabs, status-count filters) ------------------
+     Real, shared controls (`Toolbar`/`SegmentedControl`/`SearchField`/
+     `ToolbarCounts` in `components/Toolbar.tsx`), styled once here for every
+     page that renders one — Units, Plans, Teams, Upgrades, Equipment,
+     Badges, Codes, the plan timeline — rather than the page-specific,
+     partly-fake stand-in this replaced: a duplicate faction dropdown wired
+     to nothing, a filter button with no handler, and a second copy of the
+     same search box and status counts the real toolbar already renders. */
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    margin: 0 0 22px;
+    padding: 14px 15px 15px;
     background:
       linear-gradient(135deg, rgba(31,87,121,.17), transparent 42%),
       linear-gradient(180deg, #071521, #040d16);
@@ -551,8 +572,8 @@ body {
     );
   }
 
-  .mobile-units-toolbar::before,
-  .mobile-units-toolbar::after {
+  .toolbar::before,
+  .toolbar::after {
     content: '';
     position: absolute;
     width: 33px;
@@ -560,104 +581,91 @@ body {
     pointer-events: none;
   }
 
-  .mobile-units-toolbar::before {
+  .toolbar::before {
     top: -1px; left: -1px;
     border-top: 3px solid var(--tt-mobile-gold);
     border-left: 3px solid var(--tt-mobile-gold);
     box-shadow: -1px -1px 7px rgba(227,185,79,.15);
   }
 
-  .mobile-units-toolbar::after {
+  .toolbar::after {
     right: -1px; bottom: -1px;
     width: 26px; height: 26px;
     border-right: 3px solid var(--tt-mobile-gold);
     border-bottom: 3px solid var(--tt-mobile-gold);
   }
 
-  .mobile-filter-row { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; }
-  .mobile-filter-row label { min-width: 0; }
-
-  .mobile-filter-row select {
-    width: 100%;
-    min-width: 0;
-    height: 47px;
-    padding: 0 34px 0 15px;
-    appearance: none;
-    color: #d9e5ee;
-    font: 500 15px var(--font-body);
-    background:
-      linear-gradient(45deg, transparent 50%, #8ab5ce 50%) calc(100% - 19px) 20px/7px 7px no-repeat,
-      linear-gradient(135deg, #8ab5ce 50%, transparent 50%) calc(100% - 14px) 20px/7px 7px no-repeat,
-      linear-gradient(180deg, #09233a, #041321);
+  /* `.tabs`/`.search` are the same components elsewhere on a page (a
+     steps/total toggle, the player-data filter box) as well as inside a
+     toolbar, so they are styled bare rather than scoped to `.toolbar` — the
+     same control should look the same wherever it appears. Only the
+     full-width stacking is toolbar-specific. */
+  .tabs {
+    background: linear-gradient(180deg, #09233a, #041321);
     border: 1px solid #17638b;
-    border-radius: 7px;
+    border-radius: 8px;
+    padding: 3px;
     box-shadow: inset 0 1px rgba(111,181,218,.11), 0 2px 7px rgba(0,0,0,.3);
   }
 
-  .mobile-search-row {
-    display: grid;
-    grid-template-columns: minmax(0,1fr) 48px;
-    gap: 11px;
-    margin-top: 14px;
+  .tabs button {
+    padding: 8px 14px;
+    border-radius: 6px;
+    color: #9db0c2;
+    font-size: 12.5px;
   }
 
-  .mobile-search-row .search {
-    min-width: 0;
-    width: 100%;
-    height: 50px;
-    padding: 0 16px 0 48px;
+  .tabs button.active {
+    color: var(--tt-mobile-gold-hi);
+    background: linear-gradient(180deg, rgba(219,173,63,.24), rgba(219,173,63,.07));
+    box-shadow: inset 0 0 0 1px rgba(238,192,73,.5);
+  }
+
+  .toolbar .tabs { width: 100%; display: flex; }
+  .toolbar .tabs button { flex: 1; }
+
+  .search {
     color: #dce8f1;
-    font-size: 15px;
     border-radius: 24px;
     border: 1px solid #17638b;
-    background:
-      radial-gradient(circle at 22px 24px, transparent 8px, #d7e8f2 9px, #d7e8f2 11px, transparent 12px),
-      linear-gradient(135deg, #061b2b, #020e18);
+    background: linear-gradient(135deg, #061b2b, #020e18);
     box-shadow: inset 0 1px rgba(151,215,241,.12), 0 3px 10px rgba(0,0,0,.42);
   }
 
-  .mobile-search-row .search::placeholder { color: #70879a; }
+  .search::placeholder { color: #70879a; }
 
-  .mobile-filter-button {
-    width: 48px;
-    height: 50px;
-    padding: 0;
-    border: 1px solid #17638b;
-    border-radius: 8px;
-    background: linear-gradient(180deg, #0a2439, #04121e);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 5px;
-    box-shadow: inset 0 1px rgba(125,195,226,.11), 0 3px 9px rgba(0,0,0,.35);
-  }
-
-  .mobile-filter-button span {
-    display: block;
-    height: 2px;
-    background: #9fc4da;
-    box-shadow: 0 0 4px rgba(104,178,219,.25);
-  }
-  .mobile-filter-button span:nth-child(1) { width: 20px; }
-  .mobile-filter-button span:nth-child(2) { width: 14px; }
-  .mobile-filter-button span:nth-child(3) { width: 8px; }
-
-  .mobile-status-row {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0,1fr));
-    gap: 8px;
-    margin-top: 15px;
-  }
-
-  .mobile-status-row button {
+  .toolbar .search {
+    width: 100%;
     min-width: 0;
-    height: 70px;
-    padding: 6px 3px;
-    display: flex;
+    height: 50px;
+    padding: 0 18px;
+    font-size: 15px;
+  }
+
+  /* Two columns, not four: a status label translates to something like "não
+     iniciadas" or "em progresso" — noticeably longer than its English
+     source — and a fixed-height, non-wrapping single-line cell (as this
+     replaced) either truncated it or overflowed its own box. Two wider,
+     height-flexible cells give the longest label room to wrap onto a
+     second line instead. */
+  .counts {
+    width: 100%;
+    margin-left: 0;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .counts .count { padding: 0; }
+
+  .count.filterable {
     flex-direction: column;
     justify-content: center;
     align-items: center;
+    min-height: 60px;
+    padding: 8px 6px;
+    gap: 2px;
+    text-align: center;
     border: 1px solid #17638b;
     border-radius: 7px;
     background: linear-gradient(180deg, rgba(9,36,58,.95), rgba(3,16,28,.98));
@@ -665,18 +673,13 @@ body {
     box-shadow: inset 0 1px rgba(117,188,221,.07), 0 2px 6px rgba(0,0,0,.3);
   }
 
-  .mobile-status-row button b {
+  .count.filterable b {
     color: #e0ebf4;
-    font: 500 18px var(--font-display);
-    line-height: 22px;
+    font: 500 17px var(--font-display);
+    line-height: 20px;
   }
 
-  .mobile-status-row button span {
-    font-size: 10px;
-    white-space: nowrap;
-  }
-
-  .mobile-status-row button.active {
+  .count.filterable.active {
     color: #e4f0f8;
     border-color: var(--tt-mobile-cyan);
     background:
@@ -688,7 +691,7 @@ body {
       0 0 16px rgba(54,156,207,.25);
   }
 
-  .mobile-status-row button.active b { color: #f1f6fa; }
+  .count.filterable.active b { color: #f1f6fa; }
 
   /* --- group headings ----------------------------------------------------- */
   .group { margin-bottom: 22px; }
