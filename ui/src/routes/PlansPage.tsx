@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import {  Rarity } from '@lib/gamedata/enums.js';
@@ -13,6 +13,7 @@ import { humaniseFaction } from '../data/roster.ts';
 import { plansStore, type StoredPlan } from '../data/plans.ts';
 import { uiIcon, unitIcon } from '../data/icons.ts';
 import { Icon, useIcons } from '../components/Icon.tsx';
+import { MoreIcon } from '../components/icons/ChromeIcons.tsx';
 import { ItemTargetsEditor, ItemTargetsSummary } from '../components/ItemTargets.tsx';
 import { localAlliance, localRank, localRarity } from '../i18n/game.ts';
 import { NextStep } from '../components/NextStep.tsx';
@@ -271,6 +272,11 @@ export function PlansPage({ db, player }: { db: GameDatabase; player: PlayerResp
               const summary = summaries.get(stored.id);
               return (
                 <div className="card" key={stored.id} style={{ '--status': done ? 'var(--status-owned)' : 'var(--status-unlockable)' } as React.CSSProperties}>
+                  <CardMenu
+                    editing={editing === stored.id}
+                    onEdit={() => setEditing((current) => (current === stored.id ? undefined : stored.id))}
+                    onReset={() => reset(stored.unitId)}
+                  />
                   <Link to={`/plans/${stored.id}`}>
                     <div className="card-head">
                       <Icon src={unitIcon(unit.id)} alt="" size={40} className="portrait" />
@@ -311,21 +317,8 @@ export function PlansPage({ db, player }: { db: GameDatabase; player: PlayerResp
                       </div>
                     )}
                   </Link>
-                  <div className="row" style={{ marginTop: 10, alignItems: 'stretch' }}>
-                    <div style={{ flex: 1 }}>
-                      <StatCard rows={statCardRows(projections.get(stored.id)?.from, projections.get(stored.id)?.to)} />
-                    </div>
-                    <div className="row" style={{ flexDirection: 'column', gap: 6 }}>
-                      <button
-                        className="small"
-                        onClick={() => setEditing((current) => (current === stored.id ? undefined : stored.id))}
-                      >
-                        {editing === stored.id ? t('common.cancel') : t('common.edit')}
-                      </button>
-                      <button className="danger small" onClick={() => reset(stored.unitId)}>
-                        {t('plans.reset')}
-                      </button>
-                    </div>
+                  <div style={{ marginTop: 10 }}>
+                    <StatCard rows={statCardRows(projections.get(stored.id)?.from, projections.get(stored.id)?.to)} />
                   </div>
                   <NextStep unit={unit} plan={plan} db={db} player={player} />
                   {editing === stored.id && (
@@ -348,6 +341,76 @@ export function PlansPage({ db, player }: { db: GameDatabase; player: PlayerResp
 
       <PlansFooter />
     </>
+  );
+}
+
+/**
+ * A plan card's secondary actions (edit, reset) behind a "..." button in
+ * its top-right corner instead of a row of buttons — the same click-away
+ * popover pattern `CodesBell` already uses for the same reason: opened by
+ * a click, and it should close on an outside click without extra chrome
+ * to do that.
+ */
+function CardMenu({
+  editing,
+  onEdit,
+  onReset,
+}: {
+  editing: boolean;
+  onEdit: () => void;
+  onReset: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onClickAway = (e: MouseEvent) => {
+      if (wrapRef.current?.contains(e.target as Node)) return;
+      setOpen(false);
+    };
+    document.addEventListener('mousedown', onClickAway);
+    return () => document.removeEventListener('mousedown', onClickAway);
+  }, [open]);
+
+  return (
+    <div className="card-menu" ref={wrapRef}>
+      <button
+        type="button"
+        className="card-menu-button"
+        onClick={() => setOpen((v) => !v)}
+        aria-label={t('common.moreActions')}
+        aria-haspopup="true"
+        aria-expanded={open}
+      >
+        <MoreIcon />
+      </button>
+      {open && (
+        <div className="card-menu-panel" role="menu">
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              onEdit();
+              setOpen(false);
+            }}
+          >
+            {editing ? t('common.cancel') : t('common.edit')}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="danger"
+            onClick={() => {
+              onReset();
+              setOpen(false);
+            }}
+          >
+            {t('plans.reset')}
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
 

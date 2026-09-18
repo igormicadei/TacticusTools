@@ -212,6 +212,7 @@ textarea {
  * all share the same green (owned) rail and the same neutral border.
  */
 .card {
+  position: relative;
   display: block; padding: var(--space-6);
   background-color: var(--bg-raised); background-image: var(--sheen-raised);
   border: var(--border-w) solid var(--border-default);
@@ -247,6 +248,38 @@ textarea {
 }
 .card-stat { display: inline-flex; align-items: center; gap: var(--space-2); white-space: nowrap; }
 .card-stat b { color: var(--text-primary); font-weight: 600; }
+
+/* A card's secondary actions (edit, reset, delete) tucked behind a "..."
+   button in its top-right corner, rather than a row of buttons competing
+   with the card's own content for space. Positioned relative to `.card`
+   itself so it sits in the corner regardless of what the card contains;
+   `.card` is `position: relative` for exactly this. Same click-away
+   popover pattern `CodesBell` already uses for the same reason: opened by
+   a click, and it should close on an outside click without extra chrome
+   to do that. */
+.card-menu { position: absolute; top: var(--space-4); right: var(--space-4); z-index: 2; }
+.card-menu-button {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; padding: 0; border-radius: var(--radius-pill);
+  color: var(--text-secondary);
+}
+.card-menu-button:hover { color: var(--text-primary); background: var(--bg-hover); }
+.card-menu-panel {
+  position: absolute; top: 100%; right: 0; z-index: 3;
+  margin-top: var(--space-2);
+  min-width: 140px;
+  background: var(--bg-raised); border: var(--border-w) solid var(--border-default);
+  border-radius: var(--radius-md); padding: var(--space-2);
+  box-shadow: 0 12px 32px rgb(5 10 20 / .5);
+  display: flex; flex-direction: column; gap: var(--space-1);
+}
+.card-menu-panel button {
+  display: block; width: 100%; text-align: left;
+  padding: var(--space-3) var(--space-4); border-radius: var(--radius-sm);
+  color: var(--text-primary); background: none;
+}
+.card-menu-panel button:hover { background: var(--bg-hover); }
+.card-menu-panel button.danger { color: var(--danger-strong); }
 
 .chip {
   display: inline-flex; align-items: center; gap: var(--space-2);

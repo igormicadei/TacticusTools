@@ -217,6 +217,7 @@ export const PT: Record<keyof typeof EN, string> = {
   'why.rankRequiresRarity': 'o rank {rank} exige {rarity}',
   'common.edit': 'Editar',
   'common.delete': 'Excluir',
+  'common.moreActions': 'Mais ações',
   'common.stars': 'Estrelas',
   'plans.starsOption': '{rarity} · {stars} estrelas',
   'plans.targetLevel': 'nível {n}',

@@ -168,6 +168,16 @@ export function BadgesIcon({ size = 16 }: { size?: number }) {
   );
 }
 
+export function MoreIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="12" cy="5.5" r="1.9" fill="currentColor" />
+      <circle cx="12" cy="12" r="1.9" fill="currentColor" />
+      <circle cx="12" cy="18.5" r="1.9" fill="currentColor" />
+    </svg>
+  );
+}
+
 export function CodesIcon({ size = 16 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">

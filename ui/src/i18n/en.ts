@@ -223,6 +223,7 @@ export const EN = {
   'why.rankRequiresRarity': 'rank {rank} requires {rarity}',
   'common.edit': 'Edit',
   'common.delete': 'Delete',
+  'common.moreActions': 'More actions',
   'common.stars': 'Stars',
   'plans.starsOption': '{rarity} · {stars} stars',
   'plans.targetLevel': 'level {n}',
