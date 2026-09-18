@@ -617,7 +617,7 @@ export const EN = {
   'nextSteps.filterByType': 'Filter by step type',
   'nextSteps.filterByCampaign': 'Filter by campaign',
   'nextSteps.campaignBlurb':
-    'Pick one or more campaigns to see only the materials you still need that drop there.',
+    'Pick a campaign to see only the materials you still need that drop there.',
   'nextSteps.kind.rank': 'Rank up',
   'nextSteps.kind.level': 'Level up',
   'nextSteps.kind.ability': 'Ability',

@@ -611,7 +611,7 @@ export const PT: Record<keyof typeof EN, string> = {
   'nextSteps.filterByType': 'Filtrar por tipo de passo',
   'nextSteps.filterByCampaign': 'Filtrar por campanha',
   'nextSteps.campaignBlurb':
-    'Escolha uma ou mais campanhas para ver só os materiais que você ainda precisa e que caem lá.',
+    'Escolha uma campanha para ver só os materiais que você ainda precisa e que caem lá.',
   'nextSteps.kind.rank': 'Subir de rank',
   'nextSteps.kind.level': 'Subir de nível',
   'nextSteps.kind.ability': 'Habilidade',
