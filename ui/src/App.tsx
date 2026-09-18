@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { NavLink, Navigate, Route, Routes } from 'react-router-dom';
 
 import { CodesBell } from './components/CodesBell.tsx';
+import { MobileBottomNav } from './components/MobileBottomNav.tsx';
 import { EmblemMark } from './components/icons/ChromeIcons.tsx';
 import { loadGameData } from './data/gamedata.ts';
 import { resolveGameCodes } from './data/gameCodes.ts';
@@ -314,6 +315,7 @@ export function App() {
           </Routes>
         )}
       </main>
+      <MobileBottomNav />
     </div>
   );
 }
