@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { NavLink, Navigate, Route, Routes } from 'react-router-dom';
 
 import { CodesBell } from './components/CodesBell.tsx';
-import { MobileBottomNav } from './components/MobileBottomNav.tsx';
 import { EmblemMark } from './components/icons/ChromeIcons.tsx';
 import { loadGameData } from './data/gamedata.ts';
 import { resolveGameCodes } from './data/gameCodes.ts';
@@ -131,10 +130,16 @@ export function App() {
   return (
     <div className="app">
       <header className="topbar">
+        <button className="mobile-header-button mobile-menu-button" type="button" aria-label="Open menu">
+          <span></span><span></span><span></span>
+        </button>
         <span className="brand">
           <EmblemMark size={20} />
           TACTICUS TOOLS
         </span>
+        <button className="mobile-header-button mobile-search-button" type="button" aria-label="Search">
+          <span />
+        </button>
         <nav>
           <NavLink to="/units" className={({ isActive }) => (isActive ? 'active' : '')}>
             {t('nav.units')}
@@ -315,7 +320,6 @@ export function App() {
           </Routes>
         )}
       </main>
-      <MobileBottomNav />
     </div>
   );
 }
