@@ -1296,3 +1296,32 @@ body {
   /* Explicitly disabled: the mobile reference has no bottom footer/nav. */
   .mobile-bottom-nav { display: none !important; }
 }
+
+
+@media (max-width: 720px) {
+  /* The fifth mobile tab is the compact overflow destination in the reference;
+     Equipment remains available through the full desktop/navigation route. */
+  .topbar nav a:nth-child(5) {
+    font-size: 0;
+  }
+  .topbar nav a:nth-child(5)::after {
+    content: 'More';
+    font-size: 11px;
+    line-height: 14px;
+  }
+
+  /* Fine metallic frame corners on cards. */
+  .card {
+    clip-path: polygon(
+      0 10px, 10px 0, calc(100% - 10px) 0, 100% 10px,
+      100% calc(100% - 10px), calc(100% - 10px) 100%, 10px 100%, 0 calc(100% - 10px)
+    );
+  }
+
+  .mobile-units-toolbar {
+    clip-path: polygon(
+      0 11px, 11px 0, calc(100% - 11px) 0, 100% 11px,
+      100% calc(100% - 11px), calc(100% - 11px) 100%, 11px 100%, 0 calc(100% - 11px)
+    );
+  }
+}
