@@ -25,7 +25,7 @@
 const BASE = new URL('./', self.location.href).pathname;
 
 /** Both replaced at build time. */
-const BUILD = '0f838415e71a';
+const BUILD = '07a7f2f664d3';
 /**
  * The bundle's own hashed filenames, which only the build knows.
  *
@@ -35,7 +35,7 @@ const BUILD = '0f838415e71a';
  * reports that as "ServiceWorker script evaluation failed" and then simply
  * never offers to install the app — no console error on the page, nothing.
  */
-const ASSETS = [`${BASE}assets/index-Coomh1M4.css`, `${BASE}assets/index-SelJGx5V.js`];
+const ASSETS = [`${BASE}assets/index-6QBRFHo4.js`, `${BASE}assets/index-6wtKbsMO.css`];
 const CACHE = `tacticus-tools-${BUILD}`;
 
 /**
