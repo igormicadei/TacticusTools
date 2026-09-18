@@ -303,49 +303,23 @@ body {
   font-size: 13px;
 }
 
-/* Compact mobile portrait presentation. This is intentionally a theme rule,
-   so every existing route benefits without duplicating breakpoints. */
-@media (max-width: 720px) {
-  .topbar {
-    height: auto;
-    min-height: 56px;
-    flex-wrap: wrap;
-    gap: 5px 8px;
-    padding-top: 7px;
-    padding-bottom: 7px;
-  }
-
-  .topbar .brand {
-    width: 100%;
-    font-size: 14px;
-  }
-
-  .topbar nav {
-    width: 100%;
-    order: 3;
-  }
-
-  .topbar nav a { padding: 8px 10px; font-size: 12px; }
-  .content { padding: 18px 12px 28px; }
-  .toolbar { margin-bottom: 18px; }
-  .search { min-width: 0; flex: 1 1 180px; }
-
-  .grid { grid-template-columns: 1fr; }
-
-  .detail-head { gap: 12px; }
-
-  /* Forces the trailing rarity/action row or mode-tabs (`margin-left: auto`
-     at desktop width, to sit flush against the far edge) onto its own
-     full-width line instead — there isn't room beside a title at this width
-     once a portrait is also in the row. */
-  .detail-head > .row:last-child,
-  .detail-head > .tabs:last-child {
-    flex: 1 0 100%;
-    margin-left: 0 !important;
-  }
-
-  .detail-head .portrait.ornate { width: 76px; height: 76px; }
-}
+/* The unit "trading card" detail header, at phone width. Kept in its own
+   media query next to the HUD block below rather than folded into it, this
+   used to duplicate several of that block's own selectors — `.topbar`,
+   `.topbar .brand`, `.topbar nav`, `.content`, `.toolbar`, `.grid` — with
+   different values for the same properties. Two rules for one selector
+   only ever race by source order, and here they raced badly: this block's
+   `.topbar .brand { width: 100% }` combined with the HUD block's later
+   `flex: 1 1 auto` to claim the entire header row as the brand's flex
+   basis, which is why the header's icon buttons were wrapping onto their
+   own line instead of sharing it; the same collision on the shared
+   `.search` class — this block's `flex: 1 1 180px`, sized for the
+   toolbar's old row layout — became a *vertical* flex-basis once the HUD
+   block turned the toolbar into a column, and a flex item's basis wins
+   over its own `height` property, which is why the search box rendered
+   ~180px tall instead of the 50px the HUD block asked for. Deleted the
+   redundant/conflicting rules; only `.detail-head`, which the HUD block
+   doesn't otherwise touch, moves down into it below. */
 
 
 /* ==========================================================================
@@ -541,6 +515,20 @@ body {
     width: 100%;
     padding: 20px 20px calc(24px + env(safe-area-inset-bottom));
   }
+
+  .detail-head { gap: 12px; }
+
+  /* Forces the trailing rarity/action row or mode-tabs (`margin-left: auto`
+     at desktop width, to sit flush against the far edge) onto its own
+     full-width line instead — there isn't room beside a title at this width
+     once a portrait is also in the row. */
+  .detail-head > .row:last-child,
+  .detail-head > .tabs:last-child {
+    flex: 1 0 100%;
+    margin-left: 0 !important;
+  }
+
+  .detail-head .portrait.ornate { width: 76px; height: 76px; }
 
   /* --- toolbar (search, group tabs, status-count filters) ------------------
      Real, shared controls (`Toolbar`/`SegmentedControl`/`SearchField`/
