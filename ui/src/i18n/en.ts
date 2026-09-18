@@ -642,6 +642,9 @@ export const EN = {
     'Decide yourself which unit claims scarce shared materials first, instead of the automatic order.',
   'farming.moveUp': 'Move up in priority',
   'farming.moveDown': 'Move down in priority',
+  'farming.notInCampaign': 'Not in this campaign',
+  'farming.notInCampaignHint':
+    "At least one of this item's ingredients has no node in the campaign you picked, so farming there alone cannot finish it.",
   'spend.units': 'Units',
 
   /* ---- team prose ------------------------------------------------------ */

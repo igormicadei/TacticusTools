@@ -374,17 +374,24 @@ function useAllStepsData({ db, player, stored, kinds, cascade, energyBudget, cus
   const { campaignIds } = deriveCascade(campaignOptions, cascade.family, cascade.mirror, cascade.levels);
   const budget = energyBudget === '' ? undefined : Number(energyBudget);
 
+  // A campaign pick never removes an item from its step — a step with any
+  // farmable item stays visible in full, with the rest of its items dimmed
+  // rather than dropped, so the step's real requirement is never understated.
+  // Only a step where *nothing* fits the campaign disappears.
   const visible = useMemo(() => {
     return withTargets
       .filter(({ energy }) => budget === undefined || energy <= budget)
       .map(({ bundle, targetsByItem }) => {
-        if (!cascade.family) return bundle;
-        const items = bundle.items.filter(
-          (item) => !item.applied && farmableEntirelyIn(targetsByItem.get(item.key) ?? [], campaignIds),
-        );
+        const items = bundle.items.map((item) => ({
+          ...item,
+          campaignDisabled:
+            !!cascade.family &&
+            !item.applied &&
+            !farmableEntirelyIn(targetsByItem.get(item.key) ?? [], campaignIds),
+        }));
         return { ...bundle, items };
       })
-      .filter((bundle) => !cascade.family || bundle.items.length > 0);
+      .filter((bundle) => !cascade.family || bundle.items.some((item) => !item.campaignDisabled));
   }, [withTargets, budget, cascade.family, campaignIds]);
 
   const order = useMemo(() => [...new Set(visible.map((bundle) => bundle.unitId))], [visible]);
@@ -466,6 +473,7 @@ function AllStepsScope(props: SharedFilters) {
                         player={player}
                         open={open}
                         onToggle={onToggle}
+                        disabled={item.campaignDisabled}
                       />
                     ))}
                   </ul>
@@ -563,17 +571,21 @@ function useNextStepData({ db, player, stored, kinds, cascade, energyBudget }: S
   const { campaignIds } = deriveCascade(campaignOptions, cascade.family, cascade.mirror, cascade.levels);
   const budget = energyBudget === '' ? undefined : Number(energyBudget);
 
+  // Same rule as "All outstanding steps": a campaign pick dims the items that
+  // don't fit rather than removing them, and only hides a row once none of
+  // its items fit at all.
   const visible = useMemo(() => {
     return kindFiltered
       .filter((row) => budget === undefined || row.energy <= budget)
       .map((row) => {
-        if (!cascade.family) return row;
-        const items = row.items.filter((item) =>
-          farmableEntirelyIn(row.targetsByItem.get(item.key) ?? [], campaignIds),
-        );
+        const items = row.items.map((item) => ({
+          ...item,
+          campaignDisabled:
+            !!cascade.family && !farmableEntirelyIn(row.targetsByItem.get(item.key) ?? [], campaignIds),
+        }));
         return { ...row, items };
       })
-      .filter((row) => !cascade.family || row.items.length > 0);
+      .filter((row) => !cascade.family || row.items.some((item) => !item.campaignDisabled));
   }, [kindFiltered, budget, cascade.family, campaignIds]);
 
   return { rows: visible, allRows: rows, presentKinds, campaignOptions };
@@ -613,6 +625,7 @@ function NextStepScope(props: SharedFilters) {
                       player={player}
                       open={open}
                       onToggle={onToggle}
+                      disabled={item.campaignDisabled}
                     />
                   ))}
                 </ul>

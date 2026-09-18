@@ -454,6 +454,7 @@ export function ItemRow({
   open,
   onToggle,
   totals,
+  disabled,
 }: {
   id: string;
   item: AllocatedItem | AggregatedItem;
@@ -463,6 +464,10 @@ export function ItemRow({
   onToggle: (id: string) => void;
   /** Set in the aggregate view, where a row stands for several steps. */
   totals?: AggregatedItem;
+  /** This item doesn't fit the active campaign filter — kept in the list
+   * (its step has at least one item that does fit) but dimmed, rather than
+   * removed, so the step's full requirement stays visible. */
+  disabled?: boolean;
 }) {
   useIcons();
   const blocked = isUnfarmable(item, db, player);
@@ -511,7 +516,7 @@ export function ItemRow({
   }
 
   return (
-    <li className={`item-row${blocked ? ' blocked' : ''}${complete ? ' complete' : ''}`}>
+    <li className={`item-row${blocked ? ' blocked' : ''}${complete ? ' complete' : ''}${disabled ? ' dim' : ''}`}>
       <button className="item-head" onClick={() => onToggle(id)} aria-expanded={expanded}>
         <span className="chevron">{expanded ? '▾' : '▸'}</span>
         <Count covered={item.covered} amount={item.amount} forged={forge !== undefined} />
@@ -530,6 +535,11 @@ export function ItemRow({
             </span>
           )}
           {forge !== undefined && <ForgeChip ready={forge} />}
+          {disabled && (
+            <span className="chip" title={t('farming.notInCampaignHint')}>
+              {t('farming.notInCampaign')}
+            </span>
+          )}
           {blocked && <span className="chip warn">{t('si.nothingUnlocked')}</span>}
           {finite && (
             <span className="chip caution" title={t('si.stockOnlyHint')}>

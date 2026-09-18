@@ -636,6 +636,9 @@ export const PT: Record<keyof typeof EN, string> = {
     'Decida você mesmo qual unidade reivindica materiais compartilhados escassos primeiro, em vez da ordem automática.',
   'farming.moveUp': 'Subir na prioridade',
   'farming.moveDown': 'Descer na prioridade',
+  'farming.notInCampaign': 'Não está nesta campanha',
+  'farming.notInCampaignHint':
+    'Pelo menos um dos ingredientes deste item não tem nó nesta campanha, então farmar só aqui não é suficiente para completá-lo.',
   'spend.units': 'Unidades',
 
   /* ---- textos de equipe ------------------------------------------------ */
