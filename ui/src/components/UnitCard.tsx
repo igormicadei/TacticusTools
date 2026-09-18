@@ -49,7 +49,7 @@ export function UnitCard({ entry, db }: { entry: RosterEntry; db: GameDatabase }
   return (
     <Link
       to={`/units/${encodeURIComponent(entry.id)}`}
-      className={`card ${entry.status}`}
+      className={`card unit-card ${entry.status}`}
       style={style}
     >
       <div className="card-head">
@@ -62,6 +62,9 @@ export function UnitCard({ entry, db }: { entry: RosterEntry; db: GameDatabase }
             {definition?.isMachineOfWar ? ` · ${t('card.machineOfWar')}` : ''}
           </div>
         </div>
+        {entry.rarity !== undefined && (
+          <span className="chip rarity">{localRarity(entry.rarity)}</span>
+        )}
       </div>
 
       <div className="meta">
@@ -72,9 +75,6 @@ export function UnitCard({ entry, db }: { entry: RosterEntry; db: GameDatabase }
               <Icon src={rankIcon(unit.rank)} size={14} />
               {t('card.rank', { n: unit.rank })}
             </span>
-            {entry.rarity !== undefined && (
-              <span className="chip rarity">{localRarity(entry.rarity)}</span>
-            )}
           </>
         ) : entry.status === 'unlockable' ? (
           <span className="chip">{t('card.shards', { n: entry.shards })}</span>

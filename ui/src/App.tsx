@@ -2,7 +2,18 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { NavLink, Navigate, Route, Routes } from 'react-router-dom';
 
 import { CodesBell } from './components/CodesBell.tsx';
-import { EmblemMark } from './components/icons/ChromeIcons.tsx';
+import {
+  BadgesIcon,
+  CodesIcon,
+  EmblemMark,
+  EquipmentIcon,
+  PlansIcon,
+  RefreshIcon,
+  TeamsIcon,
+  UnitsIcon,
+  UpgradesIcon,
+  UserIcon,
+} from './components/icons/ChromeIcons.tsx';
 import { loadGameData } from './data/gamedata.ts';
 import { resolveGameCodes } from './data/gameCodes.ts';
 import { fetchPlayer, storage } from './data/player.ts';
@@ -130,76 +141,82 @@ export function App() {
   return (
     <div className="app">
       <header className="topbar">
-        <button className="mobile-header-button mobile-menu-button" type="button" aria-label="Open menu">
-          <span></span><span></span><span></span>
-        </button>
         <span className="brand">
           <EmblemMark size={20} />
           TACTICUS TOOLS
         </span>
-        <button className="mobile-header-button mobile-search-button" type="button" aria-label="Search">
-          <span />
-        </button>
         <nav>
           <NavLink to="/units" className={({ isActive }) => (isActive ? 'active' : '')}>
+            <UnitsIcon size={18} />
             {t('nav.units')}
           </NavLink>
           <NavLink to="/plans" className={({ isActive }) => (isActive ? 'active' : '')}>
+            <PlansIcon size={18} />
             {t('nav.plans')}
           </NavLink>
           <NavLink to="/teams" className={({ isActive }) => (isActive ? 'active' : '')}>
+            <TeamsIcon size={18} />
             {t('nav.teams')}
           </NavLink>
           <NavLink to="/upgrades" className={({ isActive }) => (isActive ? 'active' : '')}>
+            <UpgradesIcon size={18} />
             {t('nav.upgrades')}
           </NavLink>
           <NavLink to="/equipment" className={({ isActive }) => (isActive ? 'active' : '')}>
+            <EquipmentIcon size={18} />
             {t('nav.equipment')}
           </NavLink>
           <NavLink to="/badges" className={({ isActive }) => (isActive ? 'active' : '')}>
+            <BadgesIcon size={18} />
             {t('nav.badges')}
           </NavLink>
           <NavLink to="/codes" className={({ isActive }) => (isActive ? 'active' : '')}>
+            <CodesIcon size={18} />
             {t('nav.codes')}
-          </NavLink>
-          <NavLink to="/player" className={({ isActive }) => (isActive ? 'active' : '')}>
-            {t('nav.player')}
           </NavLink>
         </nav>
         <span className="spacer" />
-        {db && <CodesBell db={db} codes={gameCodes} />}
-        {hasKey && (
-          <span className="session row small muted">
-            {player && (
-              <>
-                {/* Dropped on a phone, where the nav and the refresh button are
-                    the only things worth the width. */}
-                <span className="session-name">
-                  {t('shell.power', {
-                    name: player.player.details.name,
-                    power: player.player.details.powerLevel,
-                  })}
-                </span>
-                <span className="session-age" title={syncedAtTitle(player, fetchedAt)}>
-                  {age(player, fetchedAt)}
-                </span>
-              </>
-            )}
-            {refreshError && (
-              <NavLink to="/player" className="chip warn" title={refreshError}>
-                {t('shell.refreshFailed')}
-              </NavLink>
-            )}
+        {refreshError && (
+          <NavLink to="/player" className="chip warn" title={refreshError}>
+            {t('shell.refreshFailed')}
+          </NavLink>
+        )}
+        <span className="header-actions">
+          {db && <CodesBell db={db} codes={gameCodes} />}
+          {hasKey && (
             <button
-              className="small"
+              type="button"
+              className={`header-icon-button${refreshing ? ' refreshing' : ''}`}
               onClick={() => void refresh(true)}
               disabled={refreshing}
               title={t('shell.refreshHint')}
+              aria-label={refreshing ? t('shell.refreshing') : t('shell.refresh')}
             >
-              {refreshing ? t('shell.refreshing') : t('shell.refresh')}
+              <RefreshIcon size={18} />
+              <span className="header-icon-label">
+                {refreshing ? t('shell.refreshing') : t('shell.refresh')}
+              </span>
             </button>
-          </span>
-        )}
+          )}
+          <NavLink
+            to="/player"
+            className={({ isActive }) => `header-icon-button${isActive ? ' active' : ''}`}
+            title={player ? syncedAtTitle(player, fetchedAt) : t('nav.player')}
+            aria-label={t('nav.player')}
+          >
+            <UserIcon size={18} />
+            {player && (
+              <span className="header-icon-label">
+                {t('shell.power', {
+                  name: player.player.details.name,
+                  power: player.player.details.powerLevel,
+                })}
+                {' · '}
+                {age(player, fetchedAt)}
+              </span>
+            )}
+          </NavLink>
+        </span>
       </header>
 
       <main className="content">

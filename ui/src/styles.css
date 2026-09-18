@@ -224,7 +224,10 @@ textarea {
 .card:hover { background-color: var(--bg-hover); border-color: var(--accent-dim); }
 .card.locked { opacity: .62; }
 .card-head { display: flex; align-items: center; gap: var(--space-5); }
-.card-title { min-width: 0; }
+/* Flex:1 so a trailing element in the same row — a rarity badge — is pushed
+   to the row's far end regardless of how long the name or badge text is,
+   rather than guessing a fixed offset for it. */
+.card-title { flex: 1; min-width: 0; }
 .card .name {
   font-weight: 600; margin-bottom: var(--space-1);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
