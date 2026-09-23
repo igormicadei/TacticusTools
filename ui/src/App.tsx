@@ -9,6 +9,7 @@ import {
   EquipmentIcon,
   PlansIcon,
   RefreshIcon,
+  ShardsIcon,
   TeamsIcon,
   UnitsIcon,
   UpgradesIcon,
@@ -20,6 +21,7 @@ import { fetchPlayer, storage } from './data/player.ts';
 import { BadgesPage } from './routes/BadgesPage.tsx';
 import { CodesPage } from './routes/CodesPage.tsx';
 import { EquipmentPage } from './routes/EquipmentPage.tsx';
+import { ShardsPage } from './routes/ShardsPage.tsx';
 import { UpgradesPage } from './routes/UpgradesPage.tsx';
 import { currentLang, t, useLang } from './i18n/locale.ts';
 import { PlanDetailPage } from './routes/PlanDetailPage.tsx';
@@ -149,6 +151,10 @@ export function App() {
             <UnitsIcon size={18} />
             {t('nav.units')}
           </NavLink>
+          <NavLink to="/shards" className={({ isActive }) => (isActive ? 'active' : '')}>
+            <ShardsIcon size={18} />
+            {t('nav.shards')}
+          </NavLink>
           <NavLink to="/plans" className={({ isActive }) => (isActive ? 'active' : '')}>
             <PlansIcon size={18} />
             {t('nav.plans')}
@@ -239,6 +245,12 @@ export function App() {
                 ) : (
                   <Navigate to="/player" replace />
                 )
+              }
+            />
+            <Route
+              path="/shards"
+              element={
+                player ? <ShardsPage db={db} player={player} /> : <Navigate to="/player" replace />
               }
             />
             <Route

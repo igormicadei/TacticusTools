@@ -192,6 +192,20 @@ export function CodesIcon({ size = 16 }: { size?: number }) {
   );
 }
 
+export function ShardsIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M12 2 18 9.5 12 22 6 9.5Z"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinejoin="round"
+      />
+      <path d="M6 9.5h12M12 2v20" stroke="currentColor" strokeWidth="1.2" />
+    </svg>
+  );
+}
+
 /**
  * The app's one mark, wherever the wordmark needs a small emblem beside it —
  * an original geometric shape (a hex ring around a diamond), not a copy of

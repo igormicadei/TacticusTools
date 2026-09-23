@@ -184,6 +184,7 @@ const OVERFLOW = () =>
 const routes = [
   ['units', '#/units'],
   ['unit-detail', `#/units/${encodeURIComponent(roster[0].id)}`],
+  ['shards', '#/shards'],
   ['plans', '#/plans'],
   ['plan-detail', `#/plans/${encodeURIComponent(roster[0].id)}`],
   // The three Farming Plan scopes share one route; each is state rather

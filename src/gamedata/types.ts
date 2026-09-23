@@ -500,7 +500,7 @@ export interface GameDatabaseStats {
  * stored version differs, so an older cache is refetched rather than served
  * with fields the current code expects but the file never had.
  */
-export const GAME_DATABASE_SCHEMA_VERSION = 11;
+export const GAME_DATABASE_SCHEMA_VERSION = 12;
 
 export interface GameDatabase {
   /** Value of {@link GAME_DATABASE_SCHEMA_VERSION} when this was assembled. */
@@ -536,6 +536,13 @@ export interface GameDatabase {
   xpBooks: XpBookDefinition[];
   abilityUpgradeCosts: AbilityUpgradeCost[];
   progressionRequirements: ProgressionRequirement[];
+  /**
+   * Shards to unlock a not-yet-owned character — the step before
+   * {@link progressionRequirements} even starts. See
+   * {@link UNIT_UNLOCK_SHARDS} in `corrections.ts` for why this is a single
+   * evidence-based constant rather than a queried table.
+   */
+  unitUnlockShards: number;
   /**
    * Level ceiling per rarity. A unit cannot exceed its rarity's `maxLevel`
    * without ascending, so this bounds "XP to next level".

@@ -10,6 +10,7 @@ import type { EN } from './en.ts';
 
 export const PT: Record<keyof typeof EN, string> = {
   'nav.units': 'Unidades',
+  'nav.shards': 'Fragmentos',
   'nav.plans': 'Planos',
   'nav.teams': 'Equipes',
   'nav.upgrades': 'Melhorias',
@@ -50,6 +51,32 @@ export const PT: Record<keyof typeof EN, string> = {
   'units.status.owned': 'Disponíveis',
   'units.status.unlockable': 'Fragmentos reunidos',
   'units.status.locked': 'Não iniciadas',
+
+  /* ---- fragmentos (shards) --------------------------------------------- */
+  'shards.blurb':
+    'Todas as unidades conhecidas pelo jogo, mesmo as que você ainda não desbloqueou — fragmentos já reunidos para uma delas contam. Quando a próxima promoção está atrás de uma ascensão, o custo mostrado já inclui o que a própria ascensão exige primeiro. O custo de 40 fragmentos para desbloquear não é publicado pelos dados do próprio jogo, só pela wiki da comunidade — trate como uma boa estimativa, não um número confirmado.',
+  'shards.colRarity': 'Raridade',
+  'shards.colHeld': 'Fragmentos possuídos',
+  'shards.colPromotion': 'Próxima promoção',
+  'shards.colAscension': 'Próxima ascensão',
+  'shards.colShards': 'Fragmentos',
+  'shards.colOrbs': 'Orbes',
+  'shards.promotionShards': 'Próxima promoção · fragmentos',
+  'shards.promotionOrbs': 'Próxima promoção · orbes',
+  'shards.ascensionShards': 'Próxima ascensão · fragmentos',
+  'shards.ascensionOrbs': 'Próxima ascensão · orbes',
+  'shards.unlock': 'Fragmentos para desbloquear',
+  'shards.unlockHint': 'para desbloquear',
+  'shards.stars': '{n} estrelas',
+  'shards.mythicHeld': '+{n} míticos',
+  'shards.mythicSuffix': 'míticos',
+  'shards.maxed': 'No máximo',
+  'shards.viaAscension': 'ascende antes',
+  'shards.sort.closestPromotion': 'Mais perto da próxima promoção',
+  'shards.sort.closestAscension': 'Mais perto da próxima ascensão',
+  'shards.sort.shardsHeld': 'Fragmentos possuídos',
+  'shards.sort.rarity': 'Raridade',
+
   'card.level': 'Nv {n}',
   'card.rank': 'Rank {n}',
   'card.shards': '{n} fragmentos',

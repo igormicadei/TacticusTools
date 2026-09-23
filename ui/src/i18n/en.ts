@@ -16,6 +16,7 @@
 export const EN = {
   /* ---- shell ---------------------------------------------------------- */
   'nav.units': 'Units',
+  'nav.shards': 'Shards',
   'nav.plans': 'Plans',
   'nav.teams': 'Teams',
   'nav.upgrades': 'Upgrades',
@@ -56,6 +57,34 @@ export const EN = {
   'units.status.owned': 'Available',
   'units.status.unlockable': 'Shards collected',
   'units.status.locked': 'Not started',
+
+  /* ---- shards ---------------------------------------------------------
+     Every unit's shard/orb progress toward its next promotion and its next
+     ascension, whether or not the unit is unlocked yet. */
+  'shards.blurb':
+    "Every unit known to the game, shown whether you have unlocked it or not — shards collected toward one still count. When the next promotion sits behind an ascension, its cost folds in what the ascension itself takes first. The 40-shard unlock cost isn't published by the game's own data, only by the community wiki, so treat it as a good estimate rather than a confirmed number.",
+  'shards.colRarity': 'Rarity',
+  'shards.colHeld': 'Shards held',
+  'shards.colPromotion': 'Next promotion',
+  'shards.colAscension': 'Next ascension',
+  'shards.colShards': 'Shards',
+  'shards.colOrbs': 'Orbs',
+  'shards.promotionShards': 'Next promotion · shards',
+  'shards.promotionOrbs': 'Next promotion · orbs',
+  'shards.ascensionShards': 'Next ascension · shards',
+  'shards.ascensionOrbs': 'Next ascension · orbs',
+  'shards.unlock': 'Shards to unlock',
+  'shards.unlockHint': 'to unlock',
+  'shards.stars': '{n} stars',
+  'shards.mythicHeld': '+{n} mythic',
+  'shards.mythicSuffix': 'mythic',
+  'shards.maxed': 'Maxed',
+  'shards.viaAscension': 'ascends first',
+  'shards.sort.closestPromotion': 'Closest to next promotion',
+  'shards.sort.closestAscension': 'Closest to next ascension',
+  'shards.sort.shardsHeld': 'Shards held',
+  'shards.sort.rarity': 'Rarity',
+
   'card.level': 'Lv {n}',
   'card.rank': 'Rank {n}',
   'card.shards': '{n} shards',
