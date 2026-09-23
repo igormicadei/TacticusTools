@@ -186,44 +186,34 @@ function ShardTableRow({ row, db }: { row: ShardRow; db: GameDatabase }) {
           <div className="muted small">{t('shards.mythicHeld', { n: localNumber(row.mythicShards) })}</div>
         )}
       </td>
-      {row.unlockShardsNeeded !== undefined ? (
-        <td colSpan={4} data-label={t('shards.unlock')} style={{ textAlign: 'right' }}>
-          <div
-            className={`row ${row.shards >= row.unlockShardsNeeded ? 'ok' : ''}`}
-            style={{ justifyContent: 'flex-end', gap: 4 }}
-          >
-            {localNumber(row.shards)}/{localNumber(row.unlockShardsNeeded)}
-          </div>
-          <div className="muted small">{t('shards.unlockHint')}</div>
-        </td>
-      ) : (
-        <>
-          <ShardsCell
-            label={t('shards.promotionShards')}
-            cost={row.nextPromotion}
-            heldShards={row.shards}
-            heldMythicShards={row.mythicShards}
-          />
-          <OrbsCell
-            label={t('shards.promotionOrbs')}
-            cost={row.nextPromotion}
-            heldOrbs={row.nextPromotionHeldOrbs}
-            alliance={row.alliance}
-          />
-          <ShardsCell
-            label={t('shards.ascensionShards')}
-            cost={row.nextAscension}
-            heldShards={row.shards}
-            heldMythicShards={row.mythicShards}
-          />
-          <OrbsCell
-            label={t('shards.ascensionOrbs')}
-            cost={row.nextAscension}
-            heldOrbs={row.nextAscensionHeldOrbs}
-            alliance={row.alliance}
-          />
-        </>
-      )}
+      <ShardsCell
+        label={t('shards.promotionShards')}
+        cost={row.nextPromotion}
+        heldShards={row.shards}
+        heldMythicShards={row.mythicShards}
+        owned={row.unit !== undefined}
+      />
+      <OrbsCell
+        label={t('shards.promotionOrbs')}
+        cost={row.nextPromotion}
+        heldOrbs={row.nextPromotionHeldOrbs}
+        alliance={row.alliance}
+        owned={row.unit !== undefined}
+      />
+      <ShardsCell
+        label={t('shards.ascensionShards')}
+        cost={row.nextAscension}
+        heldShards={row.shards}
+        heldMythicShards={row.mythicShards}
+        owned={row.unit !== undefined}
+      />
+      <OrbsCell
+        label={t('shards.ascensionOrbs')}
+        cost={row.nextAscension}
+        heldOrbs={row.nextAscensionHeldOrbs}
+        alliance={row.alliance}
+        owned={row.unit !== undefined}
+      />
     </tr>
   );
 }
@@ -239,16 +229,20 @@ function ShardsCell({
   cost,
   heldShards,
   heldMythicShards,
+  owned,
 }: {
   label: string;
   cost: ProgressionCost | undefined;
   heldShards: number;
   heldMythicShards: number;
+  /** False for a not-yet-owned unit — a missing cost then means "not
+   * applicable yet", not "fully progressed". */
+  owned: boolean;
 }) {
   if (!cost || (cost.shards === 0 && cost.mythicShards === 0)) {
     return (
       <td data-label={label} style={{ textAlign: 'right' }}>
-        <span className="muted small">{cost ? '—' : t('shards.maxed')}</span>
+        <span className="muted small">{owned && !cost ? t('shards.maxed') : '—'}</span>
       </td>
     );
   }
@@ -281,16 +275,20 @@ function OrbsCell({
   cost,
   heldOrbs,
   alliance,
+  owned,
 }: {
   label: string;
   cost: ProgressionCost | undefined;
   heldOrbs: ReadonlyMap<Rarity, number>;
   alliance: string | undefined;
+  /** False for a not-yet-owned unit — a missing cost then means "not
+   * applicable yet", not "fully progressed". */
+  owned: boolean;
 }) {
   if (!cost) {
     return (
       <td data-label={label} style={{ textAlign: 'right' }}>
-        <span className="muted small">{t('shards.maxed')}</span>
+        <span className="muted small">{owned ? t('shards.maxed') : '—'}</span>
       </td>
     );
   }

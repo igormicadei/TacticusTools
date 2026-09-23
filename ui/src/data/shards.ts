@@ -43,12 +43,13 @@ export interface ProgressionCost {
 export interface ShardRow extends RosterEntry {
   alliance: GrandAlliance | undefined;
   /**
-   * Shards still needed to unlock the unit in the first place — set only
-   * when the unit is not yet owned, since neither promotion nor ascension
-   * applies before that. See {@link GameDatabase.unitUnlockShards}.
+   * Undefined for a not-yet-owned unit: neither promotion nor ascension
+   * applies before it is unlocked, and this repo has no reliable per-unit
+   * unlock-shard cost to show in its place (the one published figure is a
+   * single community-wiki number that does not hold up — some units are
+   * known to cost into the hundreds) — see {@link GameDatabase.unitUnlockShards}
+   * for the constant kept on hand for whenever a real source publishes it.
    */
-  unlockShardsNeeded: number | undefined;
-  /** Undefined for a not-yet-owned unit — see {@link unlockShardsNeeded} instead. */
   nextPromotion: ProgressionCost | undefined;
   /** Orbs currently held, keyed by the rarity {@link ProgressionCost.orbs} names. */
   nextPromotionHeldOrbs: ReadonlyMap<Rarity, number>;
@@ -57,9 +58,8 @@ export interface ShardRow extends RosterEntry {
   /**
    * Missing shards + missing orbs (every rarity involved, summed) for that
    * milestone, `Infinity` when there is no such milestone left (fully
-   * progressed). For a not-yet-owned unit both read the same thing — the
-   * shortfall to unlocking, the one milestone that actually applies. Lower
-   * sorts closer.
+   * progressed, or not yet owned — see {@link nextPromotion}). Lower sorts
+   * closer.
    */
   promotionShortfall: number;
   ascensionShortfall: number;
@@ -156,20 +156,18 @@ export function buildShardRows(player: PlayerResponse, db: GameDatabase): ShardR
         : undefined);
 
     // Before the unit is owned, neither promotion nor ascension is a real
-    // milestone yet — the only thing standing between here and either one is
-    // unlocking it, so that is the number shown and sorted on for both.
+    // milestone yet, and there is no reliable unlock-shard figure to show in
+    // their place — see the `ShardRow.nextPromotion` doc comment.
     if (!entry.unit) {
-      const unlockShortfall = Math.max(0, db.unitUnlockShards - entry.shards);
       return {
         ...entry,
         alliance,
-        unlockShardsNeeded: db.unitUnlockShards,
         nextPromotion: undefined,
         nextPromotionHeldOrbs: new Map(),
         nextAscension: undefined,
         nextAscensionHeldOrbs: new Map(),
-        promotionShortfall: unlockShortfall,
-        ascensionShortfall: unlockShortfall,
+        promotionShortfall: Number.POSITIVE_INFINITY,
+        ascensionShortfall: Number.POSITIVE_INFINITY,
       };
     }
 
@@ -182,7 +180,6 @@ export function buildShardRows(player: PlayerResponse, db: GameDatabase): ShardR
     return {
       ...entry,
       alliance,
-      unlockShardsNeeded: undefined,
       nextPromotion,
       nextPromotionHeldOrbs,
       nextAscension,

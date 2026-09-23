@@ -62,7 +62,7 @@ export const EN = {
      Every unit's shard/orb progress toward its next promotion and its next
      ascension, whether or not the unit is unlocked yet. */
   'shards.blurb':
-    "Every unit known to the game, shown whether you have unlocked it or not — shards collected toward one still count. When the next promotion sits behind an ascension, its cost folds in what the ascension itself takes first. The 40-shard unlock cost isn't published by the game's own data, only by the community wiki, so treat it as a good estimate rather than a confirmed number.",
+    "Every unit known to the game, shown whether you have unlocked it or not — shards collected toward one still count. When the next promotion sits behind an ascension, its cost folds in what the ascension itself takes first. A not-yet-owned unit shows no promotion or ascension figures: neither applies until it's unlocked, and this repo has no reliable per-unit unlock cost to show instead.",
   'shards.colRarity': 'Rarity',
   'shards.colHeld': 'Shards held',
   'shards.colPromotion': 'Next promotion',
@@ -73,8 +73,6 @@ export const EN = {
   'shards.promotionOrbs': 'Next promotion · orbs',
   'shards.ascensionShards': 'Next ascension · shards',
   'shards.ascensionOrbs': 'Next ascension · orbs',
-  'shards.unlock': 'Shards to unlock',
-  'shards.unlockHint': 'to unlock',
   'shards.stars': '{n} stars',
   'shards.mythicHeld': '+{n} mythic',
   'shards.mythicSuffix': 'mythic',

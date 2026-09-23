@@ -26,7 +26,7 @@ import {
   type UnitId,
   type UpgradeId,
 } from './ids.js';
-import { PROGRESSION_SHARD_CORRECTIONS, UNIT_UNLOCK_SHARDS } from './corrections.js';
+import { PROGRESSION_SHARD_CORRECTIONS } from './corrections.js';
 import type {
   RawCodexBattleData,
   RawCodexCampaignConfigs,
@@ -721,7 +721,6 @@ export function normalize(input: NormalizeInput): GameDatabase {
     xpBooks,
     abilityUpgradeCosts,
     progressionRequirements: progression.requirements,
-    unitUnlockShards: UNIT_UNLOCK_SHARDS,
     rarityCaps,
     stats: {
       units: Object.keys(units).length,

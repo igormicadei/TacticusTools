@@ -54,7 +54,7 @@ export const PT: Record<keyof typeof EN, string> = {
 
   /* ---- fragmentos (shards) --------------------------------------------- */
   'shards.blurb':
-    'Todas as unidades conhecidas pelo jogo, mesmo as que você ainda não desbloqueou — fragmentos já reunidos para uma delas contam. Quando a próxima promoção está atrás de uma ascensão, o custo mostrado já inclui o que a própria ascensão exige primeiro. O custo de 40 fragmentos para desbloquear não é publicado pelos dados do próprio jogo, só pela wiki da comunidade — trate como uma boa estimativa, não um número confirmado.',
+    'Todas as unidades conhecidas pelo jogo, mesmo as que você ainda não desbloqueou — fragmentos já reunidos para uma delas contam. Quando a próxima promoção está atrás de uma ascensão, o custo mostrado já inclui o que a própria ascensão exige primeiro. Uma unidade ainda não desbloqueada não mostra promoção nem ascensão: nenhuma das duas se aplica antes do desbloqueio, e não temos um custo de desbloqueio confiável por unidade para mostrar em vez disso.',
   'shards.colRarity': 'Raridade',
   'shards.colHeld': 'Fragmentos possuídos',
   'shards.colPromotion': 'Próxima promoção',
@@ -65,8 +65,6 @@ export const PT: Record<keyof typeof EN, string> = {
   'shards.promotionOrbs': 'Próxima promoção · orbes',
   'shards.ascensionShards': 'Próxima ascensão · fragmentos',
   'shards.ascensionOrbs': 'Próxima ascensão · orbes',
-  'shards.unlock': 'Fragmentos para desbloquear',
-  'shards.unlockHint': 'para desbloquear',
   'shards.stars': '{n} estrelas',
   'shards.mythicHeld': '+{n} míticos',
   'shards.mythicSuffix': 'míticos',
