@@ -11,7 +11,7 @@ import { SearchField, SelectField, Toolbar, ToolbarCounts } from '../components/
 import { factionIcon, rarityIcon, requirementIcon, unitIcon } from '../data/icons.ts';
 import { humaniseFaction, type OwnershipStatus } from '../data/roster.ts';
 import { buildShardRows, type ProgressionCost, type ShardRow } from '../data/shards.ts';
-import { localAlliance, localNumber, localRarity } from '../i18n/game.ts';
+import { localNumber, localRarity } from '../i18n/game.ts';
 import { t } from '../i18n/locale.ts';
 
 type SortKey = 'closestPromotion' | 'closestAscension' | 'shardsHeld' | 'rarity' | 'name';
@@ -110,26 +110,14 @@ export function ShardsPage({ db, player }: { db: GameDatabase; player: PlayerRes
         <div className="empty">{t('units.noMatch', { query })}</div>
       ) : (
         <div className="table-wrap">
-          <table className="steps split-head stacked">
+          <table className="steps stacked">
             <thead>
               <tr>
-                <th rowSpan={2}>{t('common.unit')}</th>
-                <th rowSpan={2}>{t('shards.colRarity')}</th>
-                <th rowSpan={2} style={{ textAlign: 'right' }}>
-                  {t('shards.colHeld')}
-                </th>
-                <th colSpan={2} style={{ textAlign: 'center' }}>
-                  {t('shards.colPromotion')}
-                </th>
-                <th colSpan={2} style={{ textAlign: 'center' }}>
-                  {t('shards.colAscension')}
-                </th>
-              </tr>
-              <tr>
-                <th style={{ textAlign: 'right' }}>{t('shards.colShards')}</th>
-                <th style={{ textAlign: 'right' }}>{t('shards.colOrbs')}</th>
-                <th style={{ textAlign: 'right' }}>{t('shards.colShards')}</th>
-                <th style={{ textAlign: 'right' }}>{t('shards.colOrbs')}</th>
+                <th>{t('common.unit')}</th>
+                <th>{t('shards.colRarity')}</th>
+                <th style={{ textAlign: 'right' }}>{t('shards.colHeld')}</th>
+                <th>{t('shards.colPromotion')}</th>
+                <th>{t('shards.colAscension')}</th>
               </tr>
             </thead>
             <tbody>
@@ -186,30 +174,22 @@ function ShardTableRow({ row, db }: { row: ShardRow; db: GameDatabase }) {
           <div className="muted small">{t('shards.mythicHeld', { n: localNumber(row.mythicShards) })}</div>
         )}
       </td>
-      <ShardsCell
-        label={t('shards.promotionShards')}
+      <MilestoneCell
+        label={t('shards.colPromotion')}
+        unitId={row.id}
         cost={row.nextPromotion}
         heldShards={row.shards}
         heldMythicShards={row.mythicShards}
-        owned={row.unit !== undefined}
-      />
-      <OrbsCell
-        label={t('shards.promotionOrbs')}
-        cost={row.nextPromotion}
         heldOrbs={row.nextPromotionHeldOrbs}
         alliance={row.alliance}
         owned={row.unit !== undefined}
       />
-      <ShardsCell
-        label={t('shards.ascensionShards')}
+      <MilestoneCell
+        label={t('shards.colAscension')}
+        unitId={row.id}
         cost={row.nextAscension}
         heldShards={row.shards}
         heldMythicShards={row.mythicShards}
-        owned={row.unit !== undefined}
-      />
-      <OrbsCell
-        label={t('shards.ascensionOrbs')}
-        cost={row.nextAscension}
         heldOrbs={row.nextAscensionHeldOrbs}
         alliance={row.alliance}
         owned={row.unit !== undefined}
@@ -219,66 +199,34 @@ function ShardTableRow({ row, db }: { row: ShardRow; db: GameDatabase }) {
 }
 
 /**
- * The `Shards` cell of a milestone group — the unit's own regular shards,
- * and, only past the Legendary→Mythic ascension, its Mythic shards too. A
- * bridged milestone can need both at once, so both show rather than one
- * silently standing in for the other.
+ * One milestone (promotion or ascension) as a single cell — shards and orbs
+ * placed side by side rather than as two separate stacked rows, so a card
+ * reads as "here is what this star costs" in one glance instead of two, and
+ * the two halves land in the same spot on every card since they split an
+ * even `1fr 1fr` rather than sizing to their own content.
+ *
+ * Kept as one `<td>` (not two) for another reason too: `table.stacked`
+ * treats every child of a cell as its own grid slot after the label, so a
+ * cell with more than one top-level element — a shards line, a mythic-shards
+ * line, a bridging note — would wrap onto extra label/value rows instead of
+ * staying under the one label it belongs to. Everything here nests inside a
+ * single wrapper div to stay the one child the grid expects.
  */
-function ShardsCell({
+function MilestoneCell({
   label,
+  unitId,
   cost,
   heldShards,
   heldMythicShards,
-  owned,
-}: {
-  label: string;
-  cost: ProgressionCost | undefined;
-  heldShards: number;
-  heldMythicShards: number;
-  /** False for a not-yet-owned unit — a missing cost then means "not
-   * applicable yet", not "fully progressed". */
-  owned: boolean;
-}) {
-  if (!cost || (cost.shards === 0 && cost.mythicShards === 0)) {
-    return (
-      <td data-label={label} style={{ textAlign: 'right' }}>
-        <span className="muted small">{owned && !cost ? t('shards.maxed') : '—'}</span>
-      </td>
-    );
-  }
-  const ready = heldShards >= cost.shards && heldMythicShards >= cost.mythicShards;
-  return (
-    <td data-label={label} style={{ textAlign: 'right' }}>
-      {cost.shards > 0 && (
-        <div className={`row ${ready ? 'ok' : ''}`} style={{ justifyContent: 'flex-end', gap: 4 }}>
-          {localNumber(heldShards)}/{localNumber(cost.shards)}
-        </div>
-      )}
-      {cost.mythicShards > 0 && (
-        <div className={`row ${ready ? 'ok' : ''}`} style={{ justifyContent: 'flex-end', gap: 4 }}>
-          {localNumber(heldMythicShards)}/{localNumber(cost.mythicShards)}
-          <span className="muted small">{t('shards.mythicSuffix')}</span>
-        </div>
-      )}
-      {cost.bridgedAscension && <div className="muted small">{t('shards.viaAscension')}</div>}
-    </td>
-  );
-}
-
-/**
- * The `Orbs` cell of a milestone group — usually one rarity, but a bridge
- * spanning the Legendary→Mythic ascension needs two, so each gets its own
- * line rather than being folded into a single (wrong) total.
- */
-function OrbsCell({
-  label,
-  cost,
   heldOrbs,
   alliance,
   owned,
 }: {
   label: string;
+  unitId: string;
   cost: ProgressionCost | undefined;
+  heldShards: number;
+  heldMythicShards: number;
   heldOrbs: ReadonlyMap<Rarity, number>;
   alliance: string | undefined;
   /** False for a not-yet-owned unit — a missing cost then means "not
@@ -287,40 +235,58 @@ function OrbsCell({
 }) {
   if (!cost) {
     return (
-      <td data-label={label} style={{ textAlign: 'right' }}>
+      <td data-label={label}>
         <span className="muted small">{owned ? t('shards.maxed') : '—'}</span>
       </td>
     );
   }
-  if (cost.orbs.length === 0) {
-    return (
-      <td data-label={label} style={{ textAlign: 'right' }}>
-        <span className="muted">—</span>
-      </td>
-    );
-  }
+
+  const shardsReady = heldShards >= cost.shards && heldMythicShards >= cost.mythicShards;
   return (
-    <td data-label={label} style={{ textAlign: 'right' }}>
-      {cost.orbs.map((o) => {
-        const held = heldOrbs.get(o.rarity) ?? 0;
-        const ready = held >= o.amount;
-        return (
-          <div key={o.rarity}>
-            <div className={`row ${ready ? 'ok' : ''}`} style={{ justifyContent: 'flex-end', gap: 4 }}>
-              <Icon
-                src={requirementIcon(`orb:${alliance ?? 'Unknown'}:${o.rarity}`)}
-                size={18}
-                className="portrait"
-                reserve
-              />
-              {localNumber(held)}/{localNumber(o.amount)}
-            </div>
-            <div className="muted small">
-              {localRarity(o.rarity)} {alliance ? localAlliance(alliance) : ''}
-            </div>
+    <td data-label={label}>
+      <div>
+        <div className="milestone-pair">
+          <div className="milestone-col">
+            <div className="milestone-col-label">{t('shards.colShards')}</div>
+            {cost.shards > 0 && (
+              <div className={`row ${shardsReady ? 'ok' : ''}`} style={{ gap: 4 }}>
+                <Icon src={requirementIcon(`shard:${unitId}`)} size={16} className="portrait" reserve />
+                {localNumber(heldShards)}/{localNumber(cost.shards)}
+              </div>
+            )}
+            {cost.mythicShards > 0 && (
+              <div className={`row ${shardsReady ? 'ok' : ''}`} style={{ gap: 4 }}>
+                <Icon src={requirementIcon(`shard:${unitId}:mythic`)} size={16} className="portrait" reserve />
+                {localNumber(heldMythicShards)}/{localNumber(cost.mythicShards)}
+                <span className="muted small">{t('shards.mythicSuffix')}</span>
+              </div>
+            )}
           </div>
-        );
-      })}
+          <div className="milestone-col">
+            <div className="milestone-col-label">{t('shards.colOrbs')}</div>
+            {cost.orbs.length === 0 ? (
+              <span className="muted">—</span>
+            ) : (
+              cost.orbs.map((o) => {
+                const held = heldOrbs.get(o.rarity) ?? 0;
+                return (
+                  <div key={o.rarity} className={`row ${held >= o.amount ? 'ok' : ''}`} style={{ gap: 4 }}>
+                    <Icon
+                      src={requirementIcon(`orb:${alliance ?? 'Unknown'}:${o.rarity}`)}
+                      size={16}
+                      className="portrait"
+                      reserve
+                    />
+                    {localNumber(held)}/{localNumber(o.amount)}
+                    <span className="muted small">{localRarity(o.rarity)}</span>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+        {cost.bridgedAscension && <div className="muted small">{t('shards.viaAscension')}</div>}
+      </div>
     </td>
   );
 }

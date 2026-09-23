@@ -1207,5 +1207,19 @@ table.split-head thead tr:last-child th { font-weight: 400; }
  * rather than stacking them in the same one. */
 .row-icons { display: inline-flex; align-items: center; gap: var(--space-2); flex: none; }
 
+/* ---- shard/orb milestone pair ----
+ * Shards and orbs for one milestone, side by side rather than as two stacked
+ * rows. An even 1fr/1fr split, not a width sized to either column's own
+ * content, is what keeps the two halves landing at the same spot from one
+ * unit's card to the next. */
+.milestone-pair {
+  display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-5);
+}
+.milestone-col { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.milestone-col-label {
+  font-size: var(--text-2xs); color: var(--text-secondary);
+  letter-spacing: var(--tracking-wide); text-transform: uppercase;
+}
+
 /* The roadmap is a fixed-width SVG; it keeps its own scroller at every size. */
 .roadmap-scroll { -webkit-overflow-scrolling: touch; }
