@@ -16,6 +16,7 @@
 export const EN = {
   /* ---- shell ---------------------------------------------------------- */
   'nav.units': 'Units',
+  'nav.shards': 'Shards',
   'nav.plans': 'Plans',
   'nav.teams': 'Teams',
   'nav.upgrades': 'Upgrades',
@@ -47,6 +48,7 @@ export const EN = {
   'units.byStatus': 'By status',
   'units.byFaction': 'By faction',
   'units.search': 'Search units or factions…',
+  'units.all': 'all',
   'units.available': 'available',
   'units.inProgress': 'in progress',
   'units.notStarted': 'not started',
@@ -55,6 +57,28 @@ export const EN = {
   'units.status.owned': 'Available',
   'units.status.unlockable': 'Shards collected',
   'units.status.locked': 'Not started',
+
+  /* ---- shards ---------------------------------------------------------
+     Every unit's shard/orb progress toward its next promotion and its next
+     ascension, whether or not the unit is unlocked yet. */
+  'shards.blurb':
+    "Every unit known to the game, shown whether you have unlocked it or not — shards collected toward one still count. When the next promotion sits behind an ascension, its cost folds in what the ascension itself takes first. A not-yet-owned unit shows no promotion or ascension figures: neither applies until it's unlocked, and this repo has no reliable per-unit unlock cost to show instead.",
+  'shards.colRarity': 'Rarity',
+  'shards.colHeld': 'Shards held',
+  'shards.colPromotion': 'Next promotion',
+  'shards.colAscension': 'Next ascension',
+  'shards.colShards': 'Shards',
+  'shards.colOrbs': 'Orbs',
+  'shards.stars': '{n} stars',
+  'shards.mythicHeld': '+{n} mythic',
+  'shards.mythicSuffix': 'mythic',
+  'shards.maxed': 'Maxed',
+  'shards.viaAscension': 'ascends first',
+  'shards.sort.closestPromotion': 'Closest to next promotion',
+  'shards.sort.closestAscension': 'Closest to next ascension',
+  'shards.sort.shardsHeld': 'Shards held',
+  'shards.sort.rarity': 'Rarity',
+
   'card.level': 'Lv {n}',
   'card.rank': 'Rank {n}',
   'card.shards': '{n} shards',
@@ -180,6 +204,8 @@ export const EN = {
 
   /* ---- plans ---------------------------------------------------------- */
   'plans.heading': 'Evolution plans',
+  'plans.tabMine': 'My plans',
+  'plans.tabFarming': 'Farming plan',
   'plans.count': 'active',
   'plans.unitName': 'Unit name',
   'plans.noPreference': 'No preference',
@@ -222,6 +248,7 @@ export const EN = {
   'why.rankRequiresRarity': 'rank {rank} requires {rarity}',
   'common.edit': 'Edit',
   'common.delete': 'Delete',
+  'common.moreActions': 'More actions',
   'common.stars': 'Stars',
   'plans.starsOption': '{rarity} · {stars} stars',
   'plans.targetLevel': 'level {n}',
@@ -413,6 +440,9 @@ export const EN = {
   'si.triesLeft': '{n} tries left today',
   'si.noTriesLeft': 'no tries left today',
   'si.locked': 'locked',
+  'si.nodeBest': 'Best',
+  'si.nodeGood': 'Good',
+  'si.nodeLocked': 'Locked',
   'si.perRun': 'per run',
   'si.each': 'each',
   'si.dropRate': '{n}% drop',
@@ -552,6 +582,7 @@ export const EN = {
   'nav.backUnits': '← All units',
   'nav.viewUnit': 'View unit',
   'plans.everythingInOrder': 'Everything in order',
+  'plans.tagline': 'Plan. Farm. Advance.',
   'plans.none': 'No unit has a target set yet. Open a unit’s page to set one — every unit has a plan, this just lists the ones with something to do.',
   'plans.formBlurb':
     'Set only what you care about. Anything else it depends on is worked out and added for you — an ability target pulls the character level with it, and level or rank targets pull rarity. Each field offers only what lies ahead of the unit, since a target it already meets is not a plan.',
@@ -599,6 +630,45 @@ export const EN = {
   'shopping.fromLoose': 'from a loose copy (lvl {n})',
   'shopping.fromLooseHint':
     'A copy of this item is already sitting in your inventory — costed from its level instead of starting fresh.',
+
+  /* ---- next steps --------------------------------------------------------
+     Every plan's immediate next step, gathered into one list and filterable
+     by what kind of step it is and by where its materials can be farmed. */
+  'nextSteps.heading': 'Next steps',
+  'nextSteps.none': 'No plans yet. This lists every plan’s next step in one place.',
+  'nextSteps.acrossUnits': '{n} units with a next step',
+  'nextSteps.allDone': 'Every plan is fully done — nothing left to do.',
+  'nextSteps.noMatch': 'Nothing matches the filters above.',
+  'nextSteps.filterByType': 'Filter by step type',
+  'nextSteps.filterByCampaign': 'Filter by campaign',
+  'nextSteps.campaignBlurb':
+    'Pick a campaign to see only the materials you still need that drop there.',
+  'nextSteps.kind.rank': 'Rank up',
+  'nextSteps.kind.level': 'Level up',
+  'nextSteps.kind.ability': 'Ability',
+  'nextSteps.kind.ascension': 'Ascension',
+  'nextSteps.kind.promotion': 'Promotion',
+
+  /* ---- farming plan tab --------------------------------------------------
+     Order of Work, Next Steps and Spend Energy merged into one tab, three
+     scopes over the same question rather than three separate pages. */
+  'farming.noPlansYet':
+    'No plans yet. This tracks every plan’s outstanding rank-up materials in one place.',
+  'farming.scopeAll': 'All outstanding steps',
+  'farming.scopeNext': 'Next step only',
+  'farming.scopeSlots': 'Current rank slots',
+  'farming.filterByEnergy': 'Filter by energy',
+  'farming.maxEnergy': 'Max energy per item',
+  'farming.noLimit': 'No limit',
+  'farming.customOrder': 'Custom order',
+  'farming.customOrderHint':
+    'Decide yourself which unit claims scarce shared materials first, instead of the automatic order.',
+  'farming.moveUp': 'Move up in priority',
+  'farming.moveDown': 'Move down in priority',
+  'farming.notInCampaign': 'Not in this campaign',
+  'farming.notInCampaignHint':
+    "At least one of this item's ingredients has no node in the campaign you picked, so farming there alone cannot finish it.",
+  'spend.units': 'Units',
 
   /* ---- team prose ------------------------------------------------------ */
   'td.objectiveBlurb':

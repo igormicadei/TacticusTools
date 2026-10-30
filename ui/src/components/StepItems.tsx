@@ -26,6 +26,7 @@ import type { PlayerResponse, Unit } from '@lib/types/player.js';
 
 import { campaignIcon, requirementIcon, uiIcon } from '../data/icons.ts';
 import { Icon, useIcons } from './Icon.tsx';
+import { CheckIcon, LightbulbIcon } from './icons/ChromeIcons.tsx';
 import { PlanCost, energyLabel } from './PlanCost.tsx';
 import { localNumber, localRank, localRarity, localStat, localStepLabel } from '../i18n/game.ts';
 import { t, tn } from '../i18n/locale.ts';
@@ -42,6 +43,40 @@ export function toggleOpen(current: ReadonlySet<string>, id: string): Set<string
   const next = new Set(current);
   if (!next.delete(id)) next.add(id);
   return next;
+}
+
+/**
+ * A glanceable strip of the plan's aggregated materials — icon, name, rarity,
+ * held-so-far — ahead of the full per-step or totalled breakdown below. Capped
+ * at six: this is a summary, and the detailed views right underneath already
+ * show everything.
+ */
+function ResourceCards({ items }: { items: readonly AggregatedItem[] }) {
+  return (
+    <div className="resource-cards">
+      {items.slice(0, 6).map((item) => {
+        const style = item.rarity !== undefined
+          ? ({ '--rarity': `var(--rarity-${item.rarity})` } as React.CSSProperties)
+          : undefined;
+        const done = item.missing === 0;
+        return (
+          <div className="resource-card" key={item.key} style={style}>
+            <div className="resource-card-icon">
+              <Icon src={requirementIcon(item.key)} size={22} reserve />
+            </div>
+            <div className="resource-card-name">{item.name}</div>
+            {item.rarity !== undefined && (
+              <div className="resource-card-rarity">{localRarity(item.rarity)}</div>
+            )}
+            <div className={`resource-card-count${done ? ' done' : ''}`}>
+              {done && <CheckIcon size={13} />}
+              {localNumber(item.covered)} / {localNumber(item.amount)}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 export function StepItems({
@@ -130,6 +165,8 @@ export function StepItems({
       </div>
 
       <p className="small muted" style={{ marginTop: 0 }}>{t('si.blurb')}</p>
+
+      {totals.length > 0 && <ResourceCards items={totals} />}
 
       {view === 'steps'
         ? plan.steps.map((step) => {
@@ -417,6 +454,7 @@ export function ItemRow({
   open,
   onToggle,
   totals,
+  disabled,
 }: {
   id: string;
   item: AllocatedItem | AggregatedItem;
@@ -426,6 +464,10 @@ export function ItemRow({
   onToggle: (id: string) => void;
   /** Set in the aggregate view, where a row stands for several steps. */
   totals?: AggregatedItem;
+  /** This item doesn't fit the active campaign filter — kept in the list
+   * (its step has at least one item that does fit) but dimmed, rather than
+   * removed, so the step's full requirement stays visible. */
+  disabled?: boolean;
 }) {
   useIcons();
   const blocked = isUnfarmable(item, db, player);
@@ -474,7 +516,7 @@ export function ItemRow({
   }
 
   return (
-    <li className={`item-row${blocked ? ' blocked' : ''}${complete ? ' complete' : ''}`}>
+    <li className={`item-row${blocked ? ' blocked' : ''}${complete ? ' complete' : ''}${disabled ? ' dim' : ''}`}>
       <button className="item-head" onClick={() => onToggle(id)} aria-expanded={expanded}>
         <span className="chevron">{expanded ? '▾' : '▸'}</span>
         <Count covered={item.covered} amount={item.amount} forged={forge !== undefined} />
@@ -493,6 +535,11 @@ export function ItemRow({
             </span>
           )}
           {forge !== undefined && <ForgeChip ready={forge} />}
+          {disabled && (
+            <span className="chip" title={t('farming.notInCampaignHint')}>
+              {t('farming.notInCampaign')}
+            </span>
+          )}
           {blocked && <span className="chip warn">{t('si.nothingUnlocked')}</span>}
           {finite && (
             <span className="chip caution" title={t('si.stockOnlyHint')}>
@@ -801,16 +848,27 @@ export function NodeTable({ nodes }: { nodes: ReturnType<typeof nodeStatuses> })
                   </>
                 )}
               </td>
+              <td>
+                <NodeTag best={node.unlocked && node.energyPerDrop === best} unlocked={node.unlocked} />
+              </td>
             </tr>
           ))}
         </tbody>
       </table>
       </div>
-      <p className="small muted" style={{ margin: '6px 0 0' }}>
+      <p className="small muted node-tip">
+        <LightbulbIcon size={14} />
         {t('si.dropRatesNote')}
       </p>
     </div>
   );
+}
+
+/** Best/Good/Locked at a glance, alongside the exact per-drop cost the pill summarises. */
+function NodeTag({ best, unlocked }: { best: boolean; unlocked: boolean }) {
+  if (!unlocked) return <span className="chip node-tag locked">{t('si.nodeLocked')}</span>;
+  if (best) return <span className="chip node-tag best">{t('si.nodeBest')}</span>;
+  return <span className="chip node-tag good">{t('si.nodeGood')}</span>;
 }
 
 /** The game's energy glyph, falling back to the character it stands in for. */

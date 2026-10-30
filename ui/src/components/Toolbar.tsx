@@ -109,19 +109,45 @@ export function SwitchField({
 /**
  * How many of what, right-aligned — `.counts` already pins itself to the
  * toolbar's far end, so nothing upstream of this needs a spacer.
+ *
+ * Plain by default (a label under a number); pass `activeKey`/`onSelect` to
+ * make each count a filter, matching a status-count pill you can tap to
+ * narrow the list to just that count.
  */
-export function ToolbarCounts({
+export function ToolbarCounts<K extends string>({
   items,
+  activeKey,
+  onSelect,
 }: {
-  items: readonly { value: number | string; label: string; color?: string }[];
+  items: readonly { key?: K; value: number | string; label: string; color?: string }[];
+  activeKey?: K;
+  onSelect?: (key: K) => void;
 }) {
   return (
     <div className="counts small muted">
-      {items.map((item, i) => (
-        <span className="count" key={i}>
-          <b style={item.color ? { color: item.color } : undefined}>{item.value}</b> {item.label}
-        </span>
-      ))}
+      {items.map((item, i) => {
+        const style = item.color ? ({ '--count-color': item.color } as React.CSSProperties) : undefined;
+        const body = (
+          <>
+            <b style={style}>{item.value}</b> {item.label}
+          </>
+        );
+        return onSelect && item.key !== undefined ? (
+          <button
+            type="button"
+            key={item.key}
+            className={`count filterable${activeKey === item.key ? ' active' : ''}`}
+            style={style}
+            onClick={() => onSelect(item.key as K)}
+          >
+            {body}
+          </button>
+        ) : (
+          <span className="count" key={item.key ?? i} style={style}>
+            {body}
+          </span>
+        );
+      })}
     </div>
   );
 }

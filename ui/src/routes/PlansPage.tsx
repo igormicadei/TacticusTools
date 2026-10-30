@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import {  Rarity } from '@lib/gamedata/enums.js';
@@ -12,7 +12,9 @@ import type { PlayerResponse } from '@lib/types/player.js';
 import { humaniseFaction } from '../data/roster.ts';
 import { plansStore, type StoredPlan } from '../data/plans.ts';
 import { uiIcon, unitIcon } from '../data/icons.ts';
+import { FarmingPlanTab } from './FarmingPlanTab.tsx';
 import { Icon, useIcons } from '../components/Icon.tsx';
+import { MoreIcon } from '../components/icons/ChromeIcons.tsx';
 import { ItemTargetsEditor, ItemTargetsSummary } from '../components/ItemTargets.tsx';
 import { localAlliance, localRank, localRarity } from '../i18n/game.ts';
 import { NextStep } from '../components/NextStep.tsx';
@@ -23,8 +25,10 @@ import { t, tn } from '../i18n/locale.ts';
 
 type GroupMode = 'none' | 'faction' | 'alliance' | 'status';
 type SortMode = 'created' | 'name' | 'energy' | 'steps';
+type Tab = 'mine' | 'farming';
 
 const VIEW_KEY = 'tacticus-tools:plans-view';
+const TAB_KEY = 'tacticus-tools:plans-tab';
 
 function readView(): { group: GroupMode; sort: SortMode; hideDone: boolean } {
   try {
@@ -37,6 +41,34 @@ function readView(): { group: GroupMode; sort: SortMode; hideDone: boolean } {
 }
 
 export function PlansPage({ db, player }: { db: GameDatabase; player: PlayerResponse }) {
+  const [tab, setTab] = useState<Tab>(
+    () => (localStorage.getItem(TAB_KEY) === 'farming' ? 'farming' : 'mine'),
+  );
+  const chooseTab = (next: Tab) => {
+    setTab(next);
+    try {
+      localStorage.setItem(TAB_KEY, next);
+    } catch {
+      /* Private mode — the choice still holds for this render. */
+    }
+  };
+
+  return (
+    <>
+      <div className="tabs" style={{ marginBottom: 16 }}>
+        <button className={tab === 'mine' ? 'active' : ''} onClick={() => chooseTab('mine')}>
+          {t('plans.tabMine')}
+        </button>
+        <button className={tab === 'farming' ? 'active' : ''} onClick={() => chooseTab('farming')}>
+          {t('plans.tabFarming')}
+        </button>
+      </div>
+      {tab === 'mine' ? <MyPlansTab db={db} player={player} /> : <FarmingPlanTab db={db} player={player} />}
+    </>
+  );
+}
+
+function MyPlansTab({ db, player }: { db: GameDatabase; player: PlayerResponse }) {
   useIcons();
   const [plans, setPlans] = useState(() => plansStore.list());
   const [editing, setEditing] = useState<string>();
@@ -242,9 +274,6 @@ export function PlansPage({ db, player }: { db: GameDatabase; player: PlayerResp
               <option value="steps">{t('plans.sortSteps')}</option>
             </SelectField>
             <ToolbarCounts items={[{ value: plans.length, label: t('plans.count') }]} />
-            <Link className="chip" to="/plans/timeline">
-              {t('plans.everythingInOrder')}
-            </Link>
             <Link className="chip" to="/plans/shopping-list">
               {t('shopping.heading')}
             </Link>
@@ -271,6 +300,11 @@ export function PlansPage({ db, player }: { db: GameDatabase; player: PlayerResp
               const summary = summaries.get(stored.id);
               return (
                 <div className="card" key={stored.id} style={{ '--status': done ? 'var(--status-owned)' : 'var(--status-unlockable)' } as React.CSSProperties}>
+                  <CardMenu
+                    editing={editing === stored.id}
+                    onEdit={() => setEditing((current) => (current === stored.id ? undefined : stored.id))}
+                    onReset={() => reset(stored.unitId)}
+                  />
                   <Link to={`/plans/${stored.id}`}>
                     <div className="card-head">
                       <Icon src={unitIcon(unit.id)} alt="" size={40} className="portrait" />
@@ -291,6 +325,15 @@ export function PlansPage({ db, player }: { db: GameDatabase; player: PlayerResp
                           are resolved — two different numbers for one fact. */}
                       {summary && <PlanCost cost={summary.cost} />}
                     </div>
+                    {plan.steps.length > 0 && (
+                      <div className="bar">
+                        <span
+                          style={{
+                            width: `${Math.round(((plan.steps.length - left) / plan.steps.length) * 100)}%`,
+                          }}
+                        />
+                      </div>
+                    )}
                     {plan.blocked && (
                       <div className="meta">
                         <span className="chip">{t('common.blocked')}</span>
@@ -302,21 +345,8 @@ export function PlansPage({ db, player }: { db: GameDatabase; player: PlayerResp
                       </div>
                     )}
                   </Link>
-                  <div className="row" style={{ marginTop: 10, alignItems: 'stretch' }}>
-                    <div style={{ flex: 1 }}>
-                      <StatCard rows={statCardRows(projections.get(stored.id)?.from, projections.get(stored.id)?.to)} />
-                    </div>
-                    <div className="row" style={{ flexDirection: 'column', gap: 6 }}>
-                      <button
-                        className="small"
-                        onClick={() => setEditing((current) => (current === stored.id ? undefined : stored.id))}
-                      >
-                        {editing === stored.id ? t('common.cancel') : t('common.edit')}
-                      </button>
-                      <button className="danger small" onClick={() => reset(stored.unitId)}>
-                        {t('plans.reset')}
-                      </button>
-                    </div>
+                  <div style={{ marginTop: 10 }}>
+                    <StatCard rows={statCardRows(projections.get(stored.id)?.from, projections.get(stored.id)?.to)} />
                   </div>
                   <NextStep unit={unit} plan={plan} db={db} player={player} />
                   {editing === stored.id && (
@@ -336,7 +366,109 @@ export function PlansPage({ db, player }: { db: GameDatabase; player: PlayerResp
           </div>
         </section>
       ))}
+
+      <PlansFooter />
     </>
+  );
+}
+
+/**
+ * A plan card's secondary actions (edit, reset) behind a "..." button in
+ * its top-right corner instead of a row of buttons — the same click-away
+ * popover pattern `CodesBell` already uses for the same reason: opened by
+ * a click, and it should close on an outside click without extra chrome
+ * to do that.
+ */
+function CardMenu({
+  editing,
+  onEdit,
+  onReset,
+}: {
+  editing: boolean;
+  onEdit: () => void;
+  onReset: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onClickAway = (e: MouseEvent) => {
+      if (wrapRef.current?.contains(e.target as Node)) return;
+      setOpen(false);
+    };
+    document.addEventListener('mousedown', onClickAway);
+    return () => document.removeEventListener('mousedown', onClickAway);
+  }, [open]);
+
+  return (
+    <div className="card-menu" ref={wrapRef}>
+      <button
+        type="button"
+        className="card-menu-button"
+        onClick={() => setOpen((v) => !v)}
+        aria-label={t('common.moreActions')}
+        aria-haspopup="true"
+        aria-expanded={open}
+      >
+        <MoreIcon />
+      </button>
+      {open && (
+        <div className="card-menu-panel" role="menu">
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              onEdit();
+              setOpen(false);
+            }}
+          >
+            {editing ? t('common.cancel') : t('common.edit')}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="danger"
+            onClick={() => {
+              onReset();
+              setOpen(false);
+            }}
+          >
+            {t('plans.reset')}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * A quiet close to the list — an original skyline silhouette (plain
+ * rectangles, not a recreation of any in-game city) behind the app's own
+ * tagline, echoing the reference's footer banner without copying its art.
+ */
+function PlansFooter() {
+  return (
+    <div className="plans-footer">
+      <svg viewBox="0 0 400 70" className="plans-footer-skyline" aria-hidden="true" preserveAspectRatio="none">
+        <rect x="0" y="30" width="26" height="40" />
+        <rect x="30" y="18" width="18" height="52" />
+        <rect x="52" y="38" width="22" height="32" />
+        <rect x="78" y="10" width="16" height="60" />
+        <rect x="98" y="26" width="30" height="44" />
+        <rect x="132" y="42" width="20" height="28" />
+        <rect x="156" y="6" width="14" height="64" />
+        <rect x="174" y="24" width="26" height="46" />
+        <rect x="204" y="34" width="18" height="36" />
+        <rect x="226" y="14" width="22" height="56" />
+        <rect x="252" y="40" width="30" height="30" />
+        <rect x="286" y="22" width="16" height="48" />
+        <rect x="306" y="30" width="24" height="40" />
+        <rect x="334" y="12" width="18" height="58" />
+        <rect x="356" y="36" width="26" height="34" />
+      </svg>
+      <p className="plans-footer-tagline">{t('plans.tagline')}</p>
+    </div>
   );
 }
 

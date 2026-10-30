@@ -1,0 +1,847 @@
+/*
+ * Reusable visual skin for the Tacticus Tools application.
+ *
+ * This layer deliberately sits after styles.css: the existing design system
+ * remains the structural foundation, while these selectors provide the game-
+ * inspired presentation shared by unit, plan, team and equipment screens.
+ * No footer is defined here.
+ */
+
+:root {
+  --tt-gold: #d8b35a;
+  --tt-gold-bright: #f0d27b;
+  --tt-gold-dim: #8d7139;
+  --tt-ink-0: #080a0d;
+  --tt-ink-1: #0d1117;
+  --tt-ink-2: #151a21;
+  --tt-ink-3: #1c232c;
+  --tt-line: rgba(204, 188, 151, .18);
+  --tt-line-strong: rgba(216, 179, 90, .36);
+  --tt-text: #e8e7e1;
+  --tt-muted: #9da2a8;
+  --tt-green: #68b879;
+  --tt-blue: #5b9fd0;
+  --tt-red: #c86f6f;
+}
+
+html, body {
+  background:
+    radial-gradient(ellipse at 50% -12%, rgba(110, 100, 73, .16), transparent 46%),
+    radial-gradient(ellipse at 0 100%, rgba(25, 32, 41, .9), transparent 48%),
+    var(--tt-ink-0);
+}
+
+body {
+  color: var(--tt-text);
+  background-attachment: fixed;
+}
+
+.app {
+  min-height: 100vh;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.012), transparent 130px),
+    repeating-linear-gradient(0deg, rgba(255,255,255,.009) 0 1px, transparent 1px 4px);
+}
+
+.topbar {
+  height: 62px;
+  gap: 22px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.035), transparent 48%),
+    linear-gradient(180deg, #161b22, #0c1015);
+  border-bottom: 1px solid rgba(216,179,90,.22);
+  box-shadow: 0 8px 24px rgba(0,0,0,.30);
+}
+
+.topbar::after {
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--tt-gold) 18%, var(--tt-gold-bright) 50%, var(--tt-gold) 82%, transparent);
+  opacity: .72;
+}
+
+.topbar .brand {
+  color: var(--tt-gold-bright);
+  text-shadow: 0 1px 12px rgba(216,179,90,.16);
+}
+
+.topbar nav {
+  gap: 3px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.topbar nav::-webkit-scrollbar { display: none; }
+
+.topbar nav a {
+  position: relative;
+  border-radius: 5px;
+  padding: 10px 13px;
+  color: #aeb2b7;
+}
+
+.topbar nav a:hover { background: rgba(255,255,255,.045); }
+
+.topbar nav a.active {
+  background: linear-gradient(180deg, rgba(216,179,90,.18), rgba(216,179,90,.07));
+  color: var(--tt-gold-bright);
+  box-shadow: inset 0 -2px 0 var(--tt-gold);
+}
+
+.content {
+  max-width: 1180px;
+  padding-top: 30px;
+}
+
+.toolbar {
+  padding: 8px;
+  gap: 8px;
+  background: rgba(13,17,23,.88);
+  border-color: var(--tt-line);
+  border-radius: 7px;
+  box-shadow: 0 12px 30px rgba(0,0,0,.20);
+  backdrop-filter: blur(8px);
+}
+
+.tabs {
+  background: #090c10;
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 5px;
+}
+
+.tabs button {
+  border-radius: 3px;
+  padding: 8px 13px;
+}
+
+.tabs button.active {
+  background: linear-gradient(180deg, rgba(216,179,90,.20), rgba(216,179,90,.08));
+  color: var(--tt-gold-bright);
+  box-shadow: inset 0 -1px 0 var(--tt-gold);
+}
+
+.search {
+  min-width: 220px;
+  border-radius: 5px;
+  background: #090c10;
+  border-color: rgba(255,255,255,.08);
+}
+
+.group { margin-bottom: 34px; }
+
+.group-head {
+  margin-bottom: 12px;
+  padding: 0 2px 9px;
+  border-bottom-color: var(--tt-line);
+}
+
+.group-head h2 {
+  color: #d7d9dc;
+  font-size: 14px;
+  letter-spacing: .12em;
+}
+
+.grid {
+  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+}
+
+.card {
+  position: relative;
+  min-height: 148px;
+  overflow: hidden;
+  padding: 14px;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.035), transparent 35%),
+    linear-gradient(180deg, #1a2129, #11161d);
+  border-color: rgba(255,255,255,.09);
+  border-left-width: 3px;
+  border-radius: 6px;
+  box-shadow: 0 8px 22px rgba(0,0,0,.24), inset 0 1px rgba(255,255,255,.025);
+}
+
+.card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(115deg, transparent 0 62%, rgba(216,179,90,.035) 78%, transparent 100%);
+}
+
+.card:hover {
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.05), transparent 35%),
+    linear-gradient(180deg, #202832, #151b23);
+  border-color: rgba(216,179,90,.30);
+  transform: translateY(-1px);
+}
+
+.card .portrait {
+  width: 52px;
+  height: 52px;
+  border-radius: 4px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: #080a0d;
+  box-shadow: 0 3px 10px rgba(0,0,0,.35);
+}
+
+.card .name { color: #eeeae0; }
+.card .sub { color: #989fa6; }
+
+.card .meta { gap: 5px; margin-top: 10px; }
+
+.chip {
+  padding: 3px 7px;
+  border-radius: 3px;
+  background: rgba(4,6,9,.55);
+  border-color: rgba(255,255,255,.09);
+  color: #adb2b8;
+}
+
+.card-stats {
+  gap: 5px 14px;
+  margin-top: 11px;
+  font-size: 11px;
+}
+
+.card-stat { gap: 4px; }
+.card-stat b { color: #e6e4de; }
+
+.stars { filter: drop-shadow(0 0 3px rgba(216,179,90,.22)); }
+
+/* Detail header: a unit's own hero card, but also the plain title+subtitle
+   header on Plan detail, Team detail, the plan timeline and the shopping
+   list — some of those have no portrait, and Team detail has no trailing
+   row either. A positional 3-column grid (portrait / title / trailing)
+   assumed all three were always present: with only one or two, auto-
+   placement filled column 1 first regardless of what the child actually
+   was, so a title landed in a 104px portrait-width column. Flexbox with
+   `:has()` targets the title block by what it contains rather than by
+   position, so it works whichever of the three actually showed up — the
+   same reason the trailing rarity/action row on every page already used
+   `margin-left: auto` rather than relying on a grid column for it. */
+.detail-head {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 18px;
+  margin: 0 0 20px;
+  padding: 16px 18px;
+  background:
+    linear-gradient(90deg, rgba(216,179,90,.07), transparent 38%),
+    linear-gradient(180deg, #1a2027, #10151b);
+  border: 1px solid rgba(216,179,90,.19);
+  border-radius: 7px;
+  box-shadow: 0 12px 30px rgba(0,0,0,.28);
+}
+
+.detail-head::before {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; top: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(216,179,90,.52), transparent);
+}
+
+.detail-head > div:has(> h1) { flex: 1 1 200px; min-width: 0; }
+
+.detail-head h1 {
+  margin: 0 0 6px;
+  color: #eee9dc;
+  font-size: clamp(20px, 3vw, 30px);
+  letter-spacing: -.015em;
+  overflow-wrap: break-word;
+}
+
+.detail-head .portrait.ornate {
+  flex: none;
+  border: 1px solid rgba(216,179,90,.38);
+  border-radius: 7px;
+  box-shadow: 0 0 0 3px rgba(216,179,90,.045), 0 10px 24px rgba(0,0,0,.35);
+}
+
+.panels { gap: 14px; }
+
+.panel {
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.025), transparent 34%),
+    #141a21;
+  border-color: var(--tt-line);
+  border-radius: 6px;
+  box-shadow: 0 7px 20px rgba(0,0,0,.18);
+}
+
+.panel h3 {
+  color: #d9d5ca;
+  letter-spacing: .08em;
+}
+
+.stat {
+  background: rgba(5,7,10,.42);
+  border-color: rgba(255,255,255,.065);
+  border-radius: 4px;
+}
+
+.stat .value { color: #e9e4d8; overflow-wrap: break-word; }
+
+.bar {
+  background: #080b0e;
+  border-color: rgba(255,255,255,.07);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.bar span {
+  background: linear-gradient(90deg, #8b7139, #dfbc61);
+  box-shadow: 0 0 10px rgba(216,179,90,.22);
+}
+
+.back {
+  display: inline-flex;
+  margin-bottom: 12px;
+  color: var(--tt-gold);
+  font-size: 13px;
+}
+
+/* The unit "trading card" detail header, at phone width. Kept in its own
+   media query next to the HUD block below rather than folded into it, this
+   used to duplicate several of that block's own selectors — `.topbar`,
+   `.topbar .brand`, `.topbar nav`, `.content`, `.toolbar`, `.grid` — with
+   different values for the same properties. Two rules for one selector
+   only ever race by source order, and here they raced badly: this block's
+   `.topbar .brand { width: 100% }` combined with the HUD block's later
+   `flex: 1 1 auto` to claim the entire header row as the brand's flex
+   basis, which is why the header's icon buttons were wrapping onto their
+   own line instead of sharing it; the same collision on the shared
+   `.search` class — this block's `flex: 1 1 180px`, sized for the
+   toolbar's old row layout — became a *vertical* flex-basis once the HUD
+   block turned the toolbar into a column, and a flex item's basis wins
+   over its own `height` property, which is why the search box rendered
+   ~180px tall instead of the 50px the HUD block asked for. Deleted the
+   redundant/conflicting rules; only `.detail-head`, which the HUD block
+   doesn't otherwise touch, moves down into it below. */
+
+
+/* ==========================================================================
+   MOBILE TACTICUS HUD
+   Phone-width chrome: deep blue-black steel, cyan edge lighting, warm gold
+   filigree. This used to be three separate, overlapping attempts at the
+   header, the nav and the card layout, added across five commits without
+   removing the ones before them — only the last rule for any given property
+   ever took effect, so the other two were dead weight that made the real
+   behaviour hard to find and easy to break. Consolidated into one pass, and
+   the header/nav/card rules below are written against real markup (real
+   buttons, real routes) rather than `nth-child` position hacks standing in
+   for content that isn't actually there.
+   ========================================================================== */
+
+@media (max-width: 720px) {
+  :root {
+    --tt-mobile-bg: #020b15;
+    --tt-mobile-panel: #061525;
+    --tt-mobile-panel-2: #0a1b2c;
+    --tt-mobile-edge: #17496c;
+    --tt-mobile-edge-hi: #2d82ad;
+    --tt-mobile-cyan: #72b8df;
+    --tt-mobile-gold: #e3b94f;
+    --tt-mobile-gold-hi: #ffe28a;
+  }
+
+  html, body {
+    background:
+      radial-gradient(ellipse 90% 24% at 50% 0%, rgba(26,78,112,.42), transparent 72%),
+      radial-gradient(ellipse 75% 35% at 50% 100%, rgba(15,52,76,.28), transparent 72%),
+      repeating-linear-gradient(0deg, rgba(255,255,255,.018) 0 1px, transparent 1px 4px),
+      linear-gradient(180deg, #020a13 0%, #03101d 46%, #020a13 100%);
+    background-attachment: fixed;
+  }
+
+  body { overflow-x: hidden; font-family: var(--font-body); }
+
+  .app {
+    min-height: 100svh;
+    background:
+      linear-gradient(90deg, rgba(0,0,0,.18), transparent 8%, transparent 92%, rgba(0,0,0,.22)),
+      repeating-linear-gradient(90deg, rgba(255,255,255,.008) 0 1px, transparent 1px 5px);
+  }
+
+  /* --- top command deck ---------------------------------------------------
+     Brand and the real action buttons share row one; the real route list
+     scrolls on row two. Flex-wrap does the two-row split — the same
+     mechanism the base design system already uses at this width — rather
+     than a fixed grid told in advance how many columns to reserve for
+     however many icons happen to exist. */
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    height: auto;
+    padding: 10px 14px 0;
+    gap: 8px 10px;
+    background:
+      linear-gradient(180deg, rgba(21,58,82,.66), rgba(4,16,29,.96) 72%),
+      repeating-linear-gradient(0deg, rgba(255,255,255,.02) 0 1px, transparent 1px 3px);
+    border: 0;
+    box-shadow: 0 8px 22px rgba(0,0,0,.55), inset 0 1px rgba(116,185,222,.16);
+  }
+
+  .topbar::after {
+    height: 2px;
+    bottom: -1px;
+    background: linear-gradient(90deg, transparent, #7c5921 4%, var(--tt-mobile-gold-hi) 50%, #7c5921 96%, transparent);
+    box-shadow: 0 0 7px rgba(227,185,79,.42);
+  }
+
+  .topbar .brand {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 44px;
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: .09em;
+    color: var(--tt-mobile-gold-hi);
+    text-shadow: 0 0 9px rgba(255,211,91,.22), 0 2px 1px #000;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .topbar .brand svg {
+    flex: none;
+    color: var(--tt-mobile-gold-hi);
+    filter: drop-shadow(0 0 4px rgba(255,212,99,.18));
+  }
+
+  .topbar .spacer { display: none; }
+  .topbar .chip.warn { flex: 1 0 100%; order: 2; }
+
+  /* --- header action buttons: refresh, codes bell, player — real, wired
+     controls, styled the same so the row reads as one group. */
+  .header-actions {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .header-icon-button,
+  .topbar .bell-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border: 1px solid #17628b;
+    border-radius: 8px;
+    background: linear-gradient(180deg, rgba(16,49,72,.95), rgba(4,17,29,.98));
+    box-shadow: inset 0 1px rgba(151,215,241,.13), 0 2px 8px rgba(0,0,0,.4), 0 0 8px rgba(42,137,184,.10);
+    color: #78b5d6;
+  }
+
+  .header-icon-button:disabled { opacity: .5; }
+  .header-icon-button.active { border-color: var(--tt-mobile-gold); color: var(--tt-mobile-gold-hi); }
+  .header-icon-button svg { filter: drop-shadow(0 0 3px rgba(72,161,210,.25)); }
+
+  .header-icon-button.refreshing svg { animation: tt-spin 900ms linear infinite; }
+  @keyframes tt-spin { to { transform: rotate(360deg); } }
+
+  .topbar .bell-wrap { width: 40px; height: 40px; }
+  .topbar .bell-badge { top: 0; right: 0; }
+
+  /* The refresh/player buttons carry a text label on a wide screen; at this
+     width the icon alone has to say it, or the label wraps the whole row. */
+  .header-icon-label { display: none; }
+
+  /* --- route tabs ----------------------------------------------------------
+     Every real destination, in one scrollable row. Nothing hidden past the
+     fifth item, no fifth tab relabelled to stand in for a menu that isn't
+     actually there — what you see is what tapping it does. */
+  .topbar nav {
+    order: 3;
+    flex: 1 0 100%;
+    display: flex;
+    gap: 2px;
+    margin-top: 4px;
+    padding-bottom: 2px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    border-top: 1px solid rgba(55,132,175,.35);
+  }
+
+  .topbar nav::-webkit-scrollbar { display: none; }
+
+  .topbar nav a {
+    flex: 1 0 68px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    min-width: 0;
+    padding: 8px 4px 7px;
+    border-radius: 0;
+    color: #9db0c2;
+    font-size: 10.5px;
+    font-weight: 500;
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  .topbar nav a svg {
+    color: #9ec4e0;
+    filter: drop-shadow(0 0 4px rgba(67,142,188,.22));
+  }
+
+  .topbar nav a.active {
+    color: var(--tt-mobile-gold-hi);
+    background:
+      linear-gradient(180deg, rgba(219,173,63,.24), rgba(219,173,63,.07)),
+      repeating-linear-gradient(135deg, rgba(255,255,255,.03) 0 1px, transparent 1px 5px);
+    box-shadow: inset 0 0 0 1px rgba(238,192,73,.62), inset 0 -3px 0 var(--tt-mobile-gold);
+  }
+
+  .topbar nav a.active svg { color: var(--tt-mobile-gold-hi); }
+
+  .content {
+    max-width: none;
+    width: 100%;
+    padding: 20px 20px calc(24px + env(safe-area-inset-bottom));
+  }
+
+  .detail-head { gap: 12px; }
+
+  /* Forces the trailing rarity/action row or mode-tabs (`margin-left: auto`
+     at desktop width, to sit flush against the far edge) onto its own
+     full-width line instead — there isn't room beside a title at this width
+     once a portrait is also in the row. */
+  .detail-head > .row:last-child,
+  .detail-head > .tabs:last-child {
+    flex: 1 0 100%;
+    margin-left: 0 !important;
+  }
+
+  .detail-head .portrait.ornate { width: 76px; height: 76px; }
+
+  /* --- toolbar (search, group tabs, status-count filters) ------------------
+     Real, shared controls (`Toolbar`/`SegmentedControl`/`SearchField`/
+     `ToolbarCounts` in `components/Toolbar.tsx`), styled once here for every
+     page that renders one — Units, Plans, Teams, Upgrades, Equipment,
+     Badges, Codes, the plan timeline — rather than the page-specific,
+     partly-fake stand-in this replaced: a duplicate faction dropdown wired
+     to nothing, a filter button with no handler, and a second copy of the
+     same search box and status counts the real toolbar already renders. */
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    margin: 0 0 22px;
+    padding: 14px 15px 15px;
+    background:
+      linear-gradient(135deg, rgba(31,87,121,.17), transparent 42%),
+      linear-gradient(180deg, #071521, #040d16);
+    border: 1px solid #1a4d6b;
+    border-radius: 7px;
+    box-shadow:
+      0 13px 28px rgba(0,0,0,.52),
+      inset 0 1px rgba(99,183,224,.12),
+      inset 0 0 22px rgba(13,66,95,.12);
+    position: relative;
+    clip-path: polygon(
+      0 11px, 11px 0, calc(100% - 11px) 0, 100% 11px,
+      100% calc(100% - 11px), calc(100% - 11px) 100%, 11px 100%, 0 calc(100% - 11px)
+    );
+  }
+
+  .toolbar::before,
+  .toolbar::after {
+    content: '';
+    position: absolute;
+    width: 33px;
+    height: 33px;
+    pointer-events: none;
+  }
+
+  .toolbar::before {
+    top: -1px; left: -1px;
+    border-top: 3px solid var(--tt-mobile-gold);
+    border-left: 3px solid var(--tt-mobile-gold);
+    box-shadow: -1px -1px 7px rgba(227,185,79,.15);
+  }
+
+  .toolbar::after {
+    right: -1px; bottom: -1px;
+    width: 26px; height: 26px;
+    border-right: 3px solid var(--tt-mobile-gold);
+    border-bottom: 3px solid var(--tt-mobile-gold);
+  }
+
+  /* `.tabs`/`.search` are the same components elsewhere on a page (a
+     steps/total toggle, the player-data filter box) as well as inside a
+     toolbar, so they are styled bare rather than scoped to `.toolbar` — the
+     same control should look the same wherever it appears. Only the
+     full-width stacking is toolbar-specific. */
+  .tabs {
+    background: linear-gradient(180deg, #09233a, #041321);
+    border: 1px solid #17638b;
+    border-radius: 8px;
+    padding: 3px;
+    box-shadow: inset 0 1px rgba(111,181,218,.11), 0 2px 7px rgba(0,0,0,.3);
+  }
+
+  .tabs button {
+    padding: 8px 14px;
+    border-radius: 6px;
+    color: #9db0c2;
+    font-size: 12.5px;
+  }
+
+  .tabs button.active {
+    color: var(--tt-mobile-gold-hi);
+    background: linear-gradient(180deg, rgba(219,173,63,.24), rgba(219,173,63,.07));
+    box-shadow: inset 0 0 0 1px rgba(238,192,73,.5);
+  }
+
+  .toolbar .tabs { width: 100%; display: flex; }
+  .toolbar .tabs button { flex: 1; }
+
+  .search {
+    color: #dce8f1;
+    border-radius: 24px;
+    border: 1px solid #17638b;
+    background: linear-gradient(135deg, #061b2b, #020e18);
+    box-shadow: inset 0 1px rgba(151,215,241,.12), 0 3px 10px rgba(0,0,0,.42);
+  }
+
+  .search::placeholder { color: #70879a; }
+
+  .toolbar .search {
+    width: 100%;
+    min-width: 0;
+    height: 50px;
+    padding: 0 18px;
+    font-size: 15px;
+  }
+
+  /* Two columns, not four: a status label translates to something like "não
+     iniciadas" or "em progresso" — noticeably longer than its English
+     source — and a fixed-height, non-wrapping single-line cell (as this
+     replaced) either truncated it or overflowed its own box. Two wider,
+     height-flexible cells give the longest label room to wrap onto a
+     second line instead. */
+  .counts {
+    width: 100%;
+    margin-left: 0;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .counts .count { padding: 0; }
+
+  .count.filterable {
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: 60px;
+    padding: 8px 6px;
+    gap: 2px;
+    text-align: center;
+    border: 1px solid #17638b;
+    border-radius: 7px;
+    background: linear-gradient(180deg, rgba(9,36,58,.95), rgba(3,16,28,.98));
+    color: #9cb0c2;
+    box-shadow: inset 0 1px rgba(117,188,221,.07), 0 2px 6px rgba(0,0,0,.3);
+  }
+
+  .count.filterable b {
+    color: #e0ebf4;
+    font: 500 17px var(--font-display);
+    line-height: 20px;
+  }
+
+  .count.filterable.active {
+    color: #e4f0f8;
+    border-color: var(--tt-mobile-cyan);
+    background:
+      linear-gradient(180deg, rgba(75,153,201,.68), rgba(16,61,91,.8)),
+      linear-gradient(180deg, #0b2a43, #061725);
+    box-shadow:
+      inset 0 0 0 1px rgba(180,229,248,.30),
+      inset 0 -3px 0 rgba(84,180,226,.55),
+      0 0 16px rgba(54,156,207,.25);
+  }
+
+  .count.filterable.active b { color: #f1f6fa; }
+
+  /* --- group headings ----------------------------------------------------- */
+  .group { margin-bottom: 22px; }
+
+  .group-head {
+    height: auto;
+    margin-bottom: 12px;
+    padding: 0 3px 8px;
+    border-bottom: 1px solid rgba(113,125,136,.32);
+  }
+
+  .group-head h2 {
+    color: #d9dce0;
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: .105em;
+  }
+
+  .group-head .pill {
+    color: #91a7ba;
+    font: 500 14px var(--font-display);
+  }
+
+  /* --- unit trading cards ---------------------------------------------------
+     Plain flex layout: a fixed-size portrait, a body that takes whatever
+     space is left. Nothing here assumes a name, a badge or a stat row is any
+     particular width, or the card any particular height — a long name wraps,
+     a missing rarity badge just leaves no gap to fill, and the card is as
+     tall as its content needs. The three-layer fixed-grid version this
+     replaced broke exactly there: a 112px portrait forced into a 76px grid
+     row, and a rarity badge/star row absolutely positioned at guessed pixel
+     offsets that only held for one particular name length.
+
+     Scoped to `.unit-card` (not bare `.card`/`.card-head`/`.name`/`.sub`/
+     `.meta`/`.portrait`) because those bare class names are shared with the
+     Plans and Teams cards, which have their own, differently-shaped markup —
+     a bare-class rule here previously bled into both. */
+  .grid { gap: 11px; grid-template-columns: 1fr; }
+
+  .unit-card {
+    --card-accent: var(--rarity, var(--status));
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+    border: 1px solid color-mix(in srgb, var(--card-accent) 74%, #17496c);
+    border-left: 4px solid var(--card-accent);
+    border-radius: 10px;
+    background:
+      linear-gradient(120deg, color-mix(in srgb, var(--card-accent) 13%, transparent), transparent 28%),
+      radial-gradient(ellipse at 100% 0%, rgba(61,117,148,.13), transparent 48%),
+      repeating-linear-gradient(0deg, rgba(255,255,255,.018) 0 1px, transparent 1px 4px),
+      linear-gradient(180deg, #0a1b2a, #05111d 70%, #030c15);
+    box-shadow:
+      0 5px 14px rgba(0,0,0,.48),
+      inset 0 1px rgba(153,203,226,.11),
+      0 0 9px color-mix(in srgb, var(--card-accent) 18%, transparent);
+    clip-path: polygon(
+      0 10px, 10px 0, calc(100% - 10px) 0, 100% 10px,
+      100% calc(100% - 10px), calc(100% - 10px) 100%, 10px 100%, 0 calc(100% - 10px)
+    );
+  }
+
+  .unit-card:hover {
+    border-color: var(--tt-mobile-gold);
+    box-shadow:
+      0 6px 17px rgba(0,0,0,.52),
+      inset 0 1px rgba(255,255,255,.13),
+      0 0 13px color-mix(in srgb, var(--card-accent) 26%, transparent);
+  }
+
+  .unit-card .card-head { display: flex; align-items: flex-start; gap: 12px; }
+
+  .unit-card .portrait {
+    flex: none;
+    width: 84px;
+    height: 84px;
+    border-radius: 8px;
+    border: 2px solid color-mix(in srgb, var(--card-accent) 68%, #8db6ca);
+    box-shadow: 0 2px 8px rgba(0,0,0,.62), 0 0 8px color-mix(in srgb, var(--card-accent) 19%, transparent);
+  }
+
+  .unit-card .card-title { padding-top: 2px; }
+
+  .unit-card .name {
+    color: #f2f3f1;
+    font-size: 19px;
+    font-weight: 700;
+    line-height: 1.15;
+    margin-bottom: 4px;
+    text-shadow: 0 2px 2px rgba(0,0,0,.85);
+    /* The base desktop rule truncates a name to one line with an ellipsis;
+       overriding just `overflow-wrap` without `white-space` left that nowrap
+       in effect, so a long name still measured wider than the card even
+       though the ellipsis hid it visually. Wrapping is what this card has
+       room for, so undo the truncation outright. */
+    white-space: normal;
+    overflow: visible;
+    overflow-wrap: break-word;
+  }
+
+  .unit-card .sub { color: #9db0bf; font-size: 13px; line-height: 18px; gap: 5px; min-width: 0; }
+  .unit-card .sub .crest { flex: none; width: 15px; height: 15px; filter: drop-shadow(0 0 3px color-mix(in srgb, var(--card-accent) 25%, transparent)); }
+
+  .unit-card .chip.rarity {
+    flex: none;
+    align-self: flex-start;
+    height: 26px;
+    padding: 0 11px;
+    border-radius: 8px;
+    border: 1px solid color-mix(in srgb, var(--rarity) 80%, white 8%);
+    color: #07111a;
+    font-weight: 800;
+    font-size: 11px;
+    text-transform: uppercase;
+    background: linear-gradient(180deg, color-mix(in srgb, var(--rarity) 90%, white 10%), var(--rarity));
+    box-shadow: 0 2px 7px rgba(0,0,0,.38), 0 0 8px color-mix(in srgb, var(--rarity) 28%, transparent);
+  }
+
+  .unit-card .meta { gap: 7px; margin: 0; }
+
+  .unit-card .meta .chip {
+    height: 34px;
+    padding: 0 10px;
+    font-size: 12px;
+    border-radius: 6px;
+    color: #d9e4eb;
+    background: linear-gradient(180deg, #071b2d, #040f1b);
+    border-color: #164e70;
+    box-shadow: inset 0 1px rgba(116,183,216,.08), 0 2px 5px rgba(0,0,0,.25);
+  }
+
+  .unit-card .stars { gap: 1px; filter: drop-shadow(0 0 3px rgba(255,204,78,.28)); }
+  .unit-card .stars .icon { width: 15px; height: 15px; }
+
+  .unit-card .card-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 18px;
+    margin: 0;
+    padding-top: 9px;
+    font-size: 12px;
+    color: #9fb0be;
+    border-top: 1px solid rgba(83,113,133,.30);
+  }
+
+  .unit-card .card-stat { gap: 5px; }
+  .unit-card .card-stat .icon { width: 16px; height: 16px; filter: drop-shadow(0 0 2px rgba(255,255,255,.12)); }
+  .unit-card .card-stat b { color: #edf1f4; font-size: 14px; text-shadow: 0 1px 2px #000; }
+
+  .unit-card.locked { opacity: .62; filter: saturate(.7); }
+
+  .sr-only {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0,0,0,0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+  }
+}

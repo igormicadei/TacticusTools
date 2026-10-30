@@ -186,10 +186,13 @@ function bundleSteps(costs: StepCost[]): { steps: PlanStep[]; costs: StepCost[];
 /**
  * Build one running order across every plan.
  *
- * Bundles are ordered by the rank they reach, then by effort, so the roster
- * comes up together and the cheapest way to each rank is taken first. Stock is
- * then spread across that order, which is the point: two plans scored on their
- * own both claim the same materials, and only an order can decide between them.
+ * Bundles are ordered by the rank they reach, then — within that — by the
+ * caller's own priority when one is given, then by effort, so the roster
+ * comes up together, a player's stated priority breaks the tie between two
+ * plans reaching the same rank, and the cheapest way to each rank is taken
+ * first among whatever is left unordered. Stock is then spread across that
+ * order, which is the point: two plans scored on their own both claim the
+ * same materials, and only an order can decide between them.
  *
  * The effort used to sort is measured against the player's whole inventory,
  * independent of the other plans — it has to be, since the order it produces is
@@ -200,9 +203,22 @@ export function buildTimeline(
   plans: readonly TimelinePlan[],
   player: PlayerResponse,
   db: GameDatabase,
+  options: {
+    /**
+     * A plan id's position in the player's own farming-priority order —
+     * front of the array sorts first. A plan absent from it (never moved,
+     * or newer than the last time it was set) sorts after every listed one,
+     * in this function's own automatic order, so giving one plan priority
+     * never demands ranking the whole roster first.
+     */
+    priorityOrder?: readonly string[];
+  } = {},
 ): Timeline {
   const owned = ownedByKey(player, db);
   const unlocked = unlockedNodeKeys(player);
+  const priorityIndex = new Map((options.priorityOrder ?? []).map((id, i) => [id, i]));
+  /** Lower sorts first; unlisted plans share one slot after every listed one. */
+  const priorityRank = (planId: string): number => priorityIndex.get(planId) ?? Infinity;
 
   interface Pending {
     plan: TimelinePlan;
@@ -242,6 +258,7 @@ export function buildTimeline(
   pending.sort(
     (a, b) =>
       a.sortRank - b.sortRank ||
+      priorityRank(a.plan.id) - priorityRank(b.plan.id) ||
       a.effort - b.effort ||
       (a.plan.unit.name ?? a.plan.unit.id).localeCompare(b.plan.unit.name ?? b.plan.unit.id),
   );

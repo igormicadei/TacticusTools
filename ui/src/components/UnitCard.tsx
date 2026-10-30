@@ -5,10 +5,9 @@ import type { GameDatabase } from '@lib/gamedata/types.js';
 
 import { factionIcon, rankIcon, starIcon, uiIcon, unitIcon } from '../data/icons.ts';
 import { humaniseFaction, type RosterEntry } from '../data/roster.ts';
-import { localRarity } from '../i18n/game.ts';
+import { localNumber, localRarity } from '../i18n/game.ts';
 import { t } from '../i18n/locale.ts';
 import { Icon, useIcons } from './Icon.tsx';
-import { StatCard, type StatCardRow } from './StatCard.tsx';
 
 const STATUS_COLOR: Record<RosterEntry['status'], string> = {
   owned: 'var(--status-owned)',
@@ -35,7 +34,7 @@ export function UnitCard({ entry, db }: { entry: RosterEntry; db: GameDatabase }
   const { unit, definition } = entry;
   const factionId = definition?.factionId ?? entry.factionId;
   const stats = unit ? computeUnitStats(unit, db) : undefined;
-  const statRows: StatCardRow[] = stats
+  const statRow = stats
     ? [
         { key: 'hp', icon: uiIcon('health'), label: t('stat.hp'), value: stats.health },
         { key: 'dmg', icon: uiIcon('damage'), label: t('stat.dmg'), value: stats.damage },
@@ -50,7 +49,7 @@ export function UnitCard({ entry, db }: { entry: RosterEntry; db: GameDatabase }
   return (
     <Link
       to={`/units/${encodeURIComponent(entry.id)}`}
-      className={`card ${entry.status}`}
+      className={`card unit-card ${entry.status}`}
       style={style}
     >
       <div className="card-head">
@@ -63,6 +62,9 @@ export function UnitCard({ entry, db }: { entry: RosterEntry; db: GameDatabase }
             {definition?.isMachineOfWar ? ` · ${t('card.machineOfWar')}` : ''}
           </div>
         </div>
+        {entry.rarity !== undefined && (
+          <span className="chip rarity">{localRarity(entry.rarity)}</span>
+        )}
       </div>
 
       <div className="meta">
@@ -73,9 +75,6 @@ export function UnitCard({ entry, db }: { entry: RosterEntry; db: GameDatabase }
               <Icon src={rankIcon(unit.rank)} size={14} />
               {t('card.rank', { n: unit.rank })}
             </span>
-            {entry.rarity !== undefined && (
-              <span className="chip rarity">{localRarity(entry.rarity)}</span>
-            )}
           </>
         ) : entry.status === 'unlockable' ? (
           <span className="chip">{t('card.shards', { n: entry.shards })}</span>
@@ -90,9 +89,14 @@ export function UnitCard({ entry, db }: { entry: RosterEntry; db: GameDatabase }
         </div>
       )}
 
-      {statRows.length > 0 && (
-        <div style={{ marginTop: 10 }}>
-          <StatCard rows={statRows} />
+      {statRow.length > 0 && (
+        <div className="card-stats">
+          {statRow.map((row) => (
+            <span className="card-stat" key={row.key}>
+              <Icon src={row.icon} size={14} reserve />
+              <b>{localNumber(row.value)}</b> {row.label}
+            </span>
+          ))}
         </div>
       )}
     </Link>

@@ -121,6 +121,54 @@ export const plansStore = {
   },
 };
 
+const PRIORITY_KEY = 'tacticus-tools:plans-priority';
+
+/**
+ * The player's own farming-priority order — which plan's shared materials
+ * get claimed first when the Farming Plan tab's "Custom order" is on.
+ *
+ * A plan id not in this list sorts after every id that is, in whatever order
+ * the caller's own automatic heuristic already puts it — so nudging one
+ * plan to the front never requires ranking the rest of the roster first.
+ * `movePriority` grows the list lazily for exactly that reason: a plan only
+ * gets an explicit entry the first time someone actually moves it.
+ */
+export function readPriorityOrder(): string[] {
+  try {
+    const raw = localStorage.getItem(PRIORITY_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as unknown;
+      if (Array.isArray(parsed)) return parsed.filter((id): id is string => typeof id === 'string');
+    }
+  } catch {
+    /* Private mode, or a corrupt value — an empty order still works. */
+  }
+  return [];
+}
+
+/**
+ * Move a plan one step up or down the priority order, against the full,
+ * currently-visible order the caller passes (not just the stored one — a
+ * plan never yet moved has no entry to swap, so the caller's own current
+ * ordering, automatic-sort ids included, is what decides its neighbour).
+ */
+export function movePriority(
+  planId: string,
+  direction: 'up' | 'down',
+  currentOrder: readonly string[],
+): void {
+  const index = currentOrder.indexOf(planId);
+  const swapWith = direction === 'up' ? index - 1 : index + 1;
+  if (index < 0 || swapWith < 0 || swapWith >= currentOrder.length) return;
+  const next = [...currentOrder];
+  [next[index], next[swapWith]] = [next[swapWith]!, next[index]!];
+  try {
+    localStorage.setItem(PRIORITY_KEY, JSON.stringify(next));
+  } catch {
+    /* Private mode, or storage disabled — the move still applies for this render. */
+  }
+}
+
 const VIEW_KEY = 'tacticus-tools:plans-view';
 
 /**

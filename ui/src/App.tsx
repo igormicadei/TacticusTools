@@ -2,12 +2,26 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { NavLink, Navigate, Route, Routes } from 'react-router-dom';
 
 import { CodesBell } from './components/CodesBell.tsx';
+import {
+  BadgesIcon,
+  CodesIcon,
+  EmblemMark,
+  EquipmentIcon,
+  PlansIcon,
+  RefreshIcon,
+  ShardsIcon,
+  TeamsIcon,
+  UnitsIcon,
+  UpgradesIcon,
+  UserIcon,
+} from './components/icons/ChromeIcons.tsx';
 import { loadGameData } from './data/gamedata.ts';
 import { resolveGameCodes } from './data/gameCodes.ts';
 import { fetchPlayer, storage } from './data/player.ts';
 import { BadgesPage } from './routes/BadgesPage.tsx';
 import { CodesPage } from './routes/CodesPage.tsx';
 import { EquipmentPage } from './routes/EquipmentPage.tsx';
+import { ShardsPage } from './routes/ShardsPage.tsx';
 import { UpgradesPage } from './routes/UpgradesPage.tsx';
 import { currentLang, t, useLang } from './i18n/locale.ts';
 import { PlanDetailPage } from './routes/PlanDetailPage.tsx';
@@ -15,7 +29,6 @@ import { TeamDetailPage } from './routes/TeamDetailPage.tsx';
 import { TeamsPage } from './routes/TeamsPage.tsx';
 import { PlansPage } from './routes/PlansPage.tsx';
 import { ShoppingListPage } from './routes/ShoppingListPage.tsx';
-import { TimelinePage } from './routes/TimelinePage.tsx';
 import { PlayerDataPage } from './routes/PlayerDataPage.tsx';
 import { UnitDetailPage } from './routes/UnitDetailPage.tsx';
 import { UnitsPage } from './routes/UnitsPage.tsx';
@@ -129,67 +142,86 @@ export function App() {
   return (
     <div className="app">
       <header className="topbar">
-        <span className="brand">TACTICUS TOOLS</span>
+        <span className="brand">
+          <EmblemMark size={20} />
+          TACTICUS TOOLS
+        </span>
         <nav>
           <NavLink to="/units" className={({ isActive }) => (isActive ? 'active' : '')}>
+            <UnitsIcon size={18} />
             {t('nav.units')}
           </NavLink>
+          <NavLink to="/shards" className={({ isActive }) => (isActive ? 'active' : '')}>
+            <ShardsIcon size={18} />
+            {t('nav.shards')}
+          </NavLink>
           <NavLink to="/plans" className={({ isActive }) => (isActive ? 'active' : '')}>
+            <PlansIcon size={18} />
             {t('nav.plans')}
           </NavLink>
           <NavLink to="/teams" className={({ isActive }) => (isActive ? 'active' : '')}>
+            <TeamsIcon size={18} />
             {t('nav.teams')}
           </NavLink>
           <NavLink to="/upgrades" className={({ isActive }) => (isActive ? 'active' : '')}>
+            <UpgradesIcon size={18} />
             {t('nav.upgrades')}
           </NavLink>
           <NavLink to="/equipment" className={({ isActive }) => (isActive ? 'active' : '')}>
+            <EquipmentIcon size={18} />
             {t('nav.equipment')}
           </NavLink>
           <NavLink to="/badges" className={({ isActive }) => (isActive ? 'active' : '')}>
+            <BadgesIcon size={18} />
             {t('nav.badges')}
           </NavLink>
           <NavLink to="/codes" className={({ isActive }) => (isActive ? 'active' : '')}>
+            <CodesIcon size={18} />
             {t('nav.codes')}
-          </NavLink>
-          <NavLink to="/player" className={({ isActive }) => (isActive ? 'active' : '')}>
-            {t('nav.player')}
           </NavLink>
         </nav>
         <span className="spacer" />
-        {db && <CodesBell db={db} codes={gameCodes} />}
-        {hasKey && (
-          <span className="session row small muted">
-            {player && (
-              <>
-                {/* Dropped on a phone, where the nav and the refresh button are
-                    the only things worth the width. */}
-                <span className="session-name">
-                  {t('shell.power', {
-                    name: player.player.details.name,
-                    power: player.player.details.powerLevel,
-                  })}
-                </span>
-                <span className="session-age" title={syncedAtTitle(player, fetchedAt)}>
-                  {age(player, fetchedAt)}
-                </span>
-              </>
-            )}
-            {refreshError && (
-              <NavLink to="/player" className="chip warn" title={refreshError}>
-                {t('shell.refreshFailed')}
-              </NavLink>
-            )}
+        {refreshError && (
+          <NavLink to="/player" className="chip warn" title={refreshError}>
+            {t('shell.refreshFailed')}
+          </NavLink>
+        )}
+        <span className="header-actions">
+          {db && <CodesBell db={db} codes={gameCodes} />}
+          {hasKey && (
             <button
-              className="small"
+              type="button"
+              className={`header-icon-button${refreshing ? ' refreshing' : ''}`}
               onClick={() => void refresh(true)}
               disabled={refreshing}
               title={t('shell.refreshHint')}
+              aria-label={refreshing ? t('shell.refreshing') : t('shell.refresh')}
             >
-              {refreshing ? t('shell.refreshing') : t('shell.refresh')}
+              <RefreshIcon size={18} />
+              <span className="header-icon-label">
+                {refreshing ? t('shell.refreshing') : t('shell.refresh')}
+              </span>
             </button>
-          </span>
-        )}
+          )}
+          <NavLink
+            to="/player"
+            className={({ isActive }) => `header-icon-button${isActive ? ' active' : ''}`}
+            title={player ? syncedAtTitle(player, fetchedAt) : t('nav.player')}
+            aria-label={t('nav.player')}
+          >
+            <UserIcon size={18} />
+            {player && (
+              <span className="header-icon-label">
+                {t('shell.power', {
+                  name: player.player.details.name,
+                  power: player.player.details.powerLevel,
+                })}
+                {' · '}
+                {age(player, fetchedAt)}
+              </span>
+            )}
+          </NavLink>
+        </span>
       </header>
 
       <main className="content">
@@ -216,22 +248,18 @@ export function App() {
               }
             />
             <Route
+              path="/shards"
+              element={
+                player ? <ShardsPage db={db} player={player} /> : <Navigate to="/player" replace />
+              }
+            />
+            <Route
               path="/plans"
               element={
                 player ? <PlansPage db={db} player={player} /> : <Navigate to="/player" replace />
               }
             />
-            {/* Before the :planId route, or "timeline"/"shopping-list" is read as a plan id. */}
-            <Route
-              path="/plans/timeline"
-              element={
-                player ? (
-                  <TimelinePage db={db} player={player} />
-                ) : (
-                  <Navigate to="/player" replace />
-                )
-              }
-            />
+            {/* Before the :planId route, or "shopping-list" is read as a plan id. */}
             <Route
               path="/plans/shopping-list"
               element={
@@ -242,6 +270,10 @@ export function App() {
                 )
               }
             />
+            {/* Order of Work and Next Steps both folded into the Plans page's
+                Farming Plan tab — old links land there instead of 404ing. */}
+            <Route path="/plans/timeline" element={<Navigate to="/plans" replace />} />
+            <Route path="/plans/next-steps" element={<Navigate to="/plans" replace />} />
             <Route
               path="/plans/:unitId"
               element={

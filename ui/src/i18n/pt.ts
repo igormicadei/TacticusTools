@@ -10,6 +10,7 @@ import type { EN } from './en.ts';
 
 export const PT: Record<keyof typeof EN, string> = {
   'nav.units': 'Unidades',
+  'nav.shards': 'Fragmentos',
   'nav.plans': 'Planos',
   'nav.teams': 'Equipes',
   'nav.upgrades': 'Melhorias',
@@ -41,6 +42,7 @@ export const PT: Record<keyof typeof EN, string> = {
   'units.byStatus': 'Por status',
   'units.byFaction': 'Por facção',
   'units.search': 'Buscar unidades ou facções…',
+  'units.all': 'todas',
   'units.available': 'disponíveis',
   'units.inProgress': 'em progresso',
   'units.notStarted': 'não iniciadas',
@@ -49,6 +51,26 @@ export const PT: Record<keyof typeof EN, string> = {
   'units.status.owned': 'Disponíveis',
   'units.status.unlockable': 'Fragmentos reunidos',
   'units.status.locked': 'Não iniciadas',
+
+  /* ---- fragmentos (shards) --------------------------------------------- */
+  'shards.blurb':
+    'Todas as unidades conhecidas pelo jogo, mesmo as que você ainda não desbloqueou — fragmentos já reunidos para uma delas contam. Quando a próxima promoção está atrás de uma ascensão, o custo mostrado já inclui o que a própria ascensão exige primeiro. Uma unidade ainda não desbloqueada não mostra promoção nem ascensão: nenhuma das duas se aplica antes do desbloqueio, e não temos um custo de desbloqueio confiável por unidade para mostrar em vez disso.',
+  'shards.colRarity': 'Raridade',
+  'shards.colHeld': 'Fragmentos possuídos',
+  'shards.colPromotion': 'Próxima promoção',
+  'shards.colAscension': 'Próxima ascensão',
+  'shards.colShards': 'Fragmentos',
+  'shards.colOrbs': 'Orbes',
+  'shards.stars': '{n} estrelas',
+  'shards.mythicHeld': '+{n} míticos',
+  'shards.mythicSuffix': 'míticos',
+  'shards.maxed': 'No máximo',
+  'shards.viaAscension': 'ascende antes',
+  'shards.sort.closestPromotion': 'Mais perto da próxima promoção',
+  'shards.sort.closestAscension': 'Mais perto da próxima ascensão',
+  'shards.sort.shardsHeld': 'Fragmentos possuídos',
+  'shards.sort.rarity': 'Raridade',
+
   'card.level': 'Nv {n}',
   'card.rank': 'Rank {n}',
   'card.shards': '{n} fragmentos',
@@ -174,6 +196,8 @@ export const PT: Record<keyof typeof EN, string> = {
 
   /* ---- planos --------------------------------------------------------- */
   'plans.heading': 'Planos de evolução',
+  'plans.tabMine': 'Meus planos',
+  'plans.tabFarming': 'Plano de farming',
   'plans.count': 'ativos',
   'plans.unitName': 'Nome da unidade',
   'plans.noPreference': 'Sem preferência',
@@ -216,6 +240,7 @@ export const PT: Record<keyof typeof EN, string> = {
   'why.rankRequiresRarity': 'o rank {rank} exige {rarity}',
   'common.edit': 'Editar',
   'common.delete': 'Excluir',
+  'common.moreActions': 'Mais ações',
   'common.stars': 'Estrelas',
   'plans.starsOption': '{rarity} · {stars} estrelas',
   'plans.targetLevel': 'nível {n}',
@@ -407,6 +432,9 @@ export const PT: Record<keyof typeof EN, string> = {
   'si.triesLeft': 'restam {n} tentativas hoje',
   'si.noTriesLeft': 'sem tentativas hoje',
   'si.locked': 'bloqueado',
+  'si.nodeBest': 'Melhor',
+  'si.nodeGood': 'Bom',
+  'si.nodeLocked': 'Bloqueado',
   'si.perRun': 'por batalha',
   'si.each': 'cada',
   'si.dropRate': '{n}% de drop',
@@ -546,6 +574,7 @@ export const PT: Record<keyof typeof EN, string> = {
   'nav.backUnits': '← Todas as unidades',
   'nav.viewUnit': 'Ver unidade',
   'plans.everythingInOrder': 'Tudo em ordem',
+  'plans.tagline': 'Planeje. Farme. Avance.',
   'plans.none': 'Nenhuma unidade tem um alvo definido ainda. Abra a página de uma unidade para definir um — toda unidade tem um plano, esta lista só mostra as que têm algo pendente.',
   'plans.formBlurb':
     'Defina só o que te importa. Tudo de que isso depende é calculado e acrescentado para você — um alvo de habilidade puxa o nível do personagem junto, e alvos de nível ou rank puxam a raridade. Cada campo oferece apenas o que está à frente da unidade, já que um alvo que ela já atende não é um plano.',
@@ -593,6 +622,45 @@ export const PT: Record<keyof typeof EN, string> = {
   'shopping.fromLoose': 'de uma cópia solta (nv {n})',
   'shopping.fromLooseHint':
     'Uma cópia deste item já está no seu estoque — custada a partir do nível dela em vez de começar do zero.',
+
+  /* ---- próximos passos ----------------------------------------------------
+     O próximo passo de cada plano, reunidos em uma lista e filtráveis pelo
+     tipo do passo e por onde os materiais podem ser farmados. */
+  'nextSteps.heading': 'Próximos passos',
+  'nextSteps.none': 'Nenhum plano ainda. Isto lista o próximo passo de cada plano em um só lugar.',
+  'nextSteps.acrossUnits': '{n} unidades com um próximo passo',
+  'nextSteps.allDone': 'Todo plano está completo — nada a fazer.',
+  'nextSteps.noMatch': 'Nada corresponde aos filtros acima.',
+  'nextSteps.filterByType': 'Filtrar por tipo de passo',
+  'nextSteps.filterByCampaign': 'Filtrar por campanha',
+  'nextSteps.campaignBlurb':
+    'Escolha uma campanha para ver só os materiais que você ainda precisa e que caem lá.',
+  'nextSteps.kind.rank': 'Subir de rank',
+  'nextSteps.kind.level': 'Subir de nível',
+  'nextSteps.kind.ability': 'Habilidade',
+  'nextSteps.kind.ascension': 'Ascensão',
+  'nextSteps.kind.promotion': 'Promoção',
+
+  /* ---- aba de plano de farming --------------------------------------------
+     Ordem de trabalho, Próximos passos e Gastar energia fundidos em uma
+     aba, três escopos sobre a mesma pergunta em vez de três páginas. */
+  'farming.noPlansYet':
+    'Nenhum plano ainda. Isto acompanha os materiais de rank pendentes de cada plano em um só lugar.',
+  'farming.scopeAll': 'Todos os passos pendentes',
+  'farming.scopeNext': 'Só o próximo passo',
+  'farming.scopeSlots': 'Slots do rank atual',
+  'farming.filterByEnergy': 'Filtrar por energia',
+  'farming.maxEnergy': 'Energia máxima por item',
+  'farming.noLimit': 'Sem limite',
+  'farming.customOrder': 'Ordem personalizada',
+  'farming.customOrderHint':
+    'Decida você mesmo qual unidade reivindica materiais compartilhados escassos primeiro, em vez da ordem automática.',
+  'farming.moveUp': 'Subir na prioridade',
+  'farming.moveDown': 'Descer na prioridade',
+  'farming.notInCampaign': 'Não está nesta campanha',
+  'farming.notInCampaignHint':
+    'Pelo menos um dos ingredientes deste item não tem nó nesta campanha, então farmar só aqui não é suficiente para completá-lo.',
+  'spend.units': 'Unidades',
 
   /* ---- textos de equipe ------------------------------------------------ */
   'td.objectiveBlurb':

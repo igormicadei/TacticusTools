@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Publishes the built UI to the `gh-pages` branch.
+# Publishes the built UI to the `tacticus-pages` branch.
 #
 # The branch holds only build output and shares no history with the source
 # branch. The first commit is an orphan; later runs parent onto the previous
@@ -16,7 +16,7 @@
 
 set -euo pipefail
 
-BRANCH="${BRANCH:-gh-pages}"
+BRANCH="${BRANCH:-tacticus-pages}"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
